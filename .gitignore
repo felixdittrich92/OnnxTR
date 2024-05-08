@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Temp files
+onnxtr/version.py
+logs/
+wandb/
+.idea/
+
+# Model files
+*.onnx

@@ -1,0 +1,55 @@
+name: style
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+
+jobs:
+  ruff:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.9"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Run ruff
+        run: |
+          pip install ruff --upgrade
+          ruff --version
+          ruff check --diff .
+
+  mypy:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.9"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Cache python modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('pyproject.toml') }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev] --upgrade
+          pip install mypy --upgrade
+      - name: Run mypy
+        run: |
+          mypy --version
+          mypy
