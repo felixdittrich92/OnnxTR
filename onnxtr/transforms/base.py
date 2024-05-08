@@ -3,8 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-import math
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union
 
 import cv2
 import numpy as np
@@ -12,74 +11,69 @@ import numpy as np
 __all__ = ["Resize", "Normalize"]
 
 
-from torch.nn.functional import pad
-from torchvision.transforms import functional as F
-from torchvision.transforms import transforms as T
-
-import torch
-
-
-class Resize(T.Resize):  # TODO: Translate me correct !!!
+class Resize:
     """Resize the input image to the given size"""
 
     def __init__(
         self,
         size: Union[int, Tuple[int, int]],
-        interpolation=F.InterpolationMode.BILINEAR,
+        interpolation=cv2.INTER_LINEAR,
         preserve_aspect_ratio: bool = False,
         symmetric_pad: bool = False,
     ) -> None:
-        super().__init__(size, interpolation, antialias=True)
+        super().__init__()
+        self.size = size
+        self.interpolation = interpolation
         self.preserve_aspect_ratio = preserve_aspect_ratio
         self.symmetric_pad = symmetric_pad
 
         if not isinstance(self.size, (int, tuple, list)):
             raise AssertionError("size should be either a tuple, a list or an int")
 
-    def forward(
+    def __call__(
         self,
-        img: torch.Tensor,
-        target: Optional[np.ndarray] = None,
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor, np.ndarray]]:
-        img = np.transpose(img, (2, 0, 1))
-        print(img.shape)
-        img = torch.from_numpy(img)
-        if isinstance(self.size, int):
-            target_ratio = img.shape[-2] / img.shape[-1]
+        img: np.ndarray,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+        h, w = img.shape[:2]
+        sh, sw = self.size
+
+        # Calculate aspect ratio of the image
+        aspect = w / h
+
+        # Compute scaling and padding sizes
+        if self.preserve_aspect_ratio:
+            if aspect > 1:  # Horizontal image
+                new_w = sw
+                new_h = int(sw / aspect)
+            elif aspect < 1:  # Vertical image
+                new_h = sh
+                new_w = int(sh * aspect)
+            else:  # Square image
+                new_h, new_w = sh, sw
+
+            img_resized = cv2.resize(img, (new_w, new_h), interpolation=self.interpolation)
+
+            # Calculate padding
+            pad_top = max((sh - new_h) // 2, 0)
+            pad_bottom = max(sh - new_h - pad_top, 0)
+            pad_left = max((sw - new_w) // 2, 0)
+            pad_right = max(sw - new_w - pad_left, 0)
+
+            # Pad the image
+            img_resized = cv2.copyMakeBorder(
+                img_resized, pad_top, pad_bottom, pad_left, pad_right, borderType=cv2.BORDER_CONSTANT, value=0
+            )
+
+            # Ensure the image matches the target size by resizing it again if needed
+            img_resized = cv2.resize(img_resized, (sw, sh), interpolation=self.interpolation)
         else:
-            target_ratio = self.size[0] / self.size[1]
-        actual_ratio = img.shape[-2] / img.shape[-1]
+            # Resize the image without preserving aspect ratio
+            img_resized = cv2.resize(img, (sw, sh), interpolation=self.interpolation)
 
-        if not self.preserve_aspect_ratio or (target_ratio == actual_ratio and (isinstance(self.size, (tuple, list)))):
-            return super().forward(img).numpy()
-        else:
-            # Resize
-            if isinstance(self.size, (tuple, list)):
-                if actual_ratio > target_ratio:
-                    tmp_size = (self.size[0], max(int(self.size[0] / actual_ratio), 1))
-                else:
-                    tmp_size = (max(int(self.size[1] * actual_ratio), 1), self.size[1])
-            elif isinstance(self.size, int):  # self.size is the longest side, infer the other
-                if img.shape[-2] <= img.shape[-1]:
-                    tmp_size = (max(int(self.size * actual_ratio), 1), self.size)
-                else:
-                    tmp_size = (self.size, max(int(self.size / actual_ratio), 1))
-
-            # Scale image
-            img = F.resize(img, tmp_size, self.interpolation, antialias=True)
-            raw_shape = img.shape[-2:]
-            if isinstance(self.size, (tuple, list)):
-                # Pad (inverted in pytorch)
-                _pad = (0, self.size[1] - img.shape[-1], 0, self.size[0] - img.shape[-2])
-                if self.symmetric_pad:
-                    half_pad = (math.ceil(_pad[1] / 2), math.ceil(_pad[3] / 2))
-                    _pad = (half_pad[0], _pad[1] - half_pad[0], half_pad[1], _pad[3] - half_pad[1])
-                img = pad(img, _pad)
-
-            return img.numpy()
+        return img_resized
 
     def __repr__(self) -> str:
-        interpolate_str = self.interpolation.value
+        interpolate_str = self.interpolation
         _repr = f"output_size={self.size}, interpolation='{interpolate_str}'"
         if self.preserve_aspect_ratio:
             _repr += f", preserve_aspect_ratio={self.preserve_aspect_ratio}, symmetric_pad={self.symmetric_pad}"
@@ -107,15 +101,7 @@ class Normalize:
         img: np.ndarray,
     ) -> np.ndarray:
         # Normalize image
-        print(self.mean, self.std)
-        print(img.shape)
-        img = np.transpose(img, (0, 3, 2, 1))
-        mean = np.array(self.mean).astype(img.dtype)
-        std = np.array(self.std).astype(img.dtype)
-        img = (img - mean) / std
-        img = np.transpose(img, (0, 3, 2, 1))
-        print(img.shape)
-        return img
+        return (img - np.array(self.mean).astype(img.dtype)) / np.array(self.std).astype(img.dtype)
 
     def __repr__(self) -> str:
         _repr = f"mean={self.mean}, std={self.std}"

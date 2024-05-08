@@ -27,7 +27,6 @@ class Engine:
         )
 
     def run(self, inputs: np.ndarray) -> List[np.ndarray]:
-        # inputs = np.transpose(inputs, (0, 3, 1, 2)).astype(np.float32)  # TODO: Can we remove this maybe ?
+        inputs = np.transpose(inputs, (0, 3, 1, 2)).astype(np.float32)
         logits = self.runtime.run(["logits"], {"input": inputs})[0]
-        print(f"logits: {logits.shape}")
         return logits

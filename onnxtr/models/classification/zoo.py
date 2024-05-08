@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, Dict, List
+from typing import Any, List
 
 from .. import classification
 from ..preprocessor import PreProcessor
@@ -12,23 +12,6 @@ from .predictor import OrientationPredictor
 __all__ = ["crop_orientation_predictor", "page_orientation_predictor"]
 
 ORIENTATION_ARCHS: List[str] = ["mobilenet_v3_small_crop_orientation", "mobilenet_v3_small_page_orientation"]
-
-default_cfgs: Dict[str, Dict[str, Any]] = {
-    "mobilenet_v3_small_crop_orientation": {
-        "mean": (0.694, 0.695, 0.693),
-        "std": (0.299, 0.296, 0.301),
-        "input_shape": (3, 256, 256),
-        "classes": [0, -90, 180, 90],
-        "url": "https://doctr-static.mindee.com/models?id=v0.8.1/mobilenet_v3_small_crop_orientation-f0847a18.pt&src=0",  # TODO
-    },
-    "mobilenet_v3_small_page_orientation": {
-        "mean": (0.694, 0.695, 0.693),
-        "std": (0.299, 0.296, 0.301),
-        "input_shape": (3, 512, 512),
-        "classes": [0, -90, 180, 90],
-        "url": "https://doctr-static.mindee.com/models?id=v0.8.1/mobilenet_v3_small_page_orientation-8e60325c.pt&src=0",  # TODO
-    },
-}
 
 
 def _orientation_predictor(arch: str, **kwargs: Any) -> OrientationPredictor:

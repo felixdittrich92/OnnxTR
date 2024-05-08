@@ -101,5 +101,5 @@ class _BasePredictor:
             np.array([self.preprocess(img) for img in batch], dtype=np.float32) for batch in batched_inputs
         ]
 
-        outputs = [self.run(None, {model_inputs[0].name: batch}) for batch in processed_batches]
+        outputs = [self.session.run(None, {model_inputs[0].name: batch}) for batch in processed_batches]
         return self.postprocess(outputs, batched_inputs)

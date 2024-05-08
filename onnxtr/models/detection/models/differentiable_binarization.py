@@ -51,7 +51,7 @@ class DBNet(Engine):
     def __init__(
         self,
         model_path,
-        bin_thresh: float = 0.1,
+        bin_thresh: float = 0.3,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
         cfg: Optional[Dict[str, Any]] = None,
@@ -59,7 +59,6 @@ class DBNet(Engine):
         super().__init__(url=model_path)
         self.cfg = cfg
         self.assume_straight_pages = assume_straight_pages
-        print(f"ASSUME STRAIGHT PAGES: {assume_straight_pages}")
         self.postprocessor = GeneralDetectionPostProcessor(
             assume_straight_pages=self.assume_straight_pages, bin_thresh=bin_thresh, box_thresh=box_thresh
         )
@@ -77,12 +76,6 @@ class DBNet(Engine):
         prob_map = expit(logits)
         if return_model_output:
             out["out_map"] = prob_map
-
-        print(prob_map.shape)
-        import cv2
-
-        cv2.imwrite("prob_map.jpg", prob_map[0, 0, :, :] * 255)
-        print(prob_map)
 
         out["preds"] = [
             dict(zip(["words"], preds)) for preds in self.postprocessor(np.transpose(prob_map, (0, 2, 3, 1)))

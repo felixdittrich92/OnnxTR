@@ -6,7 +6,6 @@
 import math
 from typing import Any, List, Tuple, Union
 
-import cv2
 import numpy as np
 
 from onnxtr.transforms import Normalize, Resize
