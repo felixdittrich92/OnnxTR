@@ -18,7 +18,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
     "yolov8_artefact": {
         "input_shape": (3, 1024, 1024),
         "labels": ["bar_code", "qr_code", "logo", "photo"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.8.1/yolo_artefact-f9d66f14.onnx&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/yolo_artefact-f9d66f14.onnx",
     },
 }
 

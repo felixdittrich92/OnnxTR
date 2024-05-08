@@ -46,8 +46,7 @@ class DetectionPredictor(NestedObject):
 
         processed_batches = self.pre_processor(pages)
         predicted_batches = [
-            self.model(batch, return_preds=True, return_model_output=True, training=False, **kwargs)
-            for batch in processed_batches
+            self.model(batch, return_preds=True, return_model_output=True, **kwargs) for batch in processed_batches
         ]
 
         preds = [pred for batch in predicted_batches for pred in batch["preds"]]

@@ -66,9 +66,11 @@ class PreProcessor(NestedObject):
         if isinstance(x, np.ndarray):
             if x.dtype not in (np.uint8, np.float32):
                 raise TypeError("unsupported data type for numpy.ndarray")
-        # Data type
+        elif x.dtype not in (np.uint8, np.float16, np.float32):
+            raise TypeError("unsupported data type for torch.Tensor")
+        # Data type & 255 division
         if x.dtype == np.uint8:
-            x = x.astype(np.float32)
+            x = x.astype(np.float32) / 255.0
         # Resizing
         x = self.resize(x)
 
@@ -79,7 +81,7 @@ class PreProcessor(NestedObject):
 
         Args:
         ----
-            x: list of images (np.array) already resized and batched
+            x: list of images (np.array) or tensors (already resized and batched)
 
         Returns:
         -------
@@ -89,19 +91,23 @@ class PreProcessor(NestedObject):
         if isinstance(x, np.ndarray):
             if x.ndim != 4:
                 raise AssertionError("expected 4D Tensor")
-            if x.dtype not in (np.uint8, np.float32):
-                raise TypeError("unsupported data type for numpy.ndarray")
+            if isinstance(x, np.ndarray):
+                if x.dtype not in (np.uint8, np.float32):
+                    raise TypeError("unsupported data type for numpy.ndarray")
+            elif x.dtype not in (np.uint8, np.float16, np.float32):
+                raise TypeError("unsupported data type for torch.Tensor")
 
-            # Data type
+            # Data type & 255 division
             if x.dtype == np.uint8:
-                x = x.astype(np.float32)
+                x = x.astype(np.float32) / 255.0
             # Resizing
             if (x.shape[1], x.shape[2]) != self.resize.output_size:
-                x = cv2.resize(x, self.resize.output_size, interpolation=self.resize.method)
+                x = self.resize(x, self.resize.output_size, method=self.resize.method, antialias=self.resize.antialias)
+
             batches = [x]
 
         elif isinstance(x, list) and all(isinstance(sample, np.ndarray) for sample in x):
-            # Sample transform (resize)
+            # Sample transform (to tensor, resize)
             samples = list(multithread_exec(self.sample_transforms, x))
             # Batching
             batches = self.batch_inputs(samples)

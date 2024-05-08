@@ -22,9 +22,12 @@ class Engine:
 
     def __init__(self, url: str, **kwargs: Any) -> None:
         archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
-        self.session = onnxruntime.InferenceSession(
+        self.runtime = onnxruntime.InferenceSession(
             archive_path, providers=["CPUExecutionProvider", "CUDAExecutionProvider"]
         )
 
     def run(self, inputs: np.ndarray) -> List[np.ndarray]:
-        return self.session.run(["logits"], {"input": inputs})
+        # inputs = np.transpose(inputs, (0, 3, 1, 2)).astype(np.float32)  # TODO: Can we remove this maybe ?
+        logits = self.runtime.run(["logits"], {"input": inputs})[0]
+        print(f"logits: {logits.shape}")
+        return logits

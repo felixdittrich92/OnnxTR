@@ -23,21 +23,21 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["legacy_french"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.3.1/crnn_vgg16_bn-9762b0b0.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/crnn_vgg16_bn-662979cc.onnx",
     },
     "crnn_mobilenet_v3_small": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.3.1/crnn_mobilenet_v3_small_pt-3b919a02.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/crnn_mobilenet_v3_small-bded4d49.onnx",
     },
     "crnn_mobilenet_v3_large": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.3.1/crnn_mobilenet_v3_large_pt-f5259ec2.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/crnn_mobilenet_v3_large-d42e8185.onnx",
     },
 }
 
@@ -131,7 +131,7 @@ class CRNN(Engine):
         x: np.ndarray,
         return_model_output: bool = False,
     ) -> Dict[str, Any]:
-        logits = self.session.run(x)
+        logits = self.run(x)
 
         out: Dict[str, Any] = {}
         if return_model_output:
@@ -149,17 +149,16 @@ def _crnn(
     **kwargs: Any,
 ) -> CRNN:
     kwargs["vocab"] = kwargs.get("vocab", default_cfgs[arch]["vocab"])
-    kwargs["input_shape"] = kwargs.get("input_shape", default_cfgs[arch]["input_shape"])
 
     _cfg = deepcopy(default_cfgs[arch])
     _cfg["vocab"] = kwargs["vocab"]
-    _cfg["input_shape"] = kwargs["input_shape"]
+    _cfg["input_shape"] = kwargs.get("input_shape", default_cfgs[arch]["input_shape"])
 
     # Build the model
     return CRNN(model_path, cfg=_cfg, **kwargs)
 
 
-def crnn_vgg16_bn(model_path: str = default_cfgs["crnn_vgg16_bn"], **kwargs: Any) -> CRNN:
+def crnn_vgg16_bn(model_path: str = default_cfgs["crnn_vgg16_bn"]["url"], **kwargs: Any) -> CRNN:
     """CRNN with a VGG-16 backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
 
@@ -181,7 +180,7 @@ def crnn_vgg16_bn(model_path: str = default_cfgs["crnn_vgg16_bn"], **kwargs: Any
     return _crnn("crnn_vgg16_bn", model_path, **kwargs)
 
 
-def crnn_mobilenet_v3_small(model_path: str = default_cfgs["crnn_mobilenet_v3_small"], **kwargs: Any) -> CRNN:
+def crnn_mobilenet_v3_small(model_path: str = default_cfgs["crnn_mobilenet_v3_small"]["url"], **kwargs: Any) -> CRNN:
     """CRNN with a MobileNet V3 Small backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
 
@@ -203,7 +202,7 @@ def crnn_mobilenet_v3_small(model_path: str = default_cfgs["crnn_mobilenet_v3_sm
     return _crnn("crnn_mobilenet_v3_small", model_path, **kwargs)
 
 
-def crnn_mobilenet_v3_large(model_path: str = default_cfgs["crnn_mobilenet_v3_large"], **kwargs: Any) -> CRNN:
+def crnn_mobilenet_v3_large(model_path: str = default_cfgs["crnn_mobilenet_v3_large"]["url"], **kwargs: Any) -> CRNN:
     """CRNN with a MobileNet V3 Large backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
 

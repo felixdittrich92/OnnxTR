@@ -29,7 +29,7 @@ class GeneralDetectionPostProcessor(DetectionPostProcessor):
 
     def __init__(
         self,
-        bin_thresh: float = 0.1,
+        bin_thresh: float = 0.3,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
     ) -> None:

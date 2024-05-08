@@ -30,7 +30,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 512, 512),
         "classes": [0, -90, 180, 90],
-        "url": "https://doctr-static.mindee.com/models?id=v0.8.1/mobilenet_v3_small_page_orientation-8e60325c.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/mobilenet_v3_small_page_orientation-d3f76d79.onnx",
     },
 }
 
@@ -56,7 +56,7 @@ class MobileNetV3(Engine):
         self,
         x: np.ndarray,
     ) -> np.ndarray:
-        return self.session.run(x)
+        return self.run(x)
 
 
 def _mobilenet_v3(
@@ -64,19 +64,12 @@ def _mobilenet_v3(
     model_path: str,
     **kwargs: Any,
 ) -> MobileNetV3:
-    kwargs["num_classes"] = kwargs.get("num_classes", len(default_cfgs[arch]["classes"]))
-    kwargs["classes"] = kwargs.get("classes", default_cfgs[arch]["classes"])
-
     _cfg = deepcopy(default_cfgs[arch])
-    _cfg["num_classes"] = kwargs["num_classes"]
-    _cfg["classes"] = kwargs["classes"]
-    kwargs.pop("classes")
-
     return MobileNetV3(model_path, cfg=_cfg, **kwargs)
 
 
 def mobilenet_v3_small_crop_orientation(
-    model_path: str = default_cfgs["mobilenet_v3_small_crop_orientation"], **kwargs: Any
+    model_path: str = default_cfgs["mobilenet_v3_small_crop_orientation"]["url"], **kwargs: Any
 ) -> MobileNetV3:
     """MobileNetV3-Small architecture as described in
     `"Searching for MobileNetV3",
@@ -84,7 +77,7 @@ def mobilenet_v3_small_crop_orientation(
 
     >>> import numpy as np
     >>> from onnxtr.models import mobilenet_v3_small_crop_orientation
-    >>> model = mobilenet_v3_small_crop_orientation(pretrained=False)
+    >>> model = mobilenet_v3_small_crop_orientation()
     >>> input_tensor = np.random.rand((1, 3, 256, 256))
     >>> out = model(input_tensor)
 
@@ -101,7 +94,7 @@ def mobilenet_v3_small_crop_orientation(
 
 
 def mobilenet_v3_small_page_orientation(
-    model_path: str = default_cfgs["mobilenet_v3_small_page_orientation"], **kwargs: Any
+    model_path: str = default_cfgs["mobilenet_v3_small_page_orientation"]["url"], **kwargs: Any
 ) -> MobileNetV3:
     """MobileNetV3-Small architecture as described in
     `"Searching for MobileNetV3",
@@ -109,7 +102,7 @@ def mobilenet_v3_small_page_orientation(
 
     >>> import numpy as np
     >>> from onnxtr.models import mobilenet_v3_small_page_orientation
-    >>> model = mobilenet_v3_small_page_orientation(pretrained=False)
+    >>> model = mobilenet_v3_small_page_orientation()
     >>> input_tensor = np.random.rand((1, 3, 512, 512))
     >>> out = model(input_tensor)
 

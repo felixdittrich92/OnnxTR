@@ -50,7 +50,7 @@ class OrientationPredictor(NestedObject):
         # confidence
         probs = [np.max(softmax(batch, axis=1), axis=1) for batch in predicted_batches]
         # Postprocess predictions
-        predicted_batches = [out_batch.numpy().argmax(1) for out_batch in predicted_batches]
+        predicted_batches = [np.argmax(out_batch, axis=1) for out_batch in predicted_batches]
 
         class_idxs = [int(pred) for batch in predicted_batches for pred in batch]
         classes = [int(self.model.cfg["classes"][idx]) for idx in class_idxs]

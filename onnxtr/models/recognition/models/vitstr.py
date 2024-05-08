@@ -22,14 +22,14 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/vitstr_small-fcd12655.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/vitstr_small-3ff9c500.onnx",
     },
     "vitstr_base": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/vitstr_base-50b21df2.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/vitstr_base-ff62f5be.onnx",
     },
 }
 
@@ -61,7 +61,7 @@ class ViTSTR(Engine):
         x: np.ndarray,
         return_model_output: bool = False,
     ) -> Dict[str, Any]:
-        logits = self.session.run(x)
+        logits = self.run(x)
 
         out: Dict[str, Any] = {}
         if return_model_output:
@@ -112,13 +112,12 @@ def _vitstr(
     _cfg["input_shape"] = kwargs.get("input_shape", _cfg["input_shape"])
 
     kwargs["vocab"] = _cfg["vocab"]
-    kwargs["input_shape"] = _cfg["input_shape"]
 
     # Build the model
     return ViTSTR(model_path, cfg=_cfg, **kwargs)
 
 
-def vitstr_small(model_path: str = default_cfgs["vitstr_small"], **kwargs: Any) -> ViTSTR:
+def vitstr_small(model_path: str = default_cfgs["vitstr_small"]["url"], **kwargs: Any) -> ViTSTR:
     """ViTSTR-Small as described in `"Vision Transformer for Fast and Efficient Scene Text Recognition"
     <https://arxiv.org/pdf/2105.08582.pdf>`_.
 
@@ -137,10 +136,10 @@ def vitstr_small(model_path: str = default_cfgs["vitstr_small"], **kwargs: Any) 
     -------
         text recognition architecture
     """
-    return _vitstr("vitstr_small", model_path**kwargs)
+    return _vitstr("vitstr_small", model_path, **kwargs)
 
 
-def vitstr_base(model_path: str = default_cfgs["vitstr_base"], **kwargs: Any) -> ViTSTR:
+def vitstr_base(model_path: str = default_cfgs["vitstr_base"]["url"], **kwargs: Any) -> ViTSTR:
     """ViTSTR-Base as described in `"Vision Transformer for Fast and Efficient Scene Text Recognition"
     <https://arxiv.org/pdf/2105.08582.pdf>`_.
 

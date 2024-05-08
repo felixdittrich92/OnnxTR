@@ -176,7 +176,7 @@ def visualize_page(
     >>> import matplotlib.pyplot as plt
     >>> from onnxtr.utils.visualization import visualize_page
     >>> from onnxtr.models import ocr_db_crnn
-    >>> model = ocr_db_crnn(pretrained=True)
+    >>> model = ocr_db_crnn()
     >>> input_page = (255 * np.random.rand(600, 800, 3)).astype(np.uint8)
     >>> out = model([[input_page]])
     >>> visualize_page(out[0].pages[0].export(), input_page)
@@ -302,7 +302,7 @@ def visualize_kie_page(
     >>> import matplotlib.pyplot as plt
     >>> from onnxtr.utils.visualization import visualize_page
     >>> from onnxtr.models import ocr_db_crnn
-    >>> model = ocr_db_crnn(pretrained=True)
+    >>> model = ocr_db_crnn()
     >>> input_page = (255 * np.random.rand(600, 800, 3)).astype(np.uint8)
     >>> out = model([[input_page]])
     >>> visualize_kie_page(out[0].pages[0].export(), input_page)

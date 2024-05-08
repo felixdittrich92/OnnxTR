@@ -19,19 +19,19 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/db_resnet50-79bd7d70.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/db_resnet50-69ba0015.onnx",
     },
     "db_resnet34": {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/db_resnet34-cb6aed9e.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/db_resnet34-b4873198.onnx",
     },
     "db_mobilenet_v3_large": {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/db_mobilenet_v3_large-81e9b152.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/db_mobilenet_v3_large-1866973f.onnx",
     },
 }
 
@@ -41,6 +41,7 @@ class DBNet(Engine):
 
     Args:
     ----
+        model_path: path or url to onnx model file
         bin_thresh: threshold for binarization of the output feature map
         box_thresh: minimal objectness score to consider a box
         assume_straight_pages: if True, fit straight bounding boxes only
@@ -49,15 +50,16 @@ class DBNet(Engine):
 
     def __init__(
         self,
+        model_path,
         bin_thresh: float = 0.1,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
         cfg: Optional[Dict[str, Any]] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(url=model_path)
         self.cfg = cfg
         self.assume_straight_pages = assume_straight_pages
-
+        print(f"ASSUME STRAIGHT PAGES: {assume_straight_pages}")
         self.postprocessor = GeneralDetectionPostProcessor(
             assume_straight_pages=self.assume_straight_pages, bin_thresh=bin_thresh, box_thresh=box_thresh
         )
@@ -68,7 +70,7 @@ class DBNet(Engine):
         return_model_output: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        logits = self.session.run(x)
+        logits = self.run(x)
 
         out: Dict[str, Any] = {}
 
@@ -76,8 +78,14 @@ class DBNet(Engine):
         if return_model_output:
             out["out_map"] = prob_map
 
+        print(prob_map.shape)
+        import cv2
+
+        cv2.imwrite("prob_map.jpg", prob_map[0, 0, :, :] * 255)
+        print(prob_map)
+
         out["preds"] = [
-            dict(zip(self.class_names, preds)) for preds in self.postprocessor(np.transpose(prob_map, (0, 2, 3, 1)))
+            dict(zip(["words"], preds)) for preds in self.postprocessor(np.transpose(prob_map, (0, 2, 3, 1)))
         ]
 
         return out
@@ -92,7 +100,7 @@ def _dbnet(
     return DBNet(model_path, cfg=default_cfgs[arch], **kwargs)
 
 
-def db_resnet34(model_path: str = default_cfgs["db_resnet34"], **kwargs: Any) -> DBNet:
+def db_resnet34(model_path: str = default_cfgs["db_resnet34"]["url"], **kwargs: Any) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-34 backbone.
 
@@ -114,13 +122,13 @@ def db_resnet34(model_path: str = default_cfgs["db_resnet34"], **kwargs: Any) ->
     return _dbnet("db_resnet34", model_path, **kwargs)
 
 
-def db_resnet50(model_path: str = default_cfgs["db_resnet50"], **kwargs: Any) -> DBNet:
+def db_resnet50(model_path: str = default_cfgs["db_resnet50"]["url"], **kwargs: Any) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-50 backbone.
 
     >>> import numpy as np
     >>> from onnxtr.models import db_resnet50
-    >>> model = db_resnet50(pretrained=True)
+    >>> model = db_resnet50()
     >>> input_tensor = np.random.rand(1, 3, 1024, 1024)
     >>> out = model(input_tensor)
 
@@ -136,7 +144,7 @@ def db_resnet50(model_path: str = default_cfgs["db_resnet50"], **kwargs: Any) ->
     return _dbnet("db_resnet50", model_path, **kwargs)
 
 
-def db_mobilenet_v3_large(model_path: str = default_cfgs["db_mobilenet_v3_large"], **kwargs: Any) -> DBNet:
+def db_mobilenet_v3_large(model_path: str = default_cfgs["db_mobilenet_v3_large"]["url"], **kwargs: Any) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a MobileNet V3 Large backbone.
 
@@ -155,4 +163,4 @@ def db_mobilenet_v3_large(model_path: str = default_cfgs["db_mobilenet_v3_large"
     -------
         text detection architecture
     """
-    return _dbnet("db_mobilenet_v3_large", model_path**kwargs)
+    return _dbnet("db_mobilenet_v3_large", model_path, **kwargs)

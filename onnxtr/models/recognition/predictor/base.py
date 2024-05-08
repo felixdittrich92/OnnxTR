@@ -68,7 +68,7 @@ class RecognitionPredictor(NestedObject):
         processed_batches = self.pre_processor(crops)
 
         # Forward it
-        raw = [self.model(batch, return_preds=True, **kwargs)["preds"] for batch in processed_batches]
+        raw = [self.model(batch, **kwargs)["preds"] for batch in processed_batches]
 
         # Process outputs
         out = [charseq for batch in raw for charseq in batch]

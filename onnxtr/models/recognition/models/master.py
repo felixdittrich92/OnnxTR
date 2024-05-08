@@ -23,7 +23,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/master-fde31e4a.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/master-b1287fcd.onnx",
     },
 }
 
@@ -66,7 +66,7 @@ class MASTER(Engine):
         -------
             A dictionnary containing eventually logits and predictions.
         """
-        logits = self.session.run(x)
+        logits = self.run(x)
         out: Dict[str, Any] = {}
 
         if return_model_output:
@@ -118,12 +118,11 @@ def _master(
     _cfg["vocab"] = kwargs.get("vocab", _cfg["vocab"])
 
     kwargs["vocab"] = _cfg["vocab"]
-    kwargs["input_shape"] = _cfg["input_shape"]
 
     return MASTER(model_path, cfg=_cfg, **kwargs)
 
 
-def master(model_path: str = default_cfgs["master"], **kwargs: Any) -> MASTER:
+def master(model_path: str = default_cfgs["master"]["url"], **kwargs: Any) -> MASTER:
     """MASTER as described in paper: <https://arxiv.org/pdf/1910.02562.pdf>`_.
 
     >>> import numpy as np

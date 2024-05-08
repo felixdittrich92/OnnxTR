@@ -19,19 +19,19 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/linknet_resnet18-e47a14dc.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/linknet_resnet18-e0e0b9dc.onnx",
     },
     "linknet_resnet34": {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/linknet_resnet34-9ca2df3e.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/linknet_resnet34-93e39a39.onnx",
     },
     "linknet_resnet50": {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/linknet_resnet50-6cf565c1.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/linknet_resnet50-15d8c4ec.onnx",
     },
 }
 
@@ -41,6 +41,7 @@ class LinkNet(Engine):
 
     Args:
     ----
+        model_path: path or url to onnx model file
         bin_thresh: threshold for binarization of the output feature map
         box_thresh: minimal objectness score to consider a box
         assume_straight_pages: if True, fit straight bounding boxes only
@@ -49,12 +50,13 @@ class LinkNet(Engine):
 
     def __init__(
         self,
+        model_path: str,
         bin_thresh: float = 0.1,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
         cfg: Optional[Dict[str, Any]] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(url=model_path)
         self.cfg = cfg
         self.assume_straight_pages = assume_straight_pages
 
@@ -68,7 +70,7 @@ class LinkNet(Engine):
         return_model_output: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        logits = self.session.run(x)
+        logits = self.run(x)
 
         out: Dict[str, Any] = {}
 
@@ -76,9 +78,7 @@ class LinkNet(Engine):
         if return_model_output:
             out["out_map"] = prob_map
 
-        out["preds"] = [
-            dict(zip(self.class_names, preds)) for preds in self.postprocessor(np.transpose(prob_map, (0, 2, 3, 1)))
-        ]
+        out["preds"] = [dict(zip("words", preds)) for preds in self.postprocessor(np.transpose(prob_map, (0, 2, 3, 1)))]
 
         return out
 
@@ -92,7 +92,7 @@ def _linknet(
     return LinkNet(model_path, cfg=default_cfgs[arch], **kwargs)
 
 
-def linknet_resnet18(model_path: str = default_cfgs["linknet_resnet18"], **kwargs: Any) -> LinkNet:
+def linknet_resnet18(model_path: str = default_cfgs["linknet_resnet18"]["url"], **kwargs: Any) -> LinkNet:
     """LinkNet as described in `"LinkNet: Exploiting Encoder Representations for Efficient Semantic Segmentation"
     <https://arxiv.org/pdf/1707.03718.pdf>`_.
 
@@ -114,7 +114,7 @@ def linknet_resnet18(model_path: str = default_cfgs["linknet_resnet18"], **kwarg
     return _linknet("linknet_resnet18", model_path, **kwargs)
 
 
-def linknet_resnet34(model_path: str = default_cfgs["linknet_resnet34"], **kwargs: Any) -> LinkNet:
+def linknet_resnet34(model_path: str = default_cfgs["linknet_resnet34"]["url"], **kwargs: Any) -> LinkNet:
     """LinkNet as described in `"LinkNet: Exploiting Encoder Representations for Efficient Semantic Segmentation"
     <https://arxiv.org/pdf/1707.03718.pdf>`_.
 
@@ -136,7 +136,7 @@ def linknet_resnet34(model_path: str = default_cfgs["linknet_resnet34"], **kwarg
     return _linknet("linknet_resnet34", model_path, **kwargs)
 
 
-def linknet_resnet50(model_path: str = default_cfgs["linknet_resnet50"], **kwargs: Any) -> LinkNet:
+def linknet_resnet50(model_path: str = default_cfgs["linknet_resnet50"]["url"], **kwargs: Any) -> LinkNet:
     """LinkNet as described in `"LinkNet: Exploiting Encoder Representations for Efficient Semantic Segmentation"
     <https://arxiv.org/pdf/1707.03718.pdf>`_.
 

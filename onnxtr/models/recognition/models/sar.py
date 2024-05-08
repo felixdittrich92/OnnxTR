@@ -22,7 +22,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/sar_resnet31-9a1deedf.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/sar_resnet31-395f8005.onnx",
     },
 }
 
@@ -53,7 +53,7 @@ class SAR(Engine):
         x: np.ndarray,
         return_model_output: bool = False,
     ) -> Dict[str, Any]:
-        logits = self.session.run(x)
+        logits = self.run(x)
 
         out: Dict[str, Any] = {}
         if return_model_output:
@@ -105,13 +105,12 @@ def _sar(
     _cfg["input_shape"] = kwargs.get("input_shape", _cfg["input_shape"])
 
     kwargs["vocab"] = _cfg["vocab"]
-    kwargs["input_shape"] = _cfg["input_shape"]
 
     # Build the model
     return SAR(model_path, cfg=_cfg, **kwargs)
 
 
-def sar_resnet31(model_path: str = default_cfgs["sar_resnet31"], **kwargs: Any) -> SAR:
+def sar_resnet31(model_path: str = default_cfgs["sar_resnet31"]["url"], **kwargs: Any) -> SAR:
     """SAR with a resnet-31 feature extractor as described in `"Show, Attend and Read:A Simple and Strong
     Baseline for Irregular Text Recognition" <https://arxiv.org/pdf/1811.00751.pdf>`_.
 

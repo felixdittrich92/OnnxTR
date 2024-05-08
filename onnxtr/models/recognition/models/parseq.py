@@ -22,7 +22,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://doctr-static.mindee.com/models?id=v0.7.0/parseq-56125471.pt&src=0",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/parseq-00b40714.onnx",
     },
 }
 
@@ -52,7 +52,7 @@ class PARSeq(Engine):
         x: np.ndarray,
         return_model_output: bool = False,
     ) -> Dict[str, Any]:
-        logits = self.session.run(x)
+        logits = self.run(x)
         out: Dict[str, Any] = {}
 
         if return_model_output:
@@ -102,13 +102,12 @@ def _parseq(
     _cfg["input_shape"] = kwargs.get("input_shape", _cfg["input_shape"])
 
     kwargs["vocab"] = _cfg["vocab"]
-    kwargs["input_shape"] = _cfg["input_shape"]
 
     # Build the model
     return PARSeq(model_path, cfg=_cfg, **kwargs)
 
 
-def parseq(model_path: str = default_cfgs["parseq"], **kwargs: Any) -> PARSeq:
+def parseq(model_path: str = default_cfgs["parseq"]["url"], **kwargs: Any) -> PARSeq:
     """PARSeq architecture from
     `"Scene Text Recognition with Permuted Autoregressive Sequence Models" <https://arxiv.org/pdf/2207.06966>`_.
 
