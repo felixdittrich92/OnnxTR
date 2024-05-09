@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onnxtr"
-description = "Onnx Text Recognition (OnnxTR): Deep Learning for high-performance OCR on documents."
+description = "Onnx Text Recognition (OnnxTR): docTR Onnx-Wrapper for high-performance OCR on documents."
 authors = [{name = "Felix Dittrich", email = "felixdittrich92@gmail.com"}]
 maintainers = [
     {name = "Felix Dittrich"},
@@ -12,7 +12,7 @@ maintainers = [
 readme = "README.md"
 requires-python = ">=3.9.0,<4"
 license = {file = "LICENSE"}
-keywords=["OCR", "deep learning", "computer vision", "onnx", "text detection", "text recognition"]
+keywords=["OCR", "deep learning", "computer vision", "onnx", "text detection", "text recognition", "docTR", "document analysis", "document processing"]
 classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",

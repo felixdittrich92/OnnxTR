@@ -64,7 +64,7 @@ class Resize:
             pad_right = max(sw - new_w - pad_left, 0)
 
             # Pad the image
-            img_resized = cv2.copyMakeBorder(
+            img_resized = cv2.copyMakeBorder(  # type: ignore[call-overload]
                 img_resized, pad_top, pad_bottom, pad_left, pad_right, borderType=cv2.BORDER_CONSTANT, value=0
             )
 
