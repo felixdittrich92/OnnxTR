@@ -1,3 +1,4 @@
+[![codecov](https://codecov.io/gh/felixdittrich92/OnnxTR/graph/badge.svg?token=WVFRCQBOLI)](https://codecov.io/gh/felixdittrich92/OnnxTR)
 # OnnxTR
 
 ## Work in progress
