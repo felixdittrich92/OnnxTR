@@ -1,3 +1,4 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/3111ce48ae7f4d0e8f09108aa638d44d)](https://app.codacy.com/gh/felixdittrich92/OnnxTR?utm_source=github.com&utm_medium=referral&utm_content=felixdittrich92/OnnxTR&utm_campaign=Badge_Grade)
 [![codecov](https://codecov.io/gh/felixdittrich92/OnnxTR/graph/badge.svg?token=WVFRCQBOLI)](https://codecov.io/gh/felixdittrich92/OnnxTR)
 # OnnxTR
 
