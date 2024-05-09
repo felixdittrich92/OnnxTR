@@ -2,7 +2,7 @@
 
 ## Work in progress
 
-### docTR meets Onnx (doctr wrapper - onny pipeline)
+### docTR meets Onnx (doctr wrapper - onnx pipeline)
 
 ```python
 from onnxtr.io import DocumentFile
