@@ -7,7 +7,6 @@ from typing import Any, List, Sequence, Tuple
 
 import numpy as np
 
-from onnxtr.models.engine import Engine
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.utils.repr import NestedObject
 
@@ -29,7 +28,7 @@ class RecognitionPredictor(NestedObject):
     def __init__(
         self,
         pre_processor: PreProcessor,
-        model: Engine,
+        model: Any,
         split_wide_crops: bool = True,
     ) -> None:
         super().__init__()
@@ -65,7 +64,7 @@ class RecognitionPredictor(NestedObject):
                 crops = new_crops
 
         # Resize & batch them
-        processed_batches = self.pre_processor(crops)
+        processed_batches = self.pre_processor(crops)  # type: ignore[arg-type]
 
         # Forward it
         raw = [self.model(batch, **kwargs)["preds"] for batch in processed_batches]

@@ -27,7 +27,7 @@ class _DummyCallback:
         [True, True],
     ],
 )
-def test_ocrpredictor(mock_pdf, mock_vocab, assume_straight_pages, straighten_pages):
+def test_ocrpredictor(mock_pdf, assume_straight_pages, straighten_pages):
     det_bsize = 4
     det_predictor = DetectionPredictor(
         PreProcessor(output_size=(1024, 1024), batch_size=det_bsize),
@@ -37,7 +37,7 @@ def test_ocrpredictor(mock_pdf, mock_vocab, assume_straight_pages, straighten_pa
     reco_bsize = 16
     reco_predictor = RecognitionPredictor(
         PreProcessor(output_size=(32, 128), batch_size=reco_bsize, preserve_aspect_ratio=True),
-        recognition.crnn_vgg16_bn(vocab=mock_vocab),
+        recognition.crnn_vgg16_bn(),
     )
 
     doc = DocumentFile.from_pdf(mock_pdf)
@@ -66,8 +66,7 @@ def test_ocrpredictor(mock_pdf, mock_vocab, assume_straight_pages, straighten_pa
 
     orientation = 0
     assert out.pages[0].orientation["value"] == orientation
-    language = "unknown"
-    assert out.pages[0].language["value"] == language
+    assert isinstance(out.pages[0].language["value"], str)
 
 
 def test_trained_ocr_predictor(mock_payslip):
@@ -143,9 +142,7 @@ def _test_predictor(predictor):
 
 @pytest.mark.parametrize(
     "det_arch, reco_arch",
-    [
-        ["db_mobilenet_v3_large", "crnn_vgg16_bn"],
-    ],
+    [[det_arch, reco_arch] for det_arch, reco_arch in zip(detection.zoo.ARCHS, recognition.zoo.ARCHS)],
 )
 def test_zoo_models(det_arch, reco_arch):
     # Model

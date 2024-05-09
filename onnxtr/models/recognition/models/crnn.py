@@ -84,7 +84,7 @@ class CRNNPostProcessor(RecognitionPostProcessor):
             for seq in np.argmax(logits, axis=-1)
         ]
 
-        return list(zip(words, probs.tolist()))
+        return list(zip(words, probs.astype(float).tolist()))
 
     def __call__(self, logits):
         """Performs decoding of raw output with CTC and decoding of CTC predictions

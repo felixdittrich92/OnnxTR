@@ -34,12 +34,12 @@ class Resize:
     def __call__(
         self,
         img: np.ndarray,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    ) -> np.ndarray:
         if img.ndim == 3:
             h, w = img.shape[0:2]
         else:
             h, w = img.shape[1:3]
-        sh, sw = self.size
+        sh, sw = self.size if isinstance(self.size, tuple) else (self.size, self.size)
 
         # Calculate aspect ratio of the image
         aspect = w / h

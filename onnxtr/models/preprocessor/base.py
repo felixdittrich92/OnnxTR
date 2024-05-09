@@ -104,7 +104,7 @@ class PreProcessor(NestedObject):
                 x = x.astype(np.float32) / 255.0
             # Resizing
             if (x.shape[1], x.shape[2]) != self.resize.output_size:
-                x = self.resize(x)
+                x = np.array([self.resize(sample) for sample in x])
 
             batches = [x]
 

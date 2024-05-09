@@ -104,7 +104,7 @@ class MASTERPostProcessor(RecognitionPostProcessor):
             "".join(self._embedding[idx] for idx in encoded_seq).split("<eos>")[0] for encoded_seq in out_idxs
         ]
 
-        return list(zip(word_values, np.clip(probs, 0, 1).tolist()))
+        return list(zip(word_values, np.clip(probs, 0, 1).astype(float).tolist()))
 
 
 def _master(

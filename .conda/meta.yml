@@ -20,6 +20,7 @@ requirements:
     - setuptools
 
   run:
+    - "importlib_metadata"
     - numpy >=1.16.0, <2.0.0
     - onnxruntime >=1.17.0, <2.0.0
     - scipy >=1.4.0, <2.0.0

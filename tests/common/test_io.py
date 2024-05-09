@@ -83,8 +83,8 @@ def test_read_html():
     assert isinstance(pdf_stream, bytes)
 
 
-def test_document_file(mock_pdf, mock_image_stream):
-    pages = io.DocumentFile.from_images(mock_image_stream)
+def test_document_file(mock_pdf, mock_artefact_image_stream):
+    pages = io.DocumentFile.from_images([mock_artefact_image_stream])
     _check_doc_content(pages, 1)
 
     assert isinstance(io.DocumentFile.from_pdf(mock_pdf), list)

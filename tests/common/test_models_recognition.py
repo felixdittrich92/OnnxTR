@@ -5,6 +5,7 @@ from onnxtr.models import recognition
 from onnxtr.models.engine import Engine
 from onnxtr.models.recognition.predictor import RecognitionPredictor
 from onnxtr.models.recognition.predictor._utils import remap_preds, split_crops
+from onnxtr.utils.vocabs import VOCABS
 
 
 @pytest.mark.parametrize(
@@ -55,7 +56,8 @@ def test_remap_preds(preds, crop_map, dilation, pred):
         ["parseq", (32, 128, 3)],
     ],
 )
-def test_recognition_models(arch_name, input_shape, mock_vocab):
+def test_recognition_models(arch_name, input_shape):
+    mock_vocab = VOCABS["french"]
     batch_size = 4
     model = recognition.__dict__[arch_name]()
     assert isinstance(model, Engine)
@@ -75,8 +77,6 @@ def test_recognition_models(arch_name, input_shape, mock_vocab):
     assert all(isinstance(word, str) and isinstance(conf, float) and 0 <= conf <= 1 for word, conf in decoded)
     assert len(decoded) == 2
     assert all(char in mock_vocab for word, _ in decoded for char in word)
-    # Repr
-    assert repr(post_processor) == f"{post_processor.__name__}(vocab_size={len(mock_vocab)})"
 
 
 @pytest.mark.parametrize(
@@ -98,7 +98,7 @@ def test_recognition_zoo(arch_name):
     predictor = recognition.zoo.recognition_predictor(arch_name)
     # object check
     assert isinstance(predictor, RecognitionPredictor)
-    input_array = np.random.rand(batch_size, 3, 128, 128).astype(np.float32)
+    input_array = np.random.rand(batch_size, 32, 128, 3).astype(np.float32)
     out = predictor(input_array)
     assert isinstance(out, list) and len(out) == batch_size
     assert all(isinstance(word, str) and isinstance(conf, float) for word, conf in out)

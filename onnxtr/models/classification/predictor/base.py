@@ -3,15 +3,13 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import List, Union
+from typing import Any, List, Union
 
 import numpy as np
 from scipy.special import softmax
 
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.utils.repr import NestedObject
-
-from ...engine import Engine
 
 __all__ = ["OrientationPredictor"]
 
@@ -31,7 +29,7 @@ class OrientationPredictor(NestedObject):
     def __init__(
         self,
         pre_processor: PreProcessor,
-        model: Engine,
+        model: Any,
     ) -> None:
         self.pre_processor = pre_processor
         self.model = model

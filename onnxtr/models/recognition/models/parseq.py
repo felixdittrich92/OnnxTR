@@ -86,7 +86,10 @@ class PARSeqPostProcessor(RecognitionPostProcessor):
             "".join(self._embedding[idx] for idx in encoded_seq).split("<eos>")[0] for encoded_seq in out_idxs
         ]
         # compute probabilties for each word up to the EOS token
-        probs = [preds_prob[i, : len(word)].clip(0, 1).mean() if word else 0.0 for i, word in enumerate(word_values)]
+        probs = [
+            preds_prob[i, : len(word)].clip(0, 1).mean().astype(float) if word else 0.0
+            for i, word in enumerate(word_values)
+        ]
 
         return list(zip(word_values, probs))
 

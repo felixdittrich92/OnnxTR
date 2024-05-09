@@ -10,8 +10,6 @@ import numpy as np
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.utils.repr import NestedObject
 
-from ...engine import Engine
-
 __all__ = ["DetectionPredictor"]
 
 
@@ -29,7 +27,7 @@ class DetectionPredictor(NestedObject):
     def __init__(
         self,
         pre_processor: PreProcessor,
-        model: Engine,
+        model: Any,
     ) -> None:
         self.pre_processor = pre_processor
         self.model = model
