@@ -3,12 +3,13 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, List
+from typing import Any
 
 import numpy as np
 import onnxruntime
 
 from onnxtr.utils.data import download_from_url
+from onnxtr.utils.geometry import shape_translate
 
 
 class Engine:
@@ -26,7 +27,7 @@ class Engine:
             archive_path, providers=["CPUExecutionProvider", "CUDAExecutionProvider"]
         )
 
-    def run(self, inputs: np.ndarray) -> List[np.ndarray]:
-        inputs = np.transpose(inputs, (0, 3, 1, 2)).astype(np.float32)
+    def run(self, inputs: np.ndarray) -> np.ndarray:
+        inputs = shape_translate(inputs, format="BCHW")
         logits = self.runtime.run(["logits"], {"input": inputs})[0]
-        return logits
+        return shape_translate(logits, format="BHWC")

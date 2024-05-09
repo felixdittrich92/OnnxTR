@@ -26,6 +26,7 @@ class Resize:
         self.interpolation = interpolation
         self.preserve_aspect_ratio = preserve_aspect_ratio
         self.symmetric_pad = symmetric_pad
+        self.output_size = size if isinstance(size, tuple) else (size, size)
 
         if not isinstance(self.size, (int, tuple, list)):
             raise AssertionError("size should be either a tuple, a list or an int")
@@ -34,7 +35,10 @@ class Resize:
         self,
         img: np.ndarray,
     ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
-        h, w = img.shape[:2]
+        if img.ndim == 3:
+            h, w = img.shape[0:2]
+        else:
+            h, w = img.shape[1:3]
         sh, sw = self.size
 
         # Calculate aspect ratio of the image

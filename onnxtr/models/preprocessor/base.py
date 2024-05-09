@@ -9,6 +9,7 @@ from typing import Any, List, Tuple, Union
 import numpy as np
 
 from onnxtr.transforms import Normalize, Resize
+from onnxtr.utils.geometry import shape_translate
 from onnxtr.utils.multithreading import multithread_exec
 from onnxtr.utils.repr import NestedObject
 
@@ -67,6 +68,7 @@ class PreProcessor(NestedObject):
                 raise TypeError("unsupported data type for numpy.ndarray")
         elif x.dtype not in (np.uint8, np.float16, np.float32):
             raise TypeError("unsupported data type for torch.Tensor")
+        x = shape_translate(x, "HWC")
         # Data type & 255 division
         if x.dtype == np.uint8:
             x = x.astype(np.float32) / 255.0
@@ -95,13 +97,14 @@ class PreProcessor(NestedObject):
                     raise TypeError("unsupported data type for numpy.ndarray")
             elif x.dtype not in (np.uint8, np.float16, np.float32):
                 raise TypeError("unsupported data type for torch.Tensor")
+            x = shape_translate(x, "BHWC")
 
             # Data type & 255 division
             if x.dtype == np.uint8:
                 x = x.astype(np.float32) / 255.0
             # Resizing
             if (x.shape[1], x.shape[2]) != self.resize.output_size:
-                x = self.resize(x, self.resize.output_size, method=self.resize.method, antialias=self.resize.antialias)
+                x = self.resize(x)
 
             batches = [x]
 

@@ -28,8 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[tf,viz,html] --upgrade
-          pip install -e .[testing]
+          pip install -e .[viz,html,testing] --upgrade
       - name: Run unittests
         run: |
           coverage run -m pytest tests/common/ -rs
@@ -40,77 +39,9 @@ jobs:
           path: ./coverage-common.xml
           if-no-files-found: error
 
-  pytest-tf:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python: ["3.9"]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-          architecture: x64
-      - name: Cache python modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('pyproject.toml') }}-tests
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[tf,viz,html] --upgrade
-          pip install -e .[testing]
-      - name: Run unittests
-        run: |
-          coverage run -m pytest tests/tensorflow/ -rs
-          coverage xml -o coverage-tf.xml
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage-tf
-          path: ./coverage-tf.xml
-          if-no-files-found: error
-
-  pytest-torch:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python: ["3.9"]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-          architecture: x64
-      - name: Cache python modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('pyproject.toml') }}-tests
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[torch,viz,html] --upgrade
-          pip install -e .[testing]
-
-      - name: Run unittests
-        run: |
-          coverage run -m pytest tests/pytorch/ -rs
-          coverage xml -o coverage-pt.xml
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage-pytorch
-          path: ./coverage-pt.xml
-          if-no-files-found: error
-
   codecov-upload:
     runs-on: ubuntu-latest
-    needs: [ pytest-common, pytest-tf, pytest-torch ]
+    needs: [ pytest-common ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

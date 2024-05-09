@@ -68,16 +68,6 @@ quality = [
     "mypy>=0.812",
     "pre-commit>=2.17.0",
 ]
-docs = [
-    "sphinx>=3.0.0,!=3.5.0",
-    "sphinxemoji>=0.1.8",
-    "sphinx-copybutton>=0.3.1",
-    "docutils<0.22",
-    "recommonmark>=0.7.1",
-    "sphinx-markdown-tables>=0.0.15",
-    "sphinx-tabs>=3.3.0",
-    "furo>=2022.3.4",
-]
 dev = [
     # HTML
     "weasyprint>=55.0",
@@ -92,19 +82,9 @@ dev = [
     "ruff>=0.1.5",
     "mypy>=0.812",
     "pre-commit>=2.17.0",
-    # Documentation
-    "sphinx>=3.0.0,!=3.5.0",
-    "sphinxemoji>=0.1.8",
-    "sphinx-copybutton>=0.3.1",
-    "docutils<0.22",
-    "recommonmark>=0.7.1",
-    "sphinx-markdown-tables>=0.0.15",
-    "sphinx-tabs>=3.3.0",
-    "furo>=2022.3.4",
 ]
 
 [project.urls]
-#documentation = "https://mindee.github.io/doctr"
 repository = "https://github.com/felixdittrich92/OnnxTR"
 tracker = "https://github.com/felixdittrich92/OnnxTR/issues"
 #changelog = "https://mindee.github.io/doctr/changelog.html"
@@ -113,7 +93,7 @@ tracker = "https://github.com/felixdittrich92/OnnxTR/issues"
 zip-safe = true
 
 [tool.setuptools.packages.find]
-exclude = ["api*", "demo*", "docs*", "tests*"]
+exclude = ["tests*"]
 
 [tool.mypy]
 files = "onnxtr/"
@@ -163,14 +143,12 @@ select = [
 ignore = ["E402", "E203", "F403", "E731", "N812", "N817", "C408"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["onnxtr", "app", "utils"]
-known-third-party = ["fastapi", "onnxruntime", "cv2"]
+known-first-party = ["onnxtr", "utils"]
+known-third-party = ["onnxruntime", "cv2"]
 
 [tool.ruff.lint.per-file-ignores]
 "onnxtr/models/**.py" = ["N806", "F841"]
-"onnxtr/datasets/**.py" = ["N806"]
 "tests/**.py" = ["D"]
-"docs/**.py" = ["D"]
 ".github/**.py" = ["D"]
 
 

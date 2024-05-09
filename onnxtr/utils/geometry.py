@@ -25,6 +25,7 @@ __all__ = [
     "rotate_abs_geoms",
     "extract_crops",
     "extract_rcrops",
+    "shape_translate",
 ]
 
 
@@ -55,6 +56,61 @@ def polygon_to_bbox(polygon: Polygon4P) -> BoundingBox:
     """
     x, y = zip(*polygon)
     return (min(x), min(y)), (max(x), max(y))
+
+
+def shape_translate(data: np.ndarray, format: str) -> np.ndarray:
+    """Translate the shape of the input data to the desired format
+
+    Args:
+    ----
+        data: input data
+        format: target format ('BCHW', 'BHWC', 'CHW', or 'HWC')
+
+    Returns:
+    -------
+        the reshaped data
+    """
+    # Get the current shape
+    current_shape = data.shape
+
+    # Check the number of dimensions
+    num_dims = len(current_shape)
+
+    # Check the position of image channels
+    if num_dims == 4 and current_shape[1] in [1, 3] and format in ["BCHW", "BHWC"]:
+        # Channels are in the second dimension
+        channels_second = True
+    elif num_dims == 4 and current_shape[3] in [1, 3] and format in ["CHW", "HWC"]:
+        # Channels are in the fourth dimension
+        channels_second = False
+    elif num_dims == 3 and current_shape[0] in [1, 3] and format == "CHW":
+        # Channels are in the first dimension
+        channels_second = False
+    elif num_dims == 3 and current_shape[2] in [1, 3] and format == "HWC":
+        # Channels are in the third dimension
+        channels_second = False
+    else:
+        # Data does not seem to be an image
+        channels_second = None
+
+    # Reshape the data according to the target format
+    if format == "BCHW" and not channels_second:
+        # Move channels to the second dimension
+        reshaped_data = np.moveaxis(data, -1, 1)
+    elif format == "BHWC" and channels_second:
+        # Move channels to the last dimension
+        reshaped_data = np.moveaxis(data, 1, -1)
+    elif format == "CHW" and not channels_second:
+        # Move channels to the first dimension
+        reshaped_data = np.moveaxis(data, -1, 0)
+    elif format == "HWC" and not channels_second:
+        # Move channels to the third dimension
+        reshaped_data = np.moveaxis(data, -1, 2)
+    else:
+        # Return the data without reshaping
+        reshaped_data = data
+
+    return reshaped_data
 
 
 def resolve_enclosing_bbox(bboxes: Union[List[BoundingBox], np.ndarray]) -> Union[BoundingBox, np.ndarray]:

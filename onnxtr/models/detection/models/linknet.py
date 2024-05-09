@@ -78,7 +78,7 @@ class LinkNet(Engine):
         if return_model_output:
             out["out_map"] = prob_map
 
-        out["preds"] = [dict(zip("words", preds)) for preds in self.postprocessor(np.transpose(prob_map, (0, 2, 3, 1)))]
+        out["preds"] = [dict(zip(["words"], preds)) for preds in self.postprocessor(prob_map)]
 
         return out
 
