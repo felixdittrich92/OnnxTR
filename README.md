@@ -9,8 +9,6 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr/badge)](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr)
 [![Pypi](https://img.shields.io/badge/pypi-v0.0.1-blue.svg)](https://pypi.org/project/OnnxTR/)
 
-## Work in progress
-
 > :warning: Please note that this is wrapper around the [doctr](https://github.com/mindee/doctr) library to provide a Onnx pipeline for docTR. For feature requests, which are not directly related to the Onnx pipeline, please refer to the base project.
 
 **Optical Character Recognition made seamless & accessible to anyone, powered by Onnx**
