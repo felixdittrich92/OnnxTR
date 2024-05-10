@@ -80,8 +80,12 @@ model = ocr_predictor(
     reco_bs=1024, # recognition batch size
     assume_straight_pages=True,  # set to `False` if the pages are not straight (rotation, perspective, etc.) (default: True)
     straighten_pages=False,  # set to `True` if the pages should be straightened before final processing (default: False)
+    # Preprocessing related parameters
     preserve_aspect_ratio=True,  # set to `False` if the aspect ratio should not be preserved (default: True)
     symmetric_pad=True,  # set to `False` to disable symmetric padding (default: True)
+    # Additional parameters - meta information
+    detect_orientation=False,  # set to `True` if the orientation of the pages should be detected (default: False)
+    detect_language=False, # set to `True` if the language of the pages should be detected (default: False)
     # DocumentBuilder specific parameters
     resolve_lines=True,  # whether words should be automatically grouped into lines (default: True)
     resolve_blocks=True,  # whether lines should be automatically grouped into blocks (default: True)
