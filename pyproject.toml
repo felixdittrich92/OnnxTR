@@ -119,7 +119,6 @@ module = [
 	"mplcursors.*",
 	"defusedxml.*",
 	"weasyprint.*",
-	"huggingface_hub.*",
 	"pypdfium2.*",
 	"langdetect.*",
     "rapidfuzz.*",
