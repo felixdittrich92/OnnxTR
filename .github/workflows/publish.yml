@@ -62,8 +62,8 @@ jobs:
       - name: Install package
         run: |
           python -m pip install --upgrade pip
-          pip install onnxtr
-          python -c "import onnxtr; print(onnxtr.__version__)"
+          pip install onnxtr[cpu] --upgrade
+          python -c "from importlib.metadata import version; print(version('onnxtr'))"
 
 #  conda:
 #    if: "!github.event.release.prerelease"
