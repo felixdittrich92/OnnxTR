@@ -34,15 +34,15 @@ You can then install the latest release of the package using [pypi](https://pypi
 **NOTE:** For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started). Currently supported execution providers by default are: CPU, CUDA
 
 ```shell
-pip install OnnxTR
+pip install onnxtr
 # with gpu support
-pip install "OnnxTR[gpu]"
+pip install "onnxtr[gpu]"
 # with HTML support
-pip install "OnnxTR[html]"
+pip install "onnxtr[html]"
 # with support for visualization
-pip install "OnnxTR[viz]"
+pip install "onnxtr[viz]"
 # with support for all dependencies
-pip install "OnnxTR[html, gpu, viz]"
+pip install "onnxtr[html, gpu, viz]"
 ```
 
 ### Reading files
