@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/logo.jpg" width="40%">
+</p>
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![Build Status](https://github.com/felixdittrich92/onnxtr/workflows/builds/badge.svg)
 [![codecov](https://codecov.io/gh/felixdittrich92/OnnxTR/graph/badge.svg?token=WVFRCQBOLI)](https://codecov.io/gh/felixdittrich92/OnnxTR)
@@ -28,8 +32,8 @@ Python 3.9 (or higher) and [pip](https://pip.pypa.io/en/stable/) are required to
 ### Latest release
 
 You can then install the latest release of the package using [pypi](https://pypi.org/project/OnnxTR/) as follows:
-NOTE: For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started)
-Currently supported execution providers by default are: CPU, CUDA
+
+**NOTE:** For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started). Currently supported execution providers by default are: CPU, CUDA
 
 ```shell
 pip install OnnxTR
