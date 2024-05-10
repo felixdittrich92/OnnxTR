@@ -6,7 +6,7 @@ body:
 - type: markdown
   attributes:
     value: >
-      #### Before reporting a bug, please check that the issue hasn't already been addressed in [the existing and past issues](https://github.com/mindee/onnxtr/issues?q=is%3Aissue).
+      #### Before reporting a bug, please check that the issue hasn't already been addressed in [the existing and past issues](https://github.com/felixdittrich92/onnxtr/issues).
 - type: textarea
   attributes:
     label: Bug description
@@ -49,25 +49,11 @@ body:
   attributes:
     label: Environment
     description: |
-      Please run the following command and paste the output below.
-      ```sh
-      wget https://raw.githubusercontent.com/mindee/onnxtr/main/scripts/collect_env.py
-      # For security purposes, please check the contents of collect_env.py before running it.
-      python collect_env.py
-      ```
-  validations:
-    required: true
-- type: textarea
-  attributes:
-    label: Deep Learning backend
-    description: |
-      Please run the following snippet and paste the output below.
-      ```python
-      from onnxtr.file_utils import is_tf_available, is_torch_available
-
-      print(f"is_tf_available: {is_tf_available()}")
-      print(f"is_torch_available: {is_torch_available()}")
-      ```
+      Please describe your environment:
+      OS:
+      Python version:
+      Library version:
+      Onnxruntime version:
   validations:
     required: true
 - type: markdown

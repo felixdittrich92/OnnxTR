@@ -87,7 +87,7 @@ dev = [
 [project.urls]
 repository = "https://github.com/felixdittrich92/OnnxTR"
 tracker = "https://github.com/felixdittrich92/OnnxTR/issues"
-#changelog = "https://mindee.github.io/doctr/changelog.html"
+changelog = "https://github.com/felixdittrich92/OnnxTR/releases"
 
 [tool.setuptools]
 zip-safe = true

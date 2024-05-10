@@ -1,5 +1,5 @@
 name: 🚀 Feature request
-description: Submit a proposal/request for a new feature for OnnxTR. Please search for existing issues before creating a new one.
+description: Submit a proposal/request for a new feature for OnnxTR. Please search for existing issues before creating a new one. For non-onnx related features please use the [main repository](https://github.com/mindee/doctr/issues).
 labels: 'type: enhancement'
 
 body:
