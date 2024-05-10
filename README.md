@@ -31,9 +31,10 @@ Python 3.9 (or higher) and [pip](https://pip.pypa.io/en/stable/) are required to
 
 You can then install the latest release of the package using [pypi](https://pypi.org/project/OnnxTR/) as follows:
 
-**NOTE:** 
+**NOTE:**
 
 For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started). Currently supported execution providers by default are: CPU, CUDA
+
 - **Prerequisites:** CUDA & cuDNN needs to be installed before [Version table](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 
 ```shell
@@ -74,7 +75,7 @@ from onnxtr.models import ocr_predictor
 
 model = ocr_predictor(
     det_arch='fast_base',  # detection architecture
-    rec_arch='vitstr_base',  # recognition architecture
+    reco_arch='vitstr_base',  # recognition architecture
     det_bs=4, # detection batch size
     reco_bs=1024, # recognition batch size
     assume_straight_pages=True,  # set to `False` if the pages are not straight (rotation, perspective, etc.) (default: True)
@@ -132,7 +133,7 @@ from onnxtr.models import ocr_predictor, linknet_resnet18, parseq
 
 reco_model = parseq("path_to_custom_model.onnx", vocab="ABC")
 det_model = linknet_resnet18("path_to_custom_model.onnx")
-model = ocr_predictor(det_model=det_model, reco_model=reco_model)
+model = ocr_predictor(det_arch=det_model, reco_arch=reco_model)
 ```
 
 ## Models architectures
@@ -204,7 +205,6 @@ MORE BENCHMARKS COMING SOON
 |--------------------------------|-------------------------------|-------------------------------|
 |FUNSD (199 pages)               | ~1.29s / Page                 | ~0.57s / Page                 |
 |CORD  (900 pages)               | ~0.60s / Page                 | ~0.25s / Page                 |
-
 
 ## Citation
 
