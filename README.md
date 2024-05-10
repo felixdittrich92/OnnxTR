@@ -27,3 +27,7 @@ doc = DocumentFile.from_pdf("path/to/your/doc.pdf")
 # Analyze
 result = model(doc)
 ```
+
+## License
+
+Distributed under the Apache 2.0 License. See [`LICENSE`](https://github.com/felixdittrich92/OnnxTR?tab=Apache-2.0-1-ov-file#readme) for more information.
