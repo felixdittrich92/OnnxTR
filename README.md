@@ -31,7 +31,10 @@ Python 3.9 (or higher) and [pip](https://pip.pypa.io/en/stable/) are required to
 
 You can then install the latest release of the package using [pypi](https://pypi.org/project/OnnxTR/) as follows:
 
-**NOTE:** For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started). Currently supported execution providers by default are: CPU, CUDA
+**NOTE:** 
+
+For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started). Currently supported execution providers by default are: CPU, CUDA
+- **Prerequisites:** CUDA & cuDNN needs to be installed before [Version table](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 
 ```shell
 pip install "onnxtr[cpu]"
@@ -193,7 +196,15 @@ NOTE:
 
 ### Benchmarks
 
-COMING SOON
+The benchmarks was measured on a `i7-14700K Intel CPU`.
+
+MORE BENCHMARKS COMING SOON
+
+|Dataset                         |docTR (CPU) - v0.8.1           |OnnxTR (CPU) - v0.1.1          |
+|--------------------------------|-------------------------------|-------------------------------|
+|FUNSD (199 pages)               | ~1.29s / Page                 | ~0.57s / Page                 |
+|CORD  (900 pages)               | ~0.60s / Page                 | ~0.25s / Page                 |
+
 
 ## Citation
 
