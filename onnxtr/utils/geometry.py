@@ -63,7 +63,7 @@ def shape_translate(data: np.ndarray, format: str) -> np.ndarray:
 
     Args:
     ----
-        data: input data
+        data: input data in shape (B, C, H, W) or (B, H, W, C) or (C, H, W) or (H, W, C)
         format: target format ('BCHW', 'BHWC', 'CHW', or 'HWC')
 
     Returns:
@@ -76,41 +76,27 @@ def shape_translate(data: np.ndarray, format: str) -> np.ndarray:
     # Check the number of dimensions
     num_dims = len(current_shape)
 
-    # Check the position of image channels
-    if num_dims == 4 and current_shape[1] in [1, 3] and format in ["BCHW", "BHWC"]:
-        # Channels are in the second dimension
-        channels_second = True
-    elif num_dims == 4 and current_shape[3] in [1, 3] and format in ["CHW", "HWC"]:
-        # Channels are in the fourth dimension
-        channels_second = False
-    elif num_dims == 3 and current_shape[0] in [1, 3] and format == "CHW":
-        # Channels are in the first dimension
-        channels_second = False
-    elif num_dims == 3 and current_shape[2] in [1, 3] and format == "HWC":
-        # Channels are in the third dimension
-        channels_second = False
-    else:
-        # Data does not seem to be an image
-        channels_second = None
+    if num_dims != len(format):
+        return data
 
-    # Reshape the data according to the target format
-    if format == "BCHW" and not channels_second:
-        # Move channels to the second dimension
-        reshaped_data = np.moveaxis(data, -1, 1)
-    elif format == "BHWC" and channels_second:
-        # Move channels to the last dimension
-        reshaped_data = np.moveaxis(data, 1, -1)
-    elif format == "CHW" and not channels_second:
-        # Move channels to the first dimension
-        reshaped_data = np.moveaxis(data, -1, 0)
-    elif format == "HWC" and not channels_second:
-        # Move channels to the third dimension
-        reshaped_data = np.moveaxis(data, -1, 2)
+    if format == "BCHW" and data.shape[1] in [1, 3]:
+        return data
+    elif format == "BHWC" and data.shape[-1] in [1, 3]:
+        return data
+    elif format == "CHW" and data.shape[0] in [1, 3]:
+        return data
+    elif format == "HWC" and data.shape[-1] in [1, 3]:
+        return data
+    elif format == "BCHW" and data.shape[1] not in [1, 3]:
+        return np.moveaxis(data, -1, 1)
+    elif format == "BHWC" and data.shape[-1] not in [1, 3]:
+        return np.moveaxis(data, 1, -1)
+    elif format == "CHW" and data.shape[0] not in [1, 3]:
+        return np.moveaxis(data, -1, 0)
+    elif format == "HWC" and data.shape[-1] not in [1, 3]:
+        return np.moveaxis(data, 0, -1)
     else:
-        # Return the data without reshaping
-        reshaped_data = data
-
-    return reshaped_data
+        return data
 
 
 def resolve_enclosing_bbox(bboxes: Union[List[BoundingBox], np.ndarray]) -> Union[BoundingBox, np.ndarray]:

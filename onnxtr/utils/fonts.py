@@ -28,14 +28,14 @@ def get_font(font_family: Optional[str] = None, font_size: int = 13) -> ImageFon
     if font_family is None:
         try:
             font = ImageFont.truetype("FreeMono.ttf" if platform.system() == "Linux" else "Arial.ttf", font_size)
-        except OSError:
+        except OSError:  # pragma: no cover
             font = ImageFont.load_default()
             logging.warning(
                 "unable to load recommended font family. Loading default PIL font,"
                 "font size issues may be expected."
                 "To prevent this, it is recommended to specify the value of 'font_family'."
             )
-    else:
+    else:  # pragma: no cover
         font = ImageFont.truetype(font_family, font_size)
 
     return font

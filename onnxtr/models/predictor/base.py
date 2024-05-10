@@ -13,6 +13,8 @@ from onnxtr.utils.geometry import extract_crops, extract_rcrops
 from .._utils import rectify_crops, rectify_loc_preds
 from ..classification import crop_orientation_predictor
 from ..classification.predictor import OrientationPredictor
+from ..detection.zoo import ARCHS as DETECTION_ARCHS
+from ..recognition.zoo import ARCHS as RECOGNITION_ARCHS
 
 __all__ = ["_OCRPredictor"]
 
@@ -168,3 +170,6 @@ class _OCRPredictor:
             hook: a callable that takes as input the `loc_preds` and returns the modified `loc_preds`
         """
         self.hooks.append(hook)
+
+    def list_archs(self) -> Dict[str, List[str]]:
+        return {"detection_archs": DETECTION_ARCHS, "recognition_archs": RECOGNITION_ARCHS}

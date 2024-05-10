@@ -66,8 +66,6 @@ class PreProcessor(NestedObject):
         if isinstance(x, np.ndarray):
             if x.dtype not in (np.uint8, np.float32):
                 raise TypeError("unsupported data type for numpy.ndarray")
-        elif x.dtype not in (np.uint8, np.float16, np.float32):
-            raise TypeError("unsupported data type for torch.Tensor")
         x = shape_translate(x, "HWC")
         # Data type & 255 division
         if x.dtype == np.uint8:
@@ -95,8 +93,6 @@ class PreProcessor(NestedObject):
             if isinstance(x, np.ndarray):
                 if x.dtype not in (np.uint8, np.float32):
                     raise TypeError("unsupported data type for numpy.ndarray")
-            elif x.dtype not in (np.uint8, np.float16, np.float32):
-                raise TypeError("unsupported data type for torch.Tensor")
             x = shape_translate(x, "BHWC")
 
             # Data type & 255 division

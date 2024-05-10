@@ -6,8 +6,8 @@ import pytest
 from onnxtr.io import elements
 
 
-def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9):
-    return [
+def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9, polygons=False):
+    box_word_elements = [
         elements.Word(
             "hello",
             confidence,
@@ -21,6 +21,33 @@ def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9):
             {"value": 0, "confidence": None},
         ),
     ]
+    polygons_word_elements = [
+        elements.Word(
+            "hello",
+            confidence,
+            # (x1, y1), (x2, y2), (x3, y3), (x4, y4) with shape (4, 2)
+            np.array([
+                [offset[0], offset[1]],
+                [size[0] / 2 + offset[0], offset[1]],
+                [size[0] / 2 + offset[0], size[1] / 2 + offset[1]],
+                [offset[0], size[1] / 2 + offset[1]],
+            ]),
+            {"value": 0, "confidence": None},
+        ),
+        elements.Word(
+            "world",
+            confidence,
+            # (x1, y1), (x2, y2), (x3, y3), (x4, y4) with shape (4, 2)
+            np.array([
+                [size[0] / 2 + offset[0], size[1] / 2 + offset[1]],
+                [size[0] + offset[0], size[1] / 2 + offset[1]],
+                [size[0] + offset[0], size[1] + offset[1]],
+                [size[0] / 2 + offset[0], size[1] + offset[1]],
+            ]),
+            {"value": 0, "confidence": None},
+        ),
+    ]
+    return polygons_word_elements if polygons else box_word_elements
 
 
 def _mock_artefacts(size=(1, 1), offset=(0, 0), confidence=0.8):
@@ -37,33 +64,37 @@ def _mock_artefacts(size=(1, 1), offset=(0, 0), confidence=0.8):
     ]
 
 
-def _mock_lines(size=(1, 1), offset=(0, 0)):
+def _mock_lines(size=(1, 1), offset=(0, 0), polygons=False):
     sub_size = (size[0] / 2, size[1] / 2)
     return [
-        elements.Line(_mock_words(size=sub_size, offset=offset)),
-        elements.Line(_mock_words(size=sub_size, offset=(offset[0] + sub_size[0], offset[1] + sub_size[1]))),
+        elements.Line(_mock_words(size=sub_size, offset=offset, polygons=polygons)),
+        elements.Line(
+            _mock_words(size=sub_size, offset=(offset[0] + sub_size[0], offset[1] + sub_size[1]), polygons=polygons)
+        ),
     ]
 
 
-def _mock_blocks(size=(1, 1), offset=(0, 0)):
+def _mock_blocks(size=(1, 1), offset=(0, 0), polygons=False):
     sub_size = (size[0] / 4, size[1] / 4)
     return [
         elements.Block(
-            _mock_lines(size=sub_size, offset=offset),
+            _mock_lines(size=sub_size, offset=offset, polygons=polygons),
             _mock_artefacts(size=sub_size, offset=(offset[0] + sub_size[0], offset[1] + sub_size[1])),
         ),
         elements.Block(
-            _mock_lines(size=sub_size, offset=(offset[0] + 2 * sub_size[0], offset[1] + 2 * sub_size[1])),
+            _mock_lines(
+                size=sub_size, offset=(offset[0] + 2 * sub_size[0], offset[1] + 2 * sub_size[1]), polygons=polygons
+            ),
             _mock_artefacts(size=sub_size, offset=(offset[0] + 3 * sub_size[0], offset[1] + 3 * sub_size[1])),
         ),
     ]
 
 
-def _mock_pages(block_size=(1, 1), block_offset=(0, 0)):
+def _mock_pages(block_size=(1, 1), block_offset=(0, 0), polygons=False):
     return [
         elements.Page(
             np.random.randint(0, 255, (300, 200, 3), dtype=np.uint8),
-            _mock_blocks(block_size, block_offset),
+            _mock_blocks(block_size, block_offset, polygons),
             0,
             (300, 200),
             {"value": 0.0, "confidence": 1.0},

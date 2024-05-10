@@ -63,12 +63,15 @@ def test_recognition_models(arch_name, input_shape):
     assert isinstance(model, Engine)
     input_array = np.random.rand(batch_size, *input_shape).astype(np.float32)
 
-    out = model(input_array)
+    out = model(input_array, return_model_output=True)
     assert isinstance(out, dict)
-    assert len(out) == 1
+    assert len(out) == 2
     assert isinstance(out["preds"], list)
     assert len(out["preds"]) == batch_size
     assert all(isinstance(word, str) and isinstance(conf, float) and 0 <= conf <= 1 for word, conf in out["preds"])
+
+    assert isinstance(out["out_map"], np.ndarray)
+    assert out["out_map"].shape[0] == 4
 
     # test model post processor
     post_processor = model.postprocessor
@@ -77,6 +80,22 @@ def test_recognition_models(arch_name, input_shape):
     assert all(isinstance(word, str) and isinstance(conf, float) and 0 <= conf <= 1 for word, conf in decoded)
     assert len(decoded) == 2
     assert all(char in mock_vocab for word, _ in decoded for char in word)
+
+    # Testing with a fixed batch size
+    model = recognition.__dict__[arch_name]()
+    model.fixed_batch_size = 1
+    assert isinstance(model, Engine)
+    input_array = np.random.rand(batch_size, *input_shape).astype(np.float32)
+
+    out = model(input_array, return_model_output=True)
+    assert isinstance(out, dict)
+    assert len(out) == 2
+    assert isinstance(out["preds"], list)
+    assert len(out["preds"]) == batch_size
+    assert all(isinstance(word, str) and isinstance(conf, float) and 0 <= conf <= 1 for word, conf in out["preds"])
+
+    assert isinstance(out["out_map"], np.ndarray)
+    assert out["out_map"].shape[0] == 4
 
 
 @pytest.mark.parametrize(

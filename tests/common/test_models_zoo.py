@@ -5,11 +5,14 @@ from onnxtr import models
 from onnxtr.io import Document, DocumentFile
 from onnxtr.models import detection, recognition
 from onnxtr.models.detection.predictor import DetectionPredictor
+from onnxtr.models.detection.zoo import ARCHS as DET_ARCHS
 from onnxtr.models.detection.zoo import detection_predictor
 from onnxtr.models.predictor import OCRPredictor
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.models.recognition.predictor import RecognitionPredictor
+from onnxtr.models.recognition.zoo import ARCHS as RECO_ARCHS
 from onnxtr.models.recognition.zoo import recognition_predictor
+from onnxtr.models.zoo import ocr_predictor
 from onnxtr.utils.repr import NestedObject
 
 
@@ -67,6 +70,13 @@ def test_ocrpredictor(mock_pdf, assume_straight_pages, straighten_pages):
     orientation = 0
     assert out.pages[0].orientation["value"] == orientation
     assert isinstance(out.pages[0].language["value"], str)
+    assert isinstance(out.render(), str)
+    assert isinstance(out.pages[0].render(), str)
+    assert isinstance(out.export(), dict)
+    assert isinstance(out.pages[0].export(), dict)
+
+    with pytest.raises(ValueError):
+        _ = ocr_predictor("unknown_arch")
 
 
 def test_trained_ocr_predictor(mock_payslip):
@@ -121,6 +131,12 @@ def test_trained_ocr_predictor(mock_payslip):
     out = predictor(doc)
 
     assert "Mr" in out.pages[0].blocks[0].lines[0].words[0].value
+
+    # test list archs
+    archs = predictor.list_archs()
+    assert isinstance(archs, dict)
+    assert archs["recognition_archs"] == RECO_ARCHS
+    assert archs["detection_archs"] == DET_ARCHS
 
 
 def _test_predictor(predictor):

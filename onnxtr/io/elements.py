@@ -23,7 +23,7 @@ from onnxtr.utils.repr import NestedObject
 
 try:  # optional dependency for visualization
     from onnxtr.utils.visualization import visualize_page
-except ModuleNotFoundError:
+except ModuleNotFoundError:  # pragma: no cover
     pass
 
 __all__ = ["Element", "Word", "Artefact", "Line", "Block", "Page", "Document"]
@@ -46,12 +46,7 @@ class Element(NestedObject):
         """Exports the object into a nested dict format"""
         export_dict = {k: getattr(self, k) for k in self._exported_keys}
         for children_name in self._children_names:
-            if children_name in ["predictions"]:
-                export_dict[children_name] = {
-                    k: [item.export() for item in c] for k, c in getattr(self, children_name).items()
-                }
-            else:
-                export_dict[children_name] = [c.export() for c in getattr(self, children_name)]
+            export_dict[children_name] = [c.export() for c in getattr(self, children_name)]
 
         return export_dict
 

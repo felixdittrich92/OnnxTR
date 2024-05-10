@@ -12,6 +12,7 @@ style:
 # Run tests for the library
 test:
 	coverage run -m pytest tests/common/ -rs
+	coverage report --fail-under=80 --show-missing
 
 # Check that docs can build
 docs-single-version:

@@ -109,7 +109,7 @@ def download_from_url(
     try:
         print(f"Downloading {url} to {file_path}")
         _urlretrieve(url, file_path)
-    except (urllib.error.URLError, IOError) as e:
+    except (urllib.error.URLError, IOError) as e:  # pragma: no cover
         if url[:5] == "https":
             url = url.replace("https:", "http:")
             print("Failed download. Trying https -> http instead." f" Downloading {url} to {file_path}")
@@ -118,7 +118,7 @@ def download_from_url(
             raise e
 
     # Remove corrupted files
-    if isinstance(hash_prefix, str) and not _check_integrity(file_path, hash_prefix):
+    if isinstance(hash_prefix, str) and not _check_integrity(file_path, hash_prefix):  # pragma: no cover
         # Remove file
         os.remove(file_path)
         raise ValueError(f"corrupted download, the hash of {url} does not match its expected value")
