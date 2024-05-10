@@ -46,6 +46,7 @@ class DBNet(Engine):
         box_thresh: minimal objectness score to consider a box
         assume_straight_pages: if True, fit straight bounding boxes only
         cfg: the configuration dict of the model
+        **kwargs: additional arguments to be passed to `Engine`
     """
 
     def __init__(
@@ -55,8 +56,9 @@ class DBNet(Engine):
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
         cfg: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path)
+        super().__init__(url=model_path, **kwargs)
         self.cfg = cfg
         self.assume_straight_pages = assume_straight_pages
         self.postprocessor = GeneralDetectionPostProcessor(
@@ -77,7 +79,7 @@ class DBNet(Engine):
         if return_model_output:
             out["out_map"] = prob_map
 
-        out["preds"] = [dict(zip(["words"], preds)) for preds in self.postprocessor(prob_map)]
+        out["preds"] = self.postprocessor(prob_map)
 
         return out
 

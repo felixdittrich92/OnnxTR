@@ -40,7 +40,7 @@ def _predictor(arch: Any, **kwargs: Any) -> RecognitionPredictor:
 
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
-    kwargs["batch_size"] = kwargs.get("batch_size", 128)
+    kwargs["batch_size"] = kwargs.get("batch_size", 1024)
     input_shape = _model.cfg["input_shape"][1:]
     predictor = RecognitionPredictor(PreProcessor(input_shape, preserve_aspect_ratio=True, **kwargs), _model)
 

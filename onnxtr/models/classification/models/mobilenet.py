@@ -42,14 +42,16 @@ class MobileNetV3(Engine):
     ----
         model_path: path or url to onnx model file
         cfg: configuration dictionary
+        **kwargs: additional arguments to be passed to `Engine`
     """
 
     def __init__(
         self,
         model_path: str,
         cfg: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path)
+        super().__init__(url=model_path, **kwargs)
         self.cfg = cfg
 
     def __call__(

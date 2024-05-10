@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any
+from typing import Any, List
 
 import numpy as np
 import onnxruntime
@@ -18,14 +18,15 @@ class Engine:
     Args:
     ----
         url: the url to use to download a model if needed
+        providers: list of providers to use for inference
         **kwargs: additional arguments to be passed to `download_from_url`
     """
 
-    def __init__(self, url: str, **kwargs: Any) -> None:
+    def __init__(
+        self, url: str, providers: List[str] = ["CPUExecutionProvider", "CUDAExecutionProvider"], **kwargs: Any
+    ) -> None:
         archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
-        self.runtime = onnxruntime.InferenceSession(
-            archive_path, providers=["CPUExecutionProvider", "CUDAExecutionProvider"]
-        )
+        self.runtime = onnxruntime.InferenceSession(archive_path, providers=providers)
 
     def run(self, inputs: np.ndarray) -> np.ndarray:
         inputs = shape_translate(inputs, format="BCHW")

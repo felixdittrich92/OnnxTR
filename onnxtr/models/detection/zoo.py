@@ -39,7 +39,7 @@ def _predictor(arch: Any, assume_straight_pages: bool = True, **kwargs: Any) -> 
 
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
-    kwargs["batch_size"] = kwargs.get("batch_size", 2)
+    kwargs["batch_size"] = kwargs.get("batch_size", 4)
     predictor = DetectionPredictor(
         PreProcessor(_model.cfg["input_shape"][1:], **kwargs),
         _model,
@@ -48,7 +48,7 @@ def _predictor(arch: Any, assume_straight_pages: bool = True, **kwargs: Any) -> 
 
 
 def detection_predictor(
-    arch: Any = "db_resnet50",
+    arch: Any = "fast_base",
     assume_straight_pages: bool = True,
     **kwargs: Any,
 ) -> DetectionPredictor:

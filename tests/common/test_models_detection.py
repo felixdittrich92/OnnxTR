@@ -91,8 +91,8 @@ def test_detection_models(arch_name, input_shape, output_size, out_prob):
     if out_prob:
         assert np.all(out["out_map"] >= 0) and np.all(out["out_map"] <= 1)
     # Check boxes
-    for boxes_dict in out["preds"]:
-        for boxes in boxes_dict.values():
+    for boxes_list in out["preds"]:
+        for boxes in boxes_list:
             assert boxes.shape[1] == 5
             assert np.all(boxes[:, :2] < boxes[:, 2:4])
             assert np.all(boxes[:, :4] >= 0) and np.all(boxes[:, :4] <= 1)
@@ -120,8 +120,13 @@ def test_detection_zoo(arch_name):
     input_array = np.random.rand(2, 3, 1024, 1024).astype(np.float32)
 
     out, seq_maps = predictor(input_array, return_maps=True)
-    assert all(isinstance(boxes, dict) for boxes in out)
-    assert all(isinstance(boxes["words"], np.ndarray) and boxes["words"].shape[1] == 5 for boxes in out)
+    assert all(isinstance(boxes, list) for boxes in out)
+    for boxes in out:
+        for box in boxes:
+            assert isinstance(box, np.ndarray)
+            assert box.shape[1] == 5
+            assert np.all(box[:, :2] < box[:, 2:4])
+            assert np.all(box[:, :4] >= 0) and np.all(box[:, :4] <= 1)
     assert all(isinstance(seq_map, np.ndarray) for seq_map in seq_maps)
     assert all(seq_map.shape[:2] == (1024, 1024) for seq_map in seq_maps)
     # check that all values in the seq_maps are between 0 and 1

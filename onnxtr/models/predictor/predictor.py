@@ -72,7 +72,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
         origin_page_shapes = [page.shape[:2] for page in pages]
 
         # Localize text elements
-        loc_preds_dict, out_maps = self.det_predictor(pages, return_maps=True, **kwargs)
+        loc_preds, out_maps = self.det_predictor(pages, return_maps=True, **kwargs)
 
         # Detect document rotation and rotate pages
         seg_maps = [
@@ -94,12 +94,9 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             )
             pages = [rotate_image(page, -angle, expand=False) for page, angle in zip(pages, origin_page_orientations)]
             # forward again to get predictions on straight pages
-            loc_preds_dict = self.det_predictor(pages, **kwargs)  # type: ignore[assignment]
+            loc_preds = self.det_predictor(pages, **kwargs)  # type: ignore[assignment]
 
-        assert all(
-            len(loc_pred) == 1 for loc_pred in loc_preds_dict
-        ), "Detection Model in ocr_predictor should output only one class"
-        loc_preds: List[np.ndarray] = [list(loc_pred.values())[0] for loc_pred in loc_preds_dict]  # type: ignore[union-attr]
+        loc_preds = [loc_pred[0] for loc_pred in loc_preds]
 
         # Rectify crops if aspect ratio
         loc_preds = self._remove_padding(pages, loc_preds)
@@ -110,7 +107,10 @@ class OCRPredictor(NestedObject, _OCRPredictor):
 
         # Crop images
         crops, loc_preds = self._prepare_crops(
-            pages, loc_preds, channels_last=True, assume_straight_pages=self.assume_straight_pages
+            pages,
+            loc_preds,  # type: ignore[arg-type]
+            channels_last=True,
+            assume_straight_pages=self.assume_straight_pages,
         )
         # Rectify crop orientation and get crop orientation predictions
         crop_orientations: Any = []

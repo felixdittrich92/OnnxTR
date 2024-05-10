@@ -18,8 +18,8 @@ def _predictor(
     assume_straight_pages: bool = True,
     preserve_aspect_ratio: bool = True,
     symmetric_pad: bool = True,
-    det_bs: int = 2,
-    reco_bs: int = 128,
+    det_bs: int = 4,
+    reco_bs: int = 1024,
     detect_orientation: bool = False,
     straighten_pages: bool = False,
     detect_language: bool = False,
@@ -54,7 +54,7 @@ def _predictor(
 
 
 def ocr_predictor(
-    det_arch: Any = "db_resnet50",
+    det_arch: Any = "fast_base",
     reco_arch: Any = "crnn_vgg16_bn",
     assume_straight_pages: bool = True,
     preserve_aspect_ratio: bool = True,

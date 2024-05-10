@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 
@@ -37,7 +37,7 @@ class DetectionPredictor(NestedObject):
         pages: List[np.ndarray],
         return_maps: bool = False,
         **kwargs: Any,
-    ) -> Union[List[Dict[str, np.ndarray]], Tuple[List[Dict[str, np.ndarray]], List[np.ndarray]]]:
+    ) -> Union[List[np.ndarray], Tuple[List[np.ndarray], List[np.ndarray]]]:
         # Dimension check
         if any(page.ndim != 3 for page in pages):
             raise ValueError("incorrect input shape: all pages are expected to be multi-channel 2D images.")

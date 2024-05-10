@@ -42,6 +42,7 @@ class ViTSTR(Engine):
         model_path: path to onnx model file
         vocab: vocabulary used for encoding
         cfg: dictionary containing information about the model
+        **kwargs: additional arguments to be passed to `Engine`
     """
 
     def __init__(
@@ -49,8 +50,9 @@ class ViTSTR(Engine):
         model_path: str,
         vocab: str,
         cfg: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path)
+        super().__init__(url=model_path, **kwargs)
         self.vocab = vocab
         self.cfg = cfg
 
