@@ -9,7 +9,7 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr/badge)](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr)
 [![Pypi](https://img.shields.io/badge/pypi-v0.0.1-blue.svg)](https://pypi.org/project/OnnxTR/)
 
-> :warning: Please note that this is wrapper around the [doctr](https://github.com/mindee/doctr) library to provide a Onnx pipeline for docTR. For feature requests, which are not directly related to the Onnx pipeline, please refer to the base project.
+> :warning: Please note that this is a wrapper around the [doctr](https://github.com/mindee/doctr) library to provide a Onnx pipeline for docTR. For feature requests, which are not directly related to the Onnx pipeline, please refer to the base project.
 
 **Optical Character Recognition made seamless & accessible to anyone, powered by Onnx**
 
@@ -34,7 +34,7 @@ You can then install the latest release of the package using [pypi](https://pypi
 **NOTE:** For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started). Currently supported execution providers by default are: CPU, CUDA
 
 ```shell
-pip install onnxtr[cpu]
+pip install "onnxtr[cpu]"
 # with gpu support
 pip install "onnxtr[gpu]"
 # with HTML support
