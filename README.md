@@ -227,7 +227,7 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 |--------------------------------|-------------------------------|-------------------------------|
 |docTR (GPU) - v0.8.1            | ~0.07s / Page                 | ~0.05s / Page                 |
 |**docTR (GPU) float16** - v0.8.1| **~0.06s / Page**             | **~0.03s / Page**             |
-|OnnxTR (GPU) - v0.1.2           | coming soon                   | coming soon                   |
+|OnnxTR (GPU) - v0.1.2           | **~0.06s / Page**             | ~0.04s / Page                 |
 |EasyOCR (GPU) - v1.7.1          | ~0.31s / Page                 | ~0.19s / Page                 |
 |Surya (GPU) float16 - v0.4.4    | ~3.70s / Page                 | ~2.81s / Page                 |
 

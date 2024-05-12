@@ -1,0 +1,83 @@
+# https://docs.github.com/en/actions/publishing-packages/publishing-docker-images#publishing-images-to-github-packages
+#
+name: Docker image on ghcr.io
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: main
+  schedule:
+    - cron: '0 2 1 6 *'  # At 02:00 on day-of-month 1 in June (once a year actually)
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Must match version at https://www.python.org/ftp/python/
+        python: ["3.10.13"]
+        system: ["cpu", "gpu"]
+
+    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          tags: |
+            # used only on schedule event
+            type=schedule,pattern={{date 'YYYY-MM'}},prefix=OnnxTR-${{ matrix.system }}-py${{ matrix.python }}-
+            # used only if a tag following semver is published
+            type=semver,pattern={{raw}},prefix=OnnxTR-${{ matrix.system }}-py${{ matrix.python }}-
+
+      - name: Build Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          build-args: |
+            PYTHON_VERSION=${{ matrix.python }}
+            SYSTEM=${{ matrix.system }}
+            ONNXTR_REPO=${{ github.repository }}
+            ONNXTR_VERSION=${{ github.sha }}
+          push: false  # push only if `import doctr` works
+          tags: ${{ steps.meta.outputs.tags }}
+
+      - name: Check if `import onnxtr` works
+        run: docker run ${{ steps.build.outputs.imageid }} python3 -c 'import onnxtr; print(onnxtr.__version__)'
+
+      - name: Push Docker image
+        # Push only if the CI is not triggered by "PR on main"
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          build-args: |
+            PYTHON_VERSION=${{ matrix.python }}
+            SYSTEM=${{ matrix.system }}
+            ONNXTR_REPO=${{ github.repository }}
+            ONNXTR_VERSION=${{ github.sha }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
