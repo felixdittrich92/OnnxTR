@@ -62,7 +62,7 @@ jobs:
             SYSTEM=${{ matrix.system }}
             ONNXTR_REPO=${{ github.repository }}
             ONNXTR_VERSION=${{ github.sha }}
-          push: false  # push only if `import doctr` works
+          push: false  # push only if `import onnxtr` works
           tags: ${{ steps.meta.outputs.tags }}
 
       - name: Check if `import onnxtr` works
