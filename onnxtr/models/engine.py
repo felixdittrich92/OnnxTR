@@ -43,8 +43,8 @@ class Engine:
             inputs = np.broadcast_to(inputs, (self.fixed_batch_size, *inputs.shape))
             # combine the results
             logits = np.concatenate(
-                [self.runtime.run(self.output_name, {"input": batch})[0] for batch in inputs], axis=0
+                [self.runtime.run(self.output_name, {self.runtime_inputs.name: batch})[0] for batch in inputs], axis=0
             )
         else:
-            logits = self.runtime.run(self.output_name, {"input": inputs})[0]
+            logits = self.runtime.run(self.output_name, {self.runtime_inputs.name: inputs})[0]
         return shape_translate(logits, format="BHWC")
