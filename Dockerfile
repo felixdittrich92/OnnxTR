@@ -6,6 +6,11 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 ARG SYSTEM=gpu
+# NOTE: The following CUDA_VERSION, CUDNN_VERSION, and NVINFER_VERSION are for CUDA 11.8
+# - this needs to match exactly with the host system otherwise the onnxruntime-gpu package isn't able to work correct. !!
+ARG CUDA_VERSION=11-8
+ARG CUDNN_VERSION=8.6.0.163-1
+ARG NVINFER_VERSION=8.6.1.6-1
 
 # Enroll NVIDIA GPG public key and install CUDA
 RUN if [ "$SYSTEM" = "gpu" ]; then \
@@ -19,21 +24,21 @@ RUN if [ "$SYSTEM" = "gpu" ]; then \
     # NOTE: The following CUDA_VERSION, CUDNN_VERSION, and NVINFER_VERSION are for CUDA 11.8
     # - this needs to match exactly with the host system otherwise the onnxruntime-gpu package isn't able to work correct. !!
     cuda-command-line-tools-11-8 \
-    cuda-cudart-dev-11-8 \
-    cuda-nvcc-11-8 \
-    cuda-cupti-11-8 \
-    cuda-nvprune-11-8 \
-    cuda-libraries-11-8 \
-    cuda-nvrtc-11-8 \
-    libcufft-11-8 \
-    libcurand-11-8 \
-    libcusolver-11-8 \
-    libcusparse-11-8 \
-    libcublas-11-8 \
+    cuda-cudart-dev-${CUDA_VERSION} \
+    cuda-nvcc-${CUDA_VERSION}  \
+    cuda-cupti-${CUDA_VERSION}  \
+    cuda-nvprune-${CUDA_VERSION}  \
+    cuda-libraries-${CUDA_VERSION}  \
+    cuda-nvrtc-${CUDA_VERSION}  \
+    libcufft-${CUDA_VERSION}  \
+    libcurand-${CUDA_VERSION}  \
+    libcusolver-${CUDA_VERSION}  \
+    libcusparse-${CUDA_VERSION}  \
+    libcublas-${CUDA_VERSION}  \
     # - CuDNN: https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#ubuntu-network-installation
-    libcudnn8=8.6.0.163-1+cuda11.8 \
-    libnvinfer-plugin8=8.6.1.6-1+cuda11.8 \
-    libnvinfer8=8.6.1.6-1+cuda11.8; \
+    libcudnn${CUDNN_VERSION%%.*}=${CUDNN_VERSION}+cuda${CUDA_VERSION.replace('-', '.')}; \
+    libnvinfer-plugin${CUDNN_VERSION%%.*}=${NVINFER_VERSION}+cuda${CUDA_VERSION.replace('-', '.')}; \
+    libnvinfer${CUDNN_VERSION%%.*}=${NVINFER_VERSION}+cuda${CUDA_VERSION.replace('-', '.')}; \
 fi
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
