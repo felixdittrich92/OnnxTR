@@ -16,8 +16,9 @@
 What you can expect from this repository:
 
 - efficient ways to parse textual information (localize and identify each word) from your documents
-- a Onnx pipeline for docTR, a wrapper around the [doctr](https://github.com/mindee/doctr) library
+- a Onnx pipeline for docTR, a wrapper around the [doctr](https://github.com/mindee/doctr) library - no PyTorch or TensorFlow dependencies
 - more lightweight package with faster inference latency and less required resources
+- 8-Bit quantized models for faster inference on CPU
 
 ![OCR_example](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/ocr.png)
 
@@ -210,7 +211,7 @@ The GPU benchmarks was measured on a `RTX 4080 Nvidia GPU`.
 
 Benchmarking performed on the FUNSD dataset and CORD dataset.
 
-docTR / OnnxTR models used for the benchmarks are `fast_base` for detection and `crnn_vgg16_bn` for recognition.
+docTR / OnnxTR models used for the benchmarks are `fast_base` (full precision) | `db_resnet50` (8-bit variant) for detection and `crnn_vgg16_bn` for recognition.
 
 The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.17s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset in **full precision**.
 
