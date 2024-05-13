@@ -59,7 +59,7 @@ def benchmark(calibration_image_folder: str, model_path: str, task_shape: Tuple[
     runs = 10
     # Warming up
     _ = session.run(output_name, {input_name: sample})
-    for i in range(runs):
+    for _ in range(runs):
         start = time.perf_counter()
         _ = session.run(output_name, {input_name: sample})
         end = (time.perf_counter() - start) * 1000

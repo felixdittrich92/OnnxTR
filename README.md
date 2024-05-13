@@ -91,6 +91,7 @@ model = ocr_predictor(
     resolve_blocks=True,  # whether lines should be automatically grouped into blocks (default: True)
     paragraph_break=0.035,  # relative length of the minimum space separating paragraphs (default: 0.035)
     # OnnxTR specific parameters
+    # NOTE: 8-Bit quantized models are not available for FAST detection models and can in general lead to poorer accuracy
     load_in_8_bit=False,  # set to `True` to load 8-bit quantized models instead of the full precision onces (default: False)
 )
 # PDF
