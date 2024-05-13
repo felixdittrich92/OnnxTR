@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/felixdittrich92/OnnxTR/graph/badge.svg?token=WVFRCQBOLI)](https://codecov.io/gh/felixdittrich92/OnnxTR)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/4fff4d764bb14fb8b4f4afeb9587231b)](https://app.codacy.com/gh/felixdittrich92/OnnxTR/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr/badge)](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr)
-[![Pypi](https://img.shields.io/badge/pypi-v0.1.2-blue.svg)](https://pypi.org/project/OnnxTR/)
+[![Pypi](https://img.shields.io/badge/pypi-v0.2.0-blue.svg)](https://pypi.org/project/OnnxTR/)
 
 > :warning: Please note that this is a wrapper around the [doctr](https://github.com/mindee/doctr) library to provide a Onnx pipeline for docTR. For feature requests, which are not directly related to the Onnx pipeline, please refer to the base project.
 
@@ -16,8 +16,9 @@
 What you can expect from this repository:
 
 - efficient ways to parse textual information (localize and identify each word) from your documents
-- a Onnx pipeline for docTR, a wrapper around the [doctr](https://github.com/mindee/doctr) library
+- a Onnx pipeline for docTR, a wrapper around the [doctr](https://github.com/mindee/doctr) library - no PyTorch or TensorFlow dependencies
 - more lightweight package with faster inference latency and less required resources
+- 8-Bit quantized models for faster inference on CPU
 
 ![OCR_example](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/ocr.png)
 
@@ -90,6 +91,9 @@ model = ocr_predictor(
     resolve_lines=True,  # whether words should be automatically grouped into lines (default: True)
     resolve_blocks=True,  # whether lines should be automatically grouped into blocks (default: True)
     paragraph_break=0.035,  # relative length of the minimum space separating paragraphs (default: 0.035)
+    # OnnxTR specific parameters
+    # NOTE: 8-Bit quantized models are not available for FAST detection models and can in general lead to poorer accuracy
+    load_in_8_bit=False,  # set to `True` to load 8-bit quantized models instead of the full precision onces (default: False)
 )
 # PDF
 doc = DocumentFile.from_pdf("path/to/your/doc.pdf")
@@ -170,9 +174,9 @@ predictor.list_archs()
             'linknet_resnet18',
             'linknet_resnet34',
             'linknet_resnet50',
-            'fast_tiny',
-            'fast_small',
-            'fast_base'
+            'fast_tiny',  # No 8-bit support
+            'fast_small',  # No 8-bit support
+            'fast_base'  # No 8-bit support
         ],
     'recognition archs':
         [
@@ -202,13 +206,14 @@ NOTE:
 ### Benchmarks
 
 The CPU benchmarks was measured on a `i7-14700K Intel CPU`.
+
 The GPU benchmarks was measured on a `RTX 4080 Nvidia GPU`.
 
-Benchmarking performed on the FUNSD dataset and the CORD dataset.
+Benchmarking performed on the FUNSD dataset and CORD dataset.
 
-docTR / OnnxTR models used for the benchmarks are `fast_base` for detection and `crnn_vgg16_bn` for recognition.
+docTR / OnnxTR models used for the benchmarks are `fast_base` (full precision) | `db_resnet50` (8-bit variant) for detection and `crnn_vgg16_bn` for recognition.
 
-The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.17s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset.
+The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.17s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset in **full precision**.
 
 - CPU benchmarks:
 
@@ -216,7 +221,7 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 |--------------------------------|-------------------------------|-------------------------------|
 |docTR (CPU) - v0.8.1            | ~1.29s / Page                 | ~0.60s / Page                 |
 |**OnnxTR (CPU)** - v0.1.2       | ~0.57s / Page                 | **~0.25s / Page**             |
-|OnnxTR (CPU) 8-bit - v0.1.2     | in progress                   | in progress                   |
+|**OnnxTR (CPU) 8-bit** - v0.1.2 | **~0.38s / Page**             | **~0.14s / Page**             |
 |EasyOCR (CPU) - v1.7.1          | ~1.96s / Page                 | ~1.75s / Page                 |
 |**PyTesseract (CPU)** - v0.3.10 | **~0.50s / Page**             | ~0.52s / Page                 |
 |Surya (line) (CPU) - v0.4.4     | ~48.76s / Page                | ~35.49s / Page                |

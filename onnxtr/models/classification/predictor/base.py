@@ -22,6 +22,7 @@ class OrientationPredictor(NestedObject):
     ----
         pre_processor: transform inputs for easier batched model inference
         model: core classification architecture (backbone + classification head)
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
     """
 
     _children_names: List[str] = ["pre_processor", "model"]

@@ -24,6 +24,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["legacy_french"],
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/crnn_vgg16_bn-662979cc.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/crnn_vgg16_bn_static_8_bit-bce050c7.onnx",
     },
     "crnn_mobilenet_v3_small": {
         "mean": (0.694, 0.695, 0.693),
@@ -31,6 +32,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/crnn_mobilenet_v3_small-bded4d49.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/crnn_mobilenet_v3_small_static_8_bit-4949006f.onnx",
     },
     "crnn_mobilenet_v3_large": {
         "mean": (0.694, 0.695, 0.693),
@@ -38,6 +40,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/crnn_mobilenet_v3_large-d42e8185.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/crnn_mobilenet_v3_large_static_8_bit-459e856d.onnx",
     },
 }
 
@@ -148,6 +151,7 @@ class CRNN(Engine):
 def _crnn(
     arch: str,
     model_path: str,
+    load_in_8_bit: bool = False,
     **kwargs: Any,
 ) -> CRNN:
     kwargs["vocab"] = kwargs.get("vocab", default_cfgs[arch]["vocab"])
@@ -155,12 +159,16 @@ def _crnn(
     _cfg = deepcopy(default_cfgs[arch])
     _cfg["vocab"] = kwargs["vocab"]
     _cfg["input_shape"] = kwargs.get("input_shape", default_cfgs[arch]["input_shape"])
+    # Patch the url
+    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
     # Build the model
     return CRNN(model_path, cfg=_cfg, **kwargs)
 
 
-def crnn_vgg16_bn(model_path: str = default_cfgs["crnn_vgg16_bn"]["url"], **kwargs: Any) -> CRNN:
+def crnn_vgg16_bn(
+    model_path: str = default_cfgs["crnn_vgg16_bn"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> CRNN:
     """CRNN with a VGG-16 backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
 
@@ -173,16 +181,19 @@ def crnn_vgg16_bn(model_path: str = default_cfgs["crnn_vgg16_bn"]["url"], **kwar
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _crnn("crnn_vgg16_bn", model_path, **kwargs)
+    return _crnn("crnn_vgg16_bn", model_path, load_in_8_bit, **kwargs)
 
 
-def crnn_mobilenet_v3_small(model_path: str = default_cfgs["crnn_mobilenet_v3_small"]["url"], **kwargs: Any) -> CRNN:
+def crnn_mobilenet_v3_small(
+    model_path: str = default_cfgs["crnn_mobilenet_v3_small"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> CRNN:
     """CRNN with a MobileNet V3 Small backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
 
@@ -195,16 +206,19 @@ def crnn_mobilenet_v3_small(model_path: str = default_cfgs["crnn_mobilenet_v3_sm
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _crnn("crnn_mobilenet_v3_small", model_path, **kwargs)
+    return _crnn("crnn_mobilenet_v3_small", model_path, load_in_8_bit, **kwargs)
 
 
-def crnn_mobilenet_v3_large(model_path: str = default_cfgs["crnn_mobilenet_v3_large"]["url"], **kwargs: Any) -> CRNN:
+def crnn_mobilenet_v3_large(
+    model_path: str = default_cfgs["crnn_mobilenet_v3_large"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> CRNN:
     """CRNN with a MobileNet V3 Large backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
 
@@ -217,10 +231,11 @@ def crnn_mobilenet_v3_large(model_path: str = default_cfgs["crnn_mobilenet_v3_la
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _crnn("crnn_mobilenet_v3_large", model_path, **kwargs)
+    return _crnn("crnn_mobilenet_v3_large", model_path, load_in_8_bit, **kwargs)

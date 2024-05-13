@@ -43,6 +43,7 @@ def test_remap_preds(preds, crop_map, dilation, pred):
     assert all(isinstance(pred[0], str) and isinstance(pred[1], float) for pred in preds)
 
 
+@pytest.mark.parametrize("quantized", [False, True])
 @pytest.mark.parametrize(
     "arch_name, input_shape",
     [
@@ -56,10 +57,10 @@ def test_remap_preds(preds, crop_map, dilation, pred):
         ["parseq", (32, 128, 3)],
     ],
 )
-def test_recognition_models(arch_name, input_shape):
+def test_recognition_models(arch_name, input_shape, quantized):
     mock_vocab = VOCABS["french"]
     batch_size = 4
-    model = recognition.__dict__[arch_name]()
+    model = recognition.__dict__[arch_name](load_in_8_bit=quantized)
     assert isinstance(model, Engine)
     input_array = np.random.rand(batch_size, *input_shape).astype(np.float32)
 
@@ -98,6 +99,7 @@ def test_recognition_models(arch_name, input_shape):
     assert out["out_map"].shape[0] == 4
 
 
+@pytest.mark.parametrize("quantized", [False, True])
 @pytest.mark.parametrize(
     "arch_name",
     [
@@ -111,10 +113,10 @@ def test_recognition_models(arch_name, input_shape):
         "parseq",
     ],
 )
-def test_recognition_zoo(arch_name):
+def test_recognition_zoo(arch_name, quantized):
     batch_size = 2
     # Model
-    predictor = recognition.zoo.recognition_predictor(arch_name)
+    predictor = recognition.zoo.recognition_predictor(arch_name, load_in_8_bit=quantized)
     # object check
     assert isinstance(predictor, RecognitionPredictor)
     input_array = np.random.rand(batch_size, 32, 128, 3).astype(np.float32)

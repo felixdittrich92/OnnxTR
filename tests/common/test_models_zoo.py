@@ -156,13 +156,14 @@ def _test_predictor(predictor):
         _ = predictor([input_page])
 
 
+@pytest.mark.parametrize("quantized", [False, True])
 @pytest.mark.parametrize(
     "det_arch, reco_arch",
     [[det_arch, reco_arch] for det_arch, reco_arch in zip(detection.zoo.ARCHS, recognition.zoo.ARCHS)],
 )
-def test_zoo_models(det_arch, reco_arch):
+def test_zoo_models(det_arch, reco_arch, quantized):
     # Model
-    predictor = models.ocr_predictor(det_arch, reco_arch)
+    predictor = models.ocr_predictor(det_arch, reco_arch, load_in_8_bit=quantized)
     _test_predictor(predictor)
 
     # passing model instance directly

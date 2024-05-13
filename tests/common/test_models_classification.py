@@ -61,26 +61,32 @@ def test_classification_zoo(arch_name):
     assert all(isinstance(pred, float) for pred in confs)
 
 
-def test_crop_orientation_model(mock_text_box):
+@pytest.mark.parametrize("quantized", [False, True])
+def test_crop_orientation_model(mock_text_box, quantized):
     text_box_0 = cv2.imread(mock_text_box)
     # rotates counter-clockwise
     text_box_270 = np.rot90(text_box_0, 1)
     text_box_180 = np.rot90(text_box_0, 2)
     text_box_90 = np.rot90(text_box_0, 3)
-    classifier = classification.crop_orientation_predictor("mobilenet_v3_small_crop_orientation")
+    classifier = classification.crop_orientation_predictor(
+        "mobilenet_v3_small_crop_orientation", load_in_8_bit=quantized
+    )
     assert classifier([text_box_0, text_box_270, text_box_180, text_box_90])[0] == [0, 1, 2, 3]
     # 270 degrees is equivalent to -90 degrees
     assert classifier([text_box_0, text_box_270, text_box_180, text_box_90])[1] == [0, -90, 180, 90]
     assert all(isinstance(pred, float) for pred in classifier([text_box_0, text_box_270, text_box_180, text_box_90])[2])
 
 
-def test_page_orientation_model(mock_payslip):
+@pytest.mark.parametrize("quantized", [False, True])
+def test_page_orientation_model(mock_payslip, quantized):
     text_box_0 = cv2.imread(mock_payslip)
     # rotates counter-clockwise
     text_box_270 = np.rot90(text_box_0, 1)
     text_box_180 = np.rot90(text_box_0, 2)
     text_box_90 = np.rot90(text_box_0, 3)
-    classifier = classification.crop_orientation_predictor("mobilenet_v3_small_page_orientation")
+    classifier = classification.crop_orientation_predictor(
+        "mobilenet_v3_small_page_orientation", load_in_8_bit=quantized
+    )
     assert classifier([text_box_0, text_box_270, text_box_180, text_box_90])[0] == [0, 1, 2, 3]
     # 270 degrees is equivalent to -90 degrees
     assert classifier([text_box_0, text_box_270, text_box_180, text_box_90])[1] == [0, -90, 180, 90]

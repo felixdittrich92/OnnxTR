@@ -24,6 +24,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/master-b1287fcd.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/master_dynamic_8_bit-d8bd8206.onnx",
     },
 }
 
@@ -112,6 +113,7 @@ class MASTERPostProcessor(RecognitionPostProcessor):
 def _master(
     arch: str,
     model_path: str,
+    load_in_8_bit: bool = False,
     **kwargs: Any,
 ) -> MASTER:
     # Patch the config
@@ -120,11 +122,13 @@ def _master(
     _cfg["vocab"] = kwargs.get("vocab", _cfg["vocab"])
 
     kwargs["vocab"] = _cfg["vocab"]
+    # Patch the url
+    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
     return MASTER(model_path, cfg=_cfg, **kwargs)
 
 
-def master(model_path: str = default_cfgs["master"]["url"], **kwargs: Any) -> MASTER:
+def master(model_path: str = default_cfgs["master"]["url"], load_in_8_bit: bool = False, **kwargs: Any) -> MASTER:
     """MASTER as described in paper: <https://arxiv.org/pdf/1910.02562.pdf>`_.
 
     >>> import numpy as np
@@ -136,10 +140,11 @@ def master(model_path: str = default_cfgs["master"]["url"], **kwargs: Any) -> MA
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keywoard arguments passed to the MASTER architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _master("master", model_path, **kwargs)
+    return _master("master", model_path, load_in_8_bit, **kwargs)
