@@ -23,6 +23,7 @@ def _predictor(
     detect_orientation: bool = False,
     straighten_pages: bool = False,
     detect_language: bool = False,
+    load_in_8_bit: bool = False,
     **kwargs,
 ) -> OCRPredictor:
     # Detection
@@ -32,12 +33,14 @@ def _predictor(
         assume_straight_pages=assume_straight_pages,
         preserve_aspect_ratio=preserve_aspect_ratio,
         symmetric_pad=symmetric_pad,
+        load_in_8_bit=load_in_8_bit,
     )
 
     # Recognition
     reco_predictor = recognition_predictor(
         reco_arch,
         batch_size=reco_bs,
+        load_in_8_bit=load_in_8_bit,
     )
 
     return OCRPredictor(
@@ -63,6 +66,7 @@ def ocr_predictor(
     detect_orientation: bool = False,
     straighten_pages: bool = False,
     detect_language: bool = False,
+    load_in_8_bit: bool = False,
     **kwargs: Any,
 ) -> OCRPredictor:
     """End-to-end OCR architecture using one model for localization, and another for text recognition.
@@ -94,6 +98,7 @@ def ocr_predictor(
             Doing so will improve performances for documents with page-uniform rotations.
         detect_language: if True, the language prediction will be added to the predictions for each
             page. Doing so will slightly deteriorate the overall latency.
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         kwargs: keyword args of `OCRPredictor`
 
     Returns:
@@ -110,5 +115,6 @@ def ocr_predictor(
         detect_orientation=detect_orientation,
         straighten_pages=straighten_pages,
         detect_language=detect_language,
+        load_in_8_bit=load_in_8_bit,
         **kwargs,
     )

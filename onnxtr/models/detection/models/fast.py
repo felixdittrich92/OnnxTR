@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+import logging
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -88,13 +89,16 @@ class FAST(Engine):
 def _fast(
     arch: str,
     model_path: str,
+    load_in_8_bit: bool = False,
     **kwargs: Any,
 ) -> FAST:
+    if load_in_8_bit:
+        logging.warning("FAST models do not support 8-bit quantization yet. Loading full precision model...")
     # Build the model
     return FAST(model_path, cfg=default_cfgs[arch], **kwargs)
 
 
-def fast_tiny(model_path: str = default_cfgs["fast_tiny"]["url"], **kwargs: Any) -> FAST:
+def fast_tiny(model_path: str = default_cfgs["fast_tiny"]["url"], load_in_8_bit: bool = False, **kwargs: Any) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"
     <https://arxiv.org/pdf/2111.02394.pdf>`_, using a tiny TextNet backbone.
 
@@ -107,16 +111,17 @@ def fast_tiny(model_path: str = default_cfgs["fast_tiny"]["url"], **kwargs: Any)
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _fast("fast_tiny", model_path, **kwargs)
+    return _fast("fast_tiny", model_path, load_in_8_bit, **kwargs)
 
 
-def fast_small(model_path: str = default_cfgs["fast_small"]["url"], **kwargs: Any) -> FAST:
+def fast_small(model_path: str = default_cfgs["fast_small"]["url"], load_in_8_bit: bool = False, **kwargs: Any) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"
     <https://arxiv.org/pdf/2111.02394.pdf>`_, using a small TextNet backbone.
 
@@ -129,16 +134,17 @@ def fast_small(model_path: str = default_cfgs["fast_small"]["url"], **kwargs: An
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _fast("fast_small", model_path, **kwargs)
+    return _fast("fast_small", model_path, load_in_8_bit, **kwargs)
 
 
-def fast_base(model_path: str = default_cfgs["fast_base"]["url"], **kwargs: Any) -> FAST:
+def fast_base(model_path: str = default_cfgs["fast_base"]["url"], load_in_8_bit: bool = False, **kwargs: Any) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"
     <https://arxiv.org/pdf/2111.02394.pdf>`_, using a base TextNet backbone.
 
@@ -151,10 +157,11 @@ def fast_base(model_path: str = default_cfgs["fast_base"]["url"], **kwargs: Any)
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _fast("fast_base", model_path, **kwargs)
+    return _fast("fast_base", model_path, load_in_8_bit, **kwargs)

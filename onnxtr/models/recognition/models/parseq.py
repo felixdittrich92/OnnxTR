@@ -23,6 +23,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/parseq-00b40714.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/parseq_dynamic_8_bit-5b04d9f7.onnx",
     },
 }
 
@@ -32,6 +33,7 @@ class PARSeq(Engine):
 
     Args:
     ----
+        model_path: path to onnx model file
         vocab: vocabulary used for encoding
         cfg: dictionary containing information about the model
         **kwargs: additional arguments to be passed to `Engine`
@@ -99,6 +101,7 @@ class PARSeqPostProcessor(RecognitionPostProcessor):
 def _parseq(
     arch: str,
     model_path: str,
+    load_in_8_bit: bool = False,
     **kwargs: Any,
 ) -> PARSeq:
     # Patch the config
@@ -107,12 +110,14 @@ def _parseq(
     _cfg["input_shape"] = kwargs.get("input_shape", _cfg["input_shape"])
 
     kwargs["vocab"] = _cfg["vocab"]
+    # Patch the url
+    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
     # Build the model
     return PARSeq(model_path, cfg=_cfg, **kwargs)
 
 
-def parseq(model_path: str = default_cfgs["parseq"]["url"], **kwargs: Any) -> PARSeq:
+def parseq(model_path: str = default_cfgs["parseq"]["url"], load_in_8_bit: bool = False, **kwargs: Any) -> PARSeq:
     """PARSeq architecture from
     `"Scene Text Recognition with Permuted Autoregressive Sequence Models" <https://arxiv.org/pdf/2207.06966>`_.
 
@@ -125,10 +130,11 @@ def parseq(model_path: str = default_cfgs["parseq"]["url"], **kwargs: Any) -> PA
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the PARSeq architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _parseq("parseq", model_path, **kwargs)
+    return _parseq("parseq", model_path, load_in_8_bit, **kwargs)

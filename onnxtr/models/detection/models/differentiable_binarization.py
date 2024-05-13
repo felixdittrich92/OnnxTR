@@ -20,18 +20,21 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/db_resnet50-69ba0015.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/db_resnet50_static_8_bit-09a6104f.onnx",
     },
     "db_resnet34": {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/db_resnet34-b4873198.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/db_resnet34_static_8_bit-027e2c7f.onnx",
     },
     "db_mobilenet_v3_large": {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/db_mobilenet_v3_large-1866973f.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/db_mobilenet_v3_large_static_8_bit-51659bb9.onnx",
     },
 }
 
@@ -87,13 +90,18 @@ class DBNet(Engine):
 def _dbnet(
     arch: str,
     model_path: str,
+    load_in_8_bit: bool = False,
     **kwargs: Any,
 ) -> DBNet:
+    # Patch the url
+    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
     # Build the model
     return DBNet(model_path, cfg=default_cfgs[arch], **kwargs)
 
 
-def db_resnet34(model_path: str = default_cfgs["db_resnet34"]["url"], **kwargs: Any) -> DBNet:
+def db_resnet34(
+    model_path: str = default_cfgs["db_resnet34"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-34 backbone.
 
@@ -106,16 +114,19 @@ def db_resnet34(model_path: str = default_cfgs["db_resnet34"]["url"], **kwargs: 
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _dbnet("db_resnet34", model_path, **kwargs)
+    return _dbnet("db_resnet34", model_path, load_in_8_bit, **kwargs)
 
 
-def db_resnet50(model_path: str = default_cfgs["db_resnet50"]["url"], **kwargs: Any) -> DBNet:
+def db_resnet50(
+    model_path: str = default_cfgs["db_resnet50"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-50 backbone.
 
@@ -128,16 +139,19 @@ def db_resnet50(model_path: str = default_cfgs["db_resnet50"]["url"], **kwargs: 
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _dbnet("db_resnet50", model_path, **kwargs)
+    return _dbnet("db_resnet50", model_path, load_in_8_bit, **kwargs)
 
 
-def db_mobilenet_v3_large(model_path: str = default_cfgs["db_mobilenet_v3_large"]["url"], **kwargs: Any) -> DBNet:
+def db_mobilenet_v3_large(
+    model_path: str = default_cfgs["db_mobilenet_v3_large"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a MobileNet V3 Large backbone.
 
@@ -150,10 +164,11 @@ def db_mobilenet_v3_large(model_path: str = default_cfgs["db_mobilenet_v3_large"
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _dbnet("db_mobilenet_v3_large", model_path, **kwargs)
+    return _dbnet("db_mobilenet_v3_large", model_path, load_in_8_bit, **kwargs)

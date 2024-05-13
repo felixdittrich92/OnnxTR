@@ -23,6 +23,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/sar_resnet31-395f8005.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/sar_resnet31_static_8_bit-c07316bc.onnx",
     },
 }
 
@@ -99,6 +100,7 @@ class SARPostProcessor(RecognitionPostProcessor):
 def _sar(
     arch: str,
     model_path: str,
+    load_in_8_bit: bool = False,
     **kwargs: Any,
 ) -> SAR:
     # Patch the config
@@ -107,12 +109,16 @@ def _sar(
     _cfg["input_shape"] = kwargs.get("input_shape", _cfg["input_shape"])
 
     kwargs["vocab"] = _cfg["vocab"]
+    # Patch the url
+    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
     # Build the model
     return SAR(model_path, cfg=_cfg, **kwargs)
 
 
-def sar_resnet31(model_path: str = default_cfgs["sar_resnet31"]["url"], **kwargs: Any) -> SAR:
+def sar_resnet31(
+    model_path: str = default_cfgs["sar_resnet31"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> SAR:
     """SAR with a resnet-31 feature extractor as described in `"Show, Attend and Read:A Simple and Strong
     Baseline for Irregular Text Recognition" <https://arxiv.org/pdf/1811.00751.pdf>`_.
 
@@ -125,10 +131,11 @@ def sar_resnet31(model_path: str = default_cfgs["sar_resnet31"]["url"], **kwargs
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword arguments of the SAR architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _sar("sar_resnet31", model_path, **kwargs)
+    return _sar("sar_resnet31", model_path, load_in_8_bit, **kwargs)

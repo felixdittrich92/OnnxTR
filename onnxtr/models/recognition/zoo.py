@@ -25,12 +25,12 @@ ARCHS: List[str] = [
 ]
 
 
-def _predictor(arch: Any, **kwargs: Any) -> RecognitionPredictor:
+def _predictor(arch: Any, load_in_8_bit: bool = False, **kwargs: Any) -> RecognitionPredictor:
     if isinstance(arch, str):
         if arch not in ARCHS:
             raise ValueError(f"unknown architecture '{arch}'")
 
-        _model = recognition.__dict__[arch]()
+        _model = recognition.__dict__[arch](load_in_8_bit=load_in_8_bit)
     else:
         if not isinstance(
             arch, (recognition.CRNN, recognition.SAR, recognition.MASTER, recognition.ViTSTR, recognition.PARSeq)
@@ -47,7 +47,9 @@ def _predictor(arch: Any, **kwargs: Any) -> RecognitionPredictor:
     return predictor
 
 
-def recognition_predictor(arch: Any = "crnn_vgg16_bn", **kwargs: Any) -> RecognitionPredictor:
+def recognition_predictor(
+    arch: Any = "crnn_vgg16_bn", load_in_8_bit: bool = False, **kwargs: Any
+) -> RecognitionPredictor:
     """Text recognition architecture.
 
     Example::
@@ -60,10 +62,11 @@ def recognition_predictor(arch: Any = "crnn_vgg16_bn", **kwargs: Any) -> Recogni
     Args:
     ----
         arch: name of the architecture or model itself to use (e.g. 'crnn_vgg16_bn')
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: optional parameters to be passed to the architecture
 
     Returns:
     -------
         Recognition predictor
     """
-    return _predictor(arch, **kwargs)
+    return _predictor(arch, load_in_8_bit, **kwargs)

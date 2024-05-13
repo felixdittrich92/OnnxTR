@@ -31,6 +31,7 @@ class _OCRPredictor:
             accordingly. Doing so will improve performances for documents with page-uniform rotations.
         preserve_aspect_ratio: if True, resize preserving the aspect ratio (with padding)
         symmetric_pad: if True and preserve_aspect_ratio is True, pas the image symmetrically.
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword args of `DocumentBuilder`
     """
 
@@ -42,11 +43,14 @@ class _OCRPredictor:
         straighten_pages: bool = False,
         preserve_aspect_ratio: bool = True,
         symmetric_pad: bool = True,
+        load_in_8_bit: bool = False,
         **kwargs: Any,
     ) -> None:
         self.assume_straight_pages = assume_straight_pages
         self.straighten_pages = straighten_pages
-        self.crop_orientation_predictor = None if assume_straight_pages else crop_orientation_predictor()
+        self.crop_orientation_predictor = (
+            None if assume_straight_pages else crop_orientation_predictor(load_in_8_bit=load_in_8_bit)
+        )
         self.doc_builder = DocumentBuilder(**kwargs)
         self.preserve_aspect_ratio = preserve_aspect_ratio
         self.symmetric_pad = symmetric_pad

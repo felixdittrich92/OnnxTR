@@ -63,6 +63,7 @@ def test_postprocessor():
     assert isinstance(r_out, np.ndarray) and r_out.shape == (4, 2)
 
 
+@pytest.mark.parametrize("quantized", [False, True])
 @pytest.mark.parametrize(
     "arch_name, input_shape, output_size, out_prob",
     [
@@ -77,9 +78,9 @@ def test_postprocessor():
         ["fast_base", (1024, 1024, 3), (1024, 1024, 1), True],
     ],
 )
-def test_detection_models(arch_name, input_shape, output_size, out_prob):
+def test_detection_models(arch_name, input_shape, output_size, out_prob, quantized):
     batch_size = 2
-    model = detection.__dict__[arch_name]()
+    model = detection.__dict__[arch_name](load_in_8_bit=quantized)
     assert isinstance(model, Engine)
     input_array = np.random.rand(batch_size, *input_shape).astype(np.float32)
     out = model(input_array, return_model_output=True)
@@ -98,6 +99,7 @@ def test_detection_models(arch_name, input_shape, output_size, out_prob):
             assert np.all(boxes[:, :4] >= 0) and np.all(boxes[:, :4] <= 1)
 
 
+@pytest.mark.parametrize("quantized", [False, True])
 @pytest.mark.parametrize(
     "arch_name",
     [
@@ -112,9 +114,9 @@ def test_detection_models(arch_name, input_shape, output_size, out_prob):
         "fast_base",
     ],
 )
-def test_detection_zoo(arch_name):
+def test_detection_zoo(arch_name, quantized):
     # Model
-    predictor = detection.zoo.detection_predictor(arch_name)
+    predictor = detection.zoo.detection_predictor(arch_name, load_in_8_bit=quantized)
     # object check
     assert isinstance(predictor, DetectionPredictor)
     input_array = np.random.rand(2, 3, 1024, 1024).astype(np.float32)

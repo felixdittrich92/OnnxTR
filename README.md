@@ -90,6 +90,8 @@ model = ocr_predictor(
     resolve_lines=True,  # whether words should be automatically grouped into lines (default: True)
     resolve_blocks=True,  # whether lines should be automatically grouped into blocks (default: True)
     paragraph_break=0.035,  # relative length of the minimum space separating paragraphs (default: 0.035)
+    # OnnxTR specific parameters
+    load_in_8_bit=False,  # set to `True` to load 8-bit quantized models instead of the full precision onces (default: False)
 )
 # PDF
 doc = DocumentFile.from_pdf("path/to/your/doc.pdf")
@@ -170,9 +172,9 @@ predictor.list_archs()
             'linknet_resnet18',
             'linknet_resnet34',
             'linknet_resnet50',
-            'fast_tiny',
-            'fast_small',
-            'fast_base'
+            'fast_tiny',  # No 8-bit support
+            'fast_small',  # No 8-bit support
+            'fast_base'  # No 8-bit support
         ],
     'recognition archs':
         [
@@ -202,13 +204,14 @@ NOTE:
 ### Benchmarks
 
 The CPU benchmarks was measured on a `i7-14700K Intel CPU`.
+
 The GPU benchmarks was measured on a `RTX 4080 Nvidia GPU`.
 
-Benchmarking performed on the FUNSD dataset and the CORD dataset.
+Benchmarking performed on the FUNSD dataset and CORD dataset.
 
 docTR / OnnxTR models used for the benchmarks are `fast_base` for detection and `crnn_vgg16_bn` for recognition.
 
-The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.17s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset.
+The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.17s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset in **full precision**.
 
 - CPU benchmarks:
 
@@ -216,7 +219,7 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 |--------------------------------|-------------------------------|-------------------------------|
 |docTR (CPU) - v0.8.1            | ~1.29s / Page                 | ~0.60s / Page                 |
 |**OnnxTR (CPU)** - v0.1.2       | ~0.57s / Page                 | **~0.25s / Page**             |
-|OnnxTR (CPU) 8-bit - v0.1.2     | in progress                   | in progress                   |
+|**OnnxTR (CPU) 8-bit** - v0.1.2 | **~0.38s / Page**             | **~0.14s / Page**             |
 |EasyOCR (CPU) - v1.7.1          | ~1.96s / Page                 | ~1.75s / Page                 |
 |**PyTesseract (CPU)** - v0.3.10 | **~0.50s / Page**             | ~0.52s / Page                 |
 |Surya (line) (CPU) - v0.4.4     | ~48.76s / Page                | ~35.49s / Page                |

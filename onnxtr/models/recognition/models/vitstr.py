@@ -23,6 +23,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/vitstr_small-3ff9c500.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/vitstr_small_dynamic_8_bit-bec6c796.onnx",
     },
     "vitstr_base": {
         "mean": (0.694, 0.695, 0.693),
@@ -30,6 +31,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
         "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/vitstr_base-ff62f5be.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/vitstr_base_dynamic_8_bit-976c7cd6.onnx",
     },
 }
 
@@ -109,6 +111,7 @@ class ViTSTRPostProcessor(RecognitionPostProcessor):
 def _vitstr(
     arch: str,
     model_path: str,
+    load_in_8_bit: bool = False,
     **kwargs: Any,
 ) -> ViTSTR:
     # Patch the config
@@ -117,12 +120,16 @@ def _vitstr(
     _cfg["input_shape"] = kwargs.get("input_shape", _cfg["input_shape"])
 
     kwargs["vocab"] = _cfg["vocab"]
+    # Patch the url
+    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
     # Build the model
     return ViTSTR(model_path, cfg=_cfg, **kwargs)
 
 
-def vitstr_small(model_path: str = default_cfgs["vitstr_small"]["url"], **kwargs: Any) -> ViTSTR:
+def vitstr_small(
+    model_path: str = default_cfgs["vitstr_small"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> ViTSTR:
     """ViTSTR-Small as described in `"Vision Transformer for Fast and Efficient Scene Text Recognition"
     <https://arxiv.org/pdf/2105.08582.pdf>`_.
 
@@ -135,16 +142,19 @@ def vitstr_small(model_path: str = default_cfgs["vitstr_small"]["url"], **kwargs
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
-        kwargs: keyword arguments of the ViTSTR architecture
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        **kwargs: keyword arguments of the ViTSTR architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _vitstr("vitstr_small", model_path, **kwargs)
+    return _vitstr("vitstr_small", model_path, load_in_8_bit, **kwargs)
 
 
-def vitstr_base(model_path: str = default_cfgs["vitstr_base"]["url"], **kwargs: Any) -> ViTSTR:
+def vitstr_base(
+    model_path: str = default_cfgs["vitstr_base"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+) -> ViTSTR:
     """ViTSTR-Base as described in `"Vision Transformer for Fast and Efficient Scene Text Recognition"
     <https://arxiv.org/pdf/2105.08582.pdf>`_.
 
@@ -157,10 +167,11 @@ def vitstr_base(model_path: str = default_cfgs["vitstr_base"]["url"], **kwargs: 
     Args:
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
-        kwargs: keyword arguments of the ViTSTR architecture
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        **kwargs: keyword arguments of the ViTSTR architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _vitstr("vitstr_base", model_path, **kwargs)
+    return _vitstr("vitstr_base", model_path, load_in_8_bit, **kwargs)
