@@ -74,11 +74,9 @@ jobs:
 #        with:
 #          auto-update-conda: true
 #          python-version: 3.9
-#          channels: pypdfium2-team,bblanchon,defaults,conda-forge
-#          channel-priority: strict
 #      - name: Install dependencies
 #        shell: bash -el {0}
-#        run: conda install -y conda-build conda-verify anaconda-client
+#        run: conda install -y conda-build!=24.5.0 conda-verify anaconda-client
 #      - name: Get release tag
 #        id: release_tag
 #        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
@@ -108,5 +106,6 @@ jobs:
 #        shell: bash -el {0}
 #        run: |
 #          conda config --set channel_priority strict
-#          conda install -c techMindee -c pypdfium2-team -c bblanchon -c defaults -c conda-forge python-doctr
-#          python -c "import onnxtr; print(onnxtr.__version__)"
+#          conda install -c conda-forge onnxruntime
+#          conda install -c felix92 onnxtr
+#          python -c "from importlib.metadata import version; print(version('onnxtr'))"
