@@ -1,15 +1,15 @@
 {% set pyproject = load_file_data('../pyproject.toml', from_recipe_dir=True) %}
 {% set project = pyproject.get('project') %}
 {% set urls = pyproject.get('project', {}).get('urls') %}
-{% set version = environ.get('BUILD_VERSION', '0.1.0a0') %}
+{% set version = environ.get('BUILD_VERSION', '0.2.1a0') %}
 
 package:
-  name: {{ project.get('name') }}
+  name: onnxtr
   version: {{ version }}
 
 source:
-  fn: {{ project.get('name') }}-{{ version }}.tar.gz
-  url: ../dist/{{ project.get('name') }}-{{ version }}.tar.gz
+  fn: onnxtr-{{ version }}.tar.gz
+  url: ../dist/onnxtr-{{ version }}.tar.gz
 
 build:
   script: python setup.py install --single-version-externally-managed --record=record.txt
@@ -21,7 +21,6 @@ requirements:
 
   run:
     - numpy >=1.16.0, <2.0.0
-    - onnxruntime >=1.17.0, <2.0.0
     - scipy >=1.4.0, <2.0.0
     - pillow >=9.2.0
     - opencv >=4.5.0, <5.0.0
@@ -37,6 +36,7 @@ requirements:
 test:
   requires:
     - pip
+    - onnxruntime
 
   imports:
     - onnxtr
@@ -46,5 +46,4 @@ about:
   license: Apache-2.0
   license_file: {{ project.get('license', {}).get('file') }}
   summary: {{ project.get('description') | replace(":", " -")}}
-  doc_url: {{ urls.get('documentation') }}
   dev_url: {{ urls.get('repository') }}
