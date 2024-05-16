@@ -74,8 +74,8 @@ jobs:
 #        with:
 #          auto-update-conda: true
 #          python-version: 3.9
+#          channels: pypdfium2-team,bblanchon,defaults,conda-forge
 #          channel-priority: strict
-#          channels: defaults,conda-forge
 #      - name: Install dependencies
 #        shell: bash -el {0}
 #        run: conda install -y conda-build!=24.5.0 conda-verify anaconda-client
@@ -109,5 +109,5 @@ jobs:
 #        run: |
 #          conda config --set channel_priority strict
 #          conda install -c conda-forge onnxruntime
-#          conda install -c felix92 -c conda-forge onnxtr
+#          conda install -c felix92 -c pypdfium2-team -c bblanchon -c defaults -c conda-forge onnxtr
 #          python -c "from importlib.metadata import version; print(version('onnxtr'))"
