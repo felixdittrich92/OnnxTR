@@ -45,5 +45,4 @@ about:
   license: Apache-2.0
   license_file: {{ project.get('license', {}).get('file') }}
   summary: {{ project.get('description') | replace(":", " -")}}
-  doc_url: {{ urls.get('documentation') }}
   dev_url: {{ urls.get('repository') }}
