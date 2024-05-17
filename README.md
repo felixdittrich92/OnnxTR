@@ -217,24 +217,26 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 
 - CPU benchmarks:
 
-|Library                         |FUNSD (199 pages)              |CORD  (900 pages)              |
-|--------------------------------|-------------------------------|-------------------------------|
-|docTR (CPU) - v0.8.1            | ~1.29s / Page                 | ~0.60s / Page                 |
-|**OnnxTR (CPU)** - v0.1.2       | ~0.57s / Page                 | **~0.25s / Page**             |
-|**OnnxTR (CPU) 8-bit** - v0.1.2 | **~0.38s / Page**             | **~0.14s / Page**             |
-|EasyOCR (CPU) - v1.7.1          | ~1.96s / Page                 | ~1.75s / Page                 |
-|**PyTesseract (CPU)** - v0.3.10 | **~0.50s / Page**             | ~0.52s / Page                 |
-|Surya (line) (CPU) - v0.4.4     | ~48.76s / Page                | ~35.49s / Page                |
+|Library                          |FUNSD (199 pages)              |CORD  (900 pages)              |
+|---------------------------------|-------------------------------|-------------------------------|
+|docTR (CPU) - v0.8.1             | ~1.29s / Page                 | ~0.60s / Page                 |
+|**OnnxTR (CPU)** - v0.1.2        | ~0.57s / Page                 | **~0.25s / Page**             |
+|**OnnxTR (CPU) 8-bit** - v0.1.2  | **~0.38s / Page**             | **~0.14s / Page**             |
+|EasyOCR (CPU) - v1.7.1           | ~1.96s / Page                 | ~1.75s / Page                 |
+|**PyTesseract (CPU)** - v0.3.10  | **~0.50s / Page**             | ~0.52s / Page                 |
+|Surya (line) (CPU) - v0.4.4      | ~48.76s / Page                | ~35.49s / Page                |
+|PaddleOCR (CPU) - no cls - v2.7.3| ~1.27s / Page                 | ~0.38s / Page                 |
 
 - GPU benchmarks:
 
-|Library                         |FUNSD (199 pages)              |CORD  (900 pages)              |
-|--------------------------------|-------------------------------|-------------------------------|
-|docTR (GPU) - v0.8.1            | ~0.07s / Page                 | ~0.05s / Page                 |
-|**docTR (GPU) float16** - v0.8.1| **~0.06s / Page**             | **~0.03s / Page**             |
-|OnnxTR (GPU) - v0.1.2           | **~0.06s / Page**             | ~0.04s / Page                 |
-|EasyOCR (GPU) - v1.7.1          | ~0.31s / Page                 | ~0.19s / Page                 |
-|Surya (GPU) float16 - v0.4.4    | ~3.70s / Page                 | ~2.81s / Page                 |
+|Library                              |FUNSD (199 pages)              |CORD  (900 pages)              |
+|-------------------------------------|-------------------------------|-------------------------------|
+|docTR (GPU) - v0.8.1                 | ~0.07s / Page                 | ~0.05s / Page                 |
+|**docTR (GPU) float16** - v0.8.1     | **~0.06s / Page**             | **~0.03s / Page**             |
+|OnnxTR (GPU) - v0.1.2                | **~0.06s / Page**             | ~0.04s / Page                 |
+|EasyOCR (GPU) - v1.7.1               | ~0.31s / Page                 | ~0.19s / Page                 |
+|Surya (GPU) float16 - v0.4.4         | ~3.70s / Page                 | ~2.81s / Page                 |
+|**PaddleOCR (GPU) - no cls - v2.7.3**| ~0.08s / Page                 | **~0.03s / Page**             |
 
 ## Citation
 
