@@ -96,11 +96,6 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             # forward again to get predictions on straight pages
             loc_preds = self.det_predictor(pages, **kwargs)  # type: ignore[assignment]
 
-        loc_preds = [loc_pred[0] for loc_pred in loc_preds]
-
-        # Rectify crops if aspect ratio
-        loc_preds = self._remove_padding(pages, loc_preds)
-
         # Apply hooks to loc_preds if any
         for hook in self.hooks:
             loc_preds = hook(loc_preds)
