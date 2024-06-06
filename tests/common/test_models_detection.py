@@ -122,13 +122,12 @@ def test_detection_zoo(arch_name, quantized):
     input_array = np.random.rand(2, 3, 1024, 1024).astype(np.float32)
 
     out, seq_maps = predictor(input_array, return_maps=True)
-    assert all(isinstance(boxes, list) for boxes in out)
-    for boxes in out:
-        for box in boxes:
-            assert isinstance(box, np.ndarray)
-            assert box.shape[1] == 5
-            assert np.all(box[:, :2] < box[:, 2:4])
-            assert np.all(box[:, :4] >= 0) and np.all(box[:, :4] <= 1)
+    assert isinstance(out, list)
+    for box in out:
+        assert isinstance(box, np.ndarray)
+        assert box.shape[1] == 5
+        assert np.all(box[:, :2] < box[:, 2:4])
+        assert np.all(box[:, :4] >= 0) and np.all(box[:, :4] <= 1)
     assert all(isinstance(seq_map, np.ndarray) for seq_map in seq_maps)
     assert all(seq_map.shape[:2] == (1024, 1024) for seq_map in seq_maps)
     # check that all values in the seq_maps are between 0 and 1

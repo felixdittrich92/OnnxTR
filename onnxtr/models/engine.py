@@ -6,7 +6,7 @@
 from typing import Any, List, Union
 
 import numpy as np
-import onnxruntime
+from onnxruntime import ExecutionMode, GraphOptimizationLevel, InferenceSession, SessionOptions
 
 from onnxtr.utils.data import download_from_url
 from onnxtr.utils.geometry import shape_translate
@@ -26,13 +26,23 @@ class Engine:
         self, url: str, providers: List[str] = ["CPUExecutionProvider", "CUDAExecutionProvider"], **kwargs: Any
     ) -> None:
         archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
-        self.runtime = onnxruntime.InferenceSession(archive_path, providers=providers)
+        session_options = self._init_sess_opts()
+        self.runtime = InferenceSession(archive_path, providers=providers, sess_options=session_options)
         self.runtime_inputs = self.runtime.get_inputs()[0]
         self.tf_exported = int(self.runtime_inputs.shape[-1]) == 3
         self.fixed_batch_size: Union[int, str] = self.runtime_inputs.shape[
             0
         ]  # mostly possible with tensorflow exported models
         self.output_name = [output.name for output in self.runtime.get_outputs()]
+
+    def _init_sess_opts(self) -> SessionOptions:
+        session_options = SessionOptions()
+        session_options.enable_cpu_mem_arena = True
+        session_options.execution_mode = ExecutionMode.ORT_SEQUENTIAL
+        session_options.graph_optimization_level = GraphOptimizationLevel.ORT_ENABLE_ALL
+        session_options.intra_op_num_threads = -1
+        session_options.inter_op_num_threads = -1
+        return session_options
 
     def run(self, inputs: np.ndarray) -> np.ndarray:
         if self.tf_exported:
