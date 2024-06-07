@@ -97,7 +97,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             loc_preds = self.det_predictor(pages, **kwargs)  # type: ignore[assignment]
 
         # Detach objectness scores from loc_preds
-        loc_preds, objectness_scores = detach_scores(loc_preds)
+        loc_preds, objectness_scores = detach_scores(loc_preds)  # type: ignore[arg-type]
 
         # Apply hooks to loc_preds if any
         for hook in self.hooks:
