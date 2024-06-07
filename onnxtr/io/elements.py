@@ -67,10 +67,11 @@ class Word(Element):
         confidence: the confidence associated with the text prediction
         geometry: bounding box of the word in format ((xmin, ymin), (xmax, ymax)) where coordinates are relative to
         the page's size
+        objectness_score: the objectness score of the detection
         crop_orientation: the general orientation of the crop in degrees and its confidence
     """
 
-    _exported_keys: List[str] = ["value", "confidence", "geometry", "crop_orientation"]
+    _exported_keys: List[str] = ["value", "confidence", "geometry", "objectness_score", "crop_orientation"]
     _children_names: List[str] = []
 
     def __init__(
@@ -78,12 +79,14 @@ class Word(Element):
         value: str,
         confidence: float,
         geometry: Union[BoundingBox, np.ndarray],
+        objectness_score: float,
         crop_orientation: Dict[str, Any],
     ) -> None:
         super().__init__()
         self.value = value
         self.confidence = confidence
         self.geometry = geometry
+        self.objectness_score = objectness_score
         self.crop_orientation = crop_orientation
 
     def render(self) -> str:
@@ -143,7 +146,7 @@ class Line(Element):
             all words in it.
     """
 
-    _exported_keys: List[str] = ["geometry"]
+    _exported_keys: List[str] = ["geometry", "objectness_score"]
     _children_names: List[str] = ["words"]
     words: List[Word] = []
 
@@ -151,7 +154,11 @@ class Line(Element):
         self,
         words: List[Word],
         geometry: Optional[Union[BoundingBox, np.ndarray]] = None,
+        objectness_score: Optional[float] = None,
     ) -> None:
+        # Compute the objectness score of the line
+        if objectness_score is None:
+            objectness_score = float(np.mean([w.objectness_score for w in words]))
         # Resolve the geometry using the smallest enclosing bounding box
         if geometry is None:
             # Check whether this is a rotated or straight box
@@ -160,6 +167,7 @@ class Line(Element):
 
         super().__init__(words=words)
         self.geometry = geometry
+        self.objectness_score = objectness_score
 
     def render(self) -> str:
         """Renders the full text of the element"""
@@ -186,7 +194,7 @@ class Block(Element):
             all lines and artefacts in it.
     """
 
-    _exported_keys: List[str] = ["geometry"]
+    _exported_keys: List[str] = ["geometry", "objectness_score"]
     _children_names: List[str] = ["lines", "artefacts"]
     lines: List[Line] = []
     artefacts: List[Artefact] = []
@@ -196,7 +204,11 @@ class Block(Element):
         lines: List[Line] = [],
         artefacts: List[Artefact] = [],
         geometry: Optional[Union[BoundingBox, np.ndarray]] = None,
+        objectness_score: Optional[float] = None,
     ) -> None:
+        # Compute the objectness score of the line
+        if objectness_score is None:
+            objectness_score = float(np.mean([w.objectness_score for line in lines for w in line.words]))
         # Resolve the geometry using the smallest enclosing bounding box
         if geometry is None:
             line_boxes = [word.geometry for line in lines for word in line.words]
@@ -208,6 +220,7 @@ class Block(Element):
 
         super().__init__(lines=lines, artefacts=artefacts)
         self.geometry = geometry
+        self.objectness_score = objectness_score
 
     def render(self, line_break: str = "\n") -> str:
         """Renders the full text of the element"""
@@ -314,7 +327,7 @@ class Page(Element):
         SubElement(
             head,
             "meta",
-            attrib={"name": "ocr-system", "content": f" {onnxtr.__version__}"},  # type: ignore[attr-defined]
+            attrib={"name": "ocr-system", "content": f"onnxtr {onnxtr.__version__}"},  # type: ignore[attr-defined]
         )
         SubElement(
             head,
