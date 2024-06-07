@@ -6,18 +6,20 @@ import pytest
 from onnxtr.io import elements
 
 
-def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9, polygons=False):
+def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9, objectness_score=0.9, polygons=False):
     box_word_elements = [
         elements.Word(
             "hello",
             confidence,
             ((offset[0], offset[1]), (size[0] / 2 + offset[0], size[1] / 2 + offset[1])),
+            objectness_score,
             {"value": 0, "confidence": None},
         ),
         elements.Word(
             "world",
             confidence,
             ((size[0] / 2 + offset[0], size[1] / 2 + offset[1]), (size[0] + offset[0], size[1] + offset[1])),
+            objectness_score,
             {"value": 0, "confidence": None},
         ),
     ]
@@ -32,6 +34,7 @@ def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9, polygons=False):
                 [size[0] / 2 + offset[0], size[1] / 2 + offset[1]],
                 [offset[0], size[1] / 2 + offset[1]],
             ]),
+            objectness_score,
             {"value": 0, "confidence": None},
         ),
         elements.Word(
@@ -44,6 +47,7 @@ def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9, polygons=False):
                 [size[0] + offset[0], size[1] + offset[1]],
                 [size[0] / 2 + offset[0], size[1] + offset[1]],
             ]),
+            objectness_score,
             {"value": 0, "confidence": None},
         ),
     ]
@@ -120,13 +124,15 @@ def test_word():
     word_str = "hello"
     conf = 0.8
     geom = ((0, 0), (1, 1))
+    objectness_score = 0.9
     crop_orientation = {"value": 0, "confidence": None}
-    word = elements.Word(word_str, conf, geom, crop_orientation)
+    word = elements.Word(word_str, conf, geom, objectness_score, crop_orientation)
 
     # Attribute checks
     assert word.value == word_str
     assert word.confidence == conf
     assert word.geometry == geom
+    assert word.objectness_score == objectness_score
     assert word.crop_orientation == crop_orientation
 
     # Render
@@ -137,6 +143,7 @@ def test_word():
         "value": word_str,
         "confidence": conf,
         "geometry": geom,
+        "objectness_score": objectness_score,
         "crop_orientation": crop_orientation,
     }
 
@@ -148,6 +155,7 @@ def test_word():
         "value": "there",
         "confidence": 0.1,
         "geometry": ((0, 0), (0.5, 0.5)),
+        "objectness_score": objectness_score,
         "crop_orientation": crop_orientation,
     }
     word = elements.Word.from_dict(state_dict)
@@ -156,6 +164,7 @@ def test_word():
 
 def test_line():
     geom = ((0, 0), (0.5, 0.5))
+    objectness_score = 0.9
     words = _mock_words(size=geom[1], offset=geom[0])
     line = elements.Line(words)
 
@@ -163,12 +172,17 @@ def test_line():
     assert len(line.words) == len(words)
     assert all(isinstance(w, elements.Word) for w in line.words)
     assert line.geometry == geom
+    assert line.objectness_score == objectness_score
 
     # Render
     assert line.render() == "hello world"
 
     # Export
-    assert line.export() == {"words": [w.export() for w in words], "geometry": geom}
+    assert line.export() == {
+        "words": [w.export() for w in words],
+        "geometry": geom,
+        "objectness_score": objectness_score,
+    }
 
     # Repr
     words_str = " " * 4 + ",\n    ".join(repr(word) for word in words) + ","
@@ -184,10 +198,12 @@ def test_line():
                 "value": "there",
                 "confidence": 0.1,
                 "geometry": ((0, 0), (1.0, 1.0)),
+                "objectness_score": objectness_score,
                 "crop_orientation": {"value": 0, "confidence": None},
             }
         ],
         "geometry": ((0, 0), (1.0, 1.0)),
+        "objectness_score": objectness_score,
     }
     line = elements.Line.from_dict(state_dict)
     assert line.export() == state_dict
@@ -217,6 +233,7 @@ def test_artefact():
 def test_block():
     geom = ((0, 0), (1, 1))
     sub_size = (geom[1][0] / 2, geom[1][0] / 2)
+    objectness_score = 0.9
     lines = _mock_lines(size=sub_size, offset=geom[0])
     artefacts = _mock_artefacts(size=sub_size, offset=sub_size)
     block = elements.Block(lines, artefacts)
@@ -236,6 +253,7 @@ def test_block():
         "lines": [line.export() for line in lines],
         "artefacts": [artefact.export() for artefact in artefacts],
         "geometry": geom,
+        "objectness_score": objectness_score,
     }
 
 

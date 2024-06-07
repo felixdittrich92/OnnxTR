@@ -11,7 +11,7 @@ from onnxtr.io.elements import Document
 from onnxtr.models._utils import estimate_orientation, get_language
 from onnxtr.models.detection.predictor import DetectionPredictor
 from onnxtr.models.recognition.predictor import RecognitionPredictor
-from onnxtr.utils.geometry import rotate_image
+from onnxtr.utils.geometry import detach_scores, rotate_image
 from onnxtr.utils.repr import NestedObject
 
 from .base import _OCRPredictor
@@ -96,6 +96,9 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             # forward again to get predictions on straight pages
             loc_preds = self.det_predictor(pages, **kwargs)  # type: ignore[assignment]
 
+        # Detach objectness scores from loc_preds
+        loc_preds, objectness_scores = detach_scores(loc_preds)
+
         # Apply hooks to loc_preds if any
         for hook in self.hooks:
             loc_preds = hook(loc_preds)
@@ -131,6 +134,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
         out = self.doc_builder(
             pages,
             boxes,
+            objectness_scores,
             text_preds,
             origin_page_shapes,  # type: ignore[arg-type]
             crop_orientations,

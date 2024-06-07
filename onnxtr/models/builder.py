@@ -223,6 +223,7 @@ class DocumentBuilder(NestedObject):
     def _build_blocks(
         self,
         boxes: np.ndarray,
+        objectness_scores: np.ndarray,
         word_preds: List[Tuple[str, float]],
         crop_orientations: List[Dict[str, Any]],
     ) -> List[Block]:
@@ -230,7 +231,8 @@ class DocumentBuilder(NestedObject):
 
         Args:
         ----
-            boxes: bounding boxes of all detected words of the page, of shape (N, 5) or (N, 4, 2)
+            boxes: bounding boxes of all detected words of the page, of shape (N, 4) or (N, 4, 2)
+            objectness_scores: objectness scores of all detected words of the page, of shape N
             word_preds: list of all detected words of the page, of shape N
             crop_orientations: list of dictoinaries containing
                 the general orientation (orientations + confidences) of the crops
@@ -265,12 +267,14 @@ class DocumentBuilder(NestedObject):
                     Word(
                         *word_preds[idx],
                         tuple([tuple(pt) for pt in boxes[idx].tolist()]),  # type: ignore[arg-type]
+                        float(objectness_scores[idx]),
                         crop_orientations[idx],
                     )
                     if boxes.ndim == 3
                     else Word(
                         *word_preds[idx],
                         ((boxes[idx, 0], boxes[idx, 1]), (boxes[idx, 2], boxes[idx, 3])),
+                        float(objectness_scores[idx]),
                         crop_orientations[idx],
                     )
                     for idx in line
@@ -293,6 +297,7 @@ class DocumentBuilder(NestedObject):
         self,
         pages: List[np.ndarray],
         boxes: List[np.ndarray],
+        objectness_scores: List[np.ndarray],
         text_preds: List[List[Tuple[str, float]]],
         page_shapes: List[Tuple[int, int]],
         crop_orientations: List[Dict[str, Any]],
@@ -304,8 +309,9 @@ class DocumentBuilder(NestedObject):
         Args:
         ----
             pages: list of N elements, where each element represents the page image
-            boxes: list of N elements, where each element represents the localization predictions, of shape (*, 5)
-                or (*, 6) for all words for a given page
+            boxes: list of N elements, where each element represents the localization predictions, of shape (*, 4)
+                or (*, 4, 2) for all words for a given page
+            objectness_scores: list of N elements, where each element represents the objectness scores
             text_preds: list of N elements, where each element is the list of all word prediction (text + confidence)
             page_shapes: shape of each page, of size N
             crop_orientations: list of N elements, where each element is
@@ -319,9 +325,9 @@ class DocumentBuilder(NestedObject):
         -------
             document object
         """
-        if len(boxes) != len(text_preds) != len(crop_orientations) or len(boxes) != len(page_shapes) != len(
-            crop_orientations
-        ):
+        if len(boxes) != len(text_preds) != len(crop_orientations) != len(objectness_scores) or len(boxes) != len(
+            page_shapes
+        ) != len(crop_orientations) != len(objectness_scores):
             raise ValueError("All arguments are expected to be lists of the same size")
 
         _orientations = (
@@ -339,6 +345,7 @@ class DocumentBuilder(NestedObject):
                 page,
                 self._build_blocks(
                     page_boxes,
+                    loc_scores,
                     word_preds,
                     word_crop_orientations,
                 ),
@@ -347,8 +354,16 @@ class DocumentBuilder(NestedObject):
                 orientation,
                 language,
             )
-            for page, _idx, shape, page_boxes, word_preds, word_crop_orientations, orientation, language in zip(
-                pages, range(len(boxes)), page_shapes, boxes, text_preds, crop_orientations, _orientations, _languages
+            for page, _idx, shape, page_boxes, loc_scores, word_preds, word_crop_orientations, orientation, language in zip(  # noqa: E501
+                pages,
+                range(len(boxes)),
+                page_shapes,
+                boxes,
+                objectness_scores,
+                text_preds,
+                crop_orientations,
+                _orientations,
+                _languages,
             )
         ]
 

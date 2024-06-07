@@ -3,9 +3,18 @@ import pytest
 
 from onnxtr.models import recognition
 from onnxtr.models.engine import Engine
+from onnxtr.models.recognition.core import RecognitionPostProcessor
 from onnxtr.models.recognition.predictor import RecognitionPredictor
 from onnxtr.models.recognition.predictor._utils import remap_preds, split_crops
 from onnxtr.utils.vocabs import VOCABS
+
+
+def test_recognition_postprocessor():
+    mock_vocab = VOCABS["french"]
+    post_processor = RecognitionPostProcessor(mock_vocab)
+    assert post_processor.extra_repr() == f"vocab_size={len(mock_vocab)}"
+    assert post_processor.vocab == mock_vocab
+    assert post_processor._embedding == list(mock_vocab) + ["<eos>"]
 
 
 @pytest.mark.parametrize(
