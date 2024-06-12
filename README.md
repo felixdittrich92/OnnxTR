@@ -68,7 +68,7 @@ multi_img_doc = DocumentFile.from_images(["path/to/page1.jpg", "path/to/page2.jp
 
 ### Putting it together
 
-Let's use the default pretrained model for an example:
+Let's use the default `ocr_predictor` model for an example:
 
 ```python
 from onnxtr.io import DocumentFile
