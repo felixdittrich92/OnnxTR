@@ -96,7 +96,10 @@ changelog = "https://github.com/felixdittrich92/OnnxTR/releases"
 zip-safe = true
 
 [tool.setuptools.packages.find]
-exclude = ["tests*", "scripts*"]
+exclude = ["docs*", "tests*", "scripts*"]
+
+[tool.setuptools.package-data]
+doctr = ["py.typed"]
 
 [tool.mypy]
 files = "onnxtr/"

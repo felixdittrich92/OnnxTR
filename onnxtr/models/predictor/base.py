@@ -8,10 +8,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 
 from onnxtr.models.builder import DocumentBuilder
-from onnxtr.utils.geometry import extract_crops, extract_rcrops
+from onnxtr.utils.geometry import extract_crops, extract_rcrops, rotate_image
 
-from .._utils import rectify_crops, rectify_loc_preds
-from ..classification import crop_orientation_predictor
+from .._utils import estimate_orientation, rectify_crops, rectify_loc_preds
+from ..classification import crop_orientation_predictor, page_orientation_predictor
 from ..classification.predictor import OrientationPredictor
 from ..detection.zoo import ARCHS as DETECTION_ARCHS
 from ..recognition.zoo import ARCHS as RECOGNITION_ARCHS
@@ -31,11 +31,14 @@ class _OCRPredictor:
             accordingly. Doing so will improve performances for documents with page-uniform rotations.
         preserve_aspect_ratio: if True, resize preserving the aspect ratio (with padding)
         symmetric_pad: if True and preserve_aspect_ratio is True, pas the image symmetrically.
+        detect_orientation: if True, the estimated general page orientation will be added to the predictions for each
+            page. Doing so will slightly deteriorate the overall latency.
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         **kwargs: keyword args of `DocumentBuilder`
     """
 
     crop_orientation_predictor: Optional[OrientationPredictor]
+    page_orientation_predictor: Optional[OrientationPredictor]
 
     def __init__(
         self,
@@ -43,6 +46,7 @@ class _OCRPredictor:
         straighten_pages: bool = False,
         preserve_aspect_ratio: bool = True,
         symmetric_pad: bool = True,
+        detect_orientation: bool = False,
         load_in_8_bit: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -51,10 +55,62 @@ class _OCRPredictor:
         self.crop_orientation_predictor = (
             None if assume_straight_pages else crop_orientation_predictor(load_in_8_bit=load_in_8_bit)
         )
+        self.page_orientation_predictor = (
+            page_orientation_predictor(load_in_8_bit=load_in_8_bit)
+            if detect_orientation or straighten_pages or not assume_straight_pages
+            else None
+        )
         self.doc_builder = DocumentBuilder(**kwargs)
         self.preserve_aspect_ratio = preserve_aspect_ratio
         self.symmetric_pad = symmetric_pad
         self.hooks: List[Callable] = []
+
+    def _general_page_orientations(
+        self,
+        pages: List[np.ndarray],
+    ) -> List[Tuple[int, float]]:
+        _, classes, probs = zip(self.page_orientation_predictor(pages))  # type: ignore[misc]
+        # Flatten to list of tuples with (value, confidence)
+        page_orientations = [
+            (orientation, prob)
+            for page_classes, page_probs in zip(classes, probs)
+            for orientation, prob in zip(page_classes, page_probs)
+        ]
+        return page_orientations
+
+    def _get_orientations(
+        self, pages: List[np.ndarray], seg_maps: List[np.ndarray]
+    ) -> Tuple[List[Tuple[int, float]], List[int]]:
+        general_pages_orientations = self._general_page_orientations(pages)
+        origin_page_orientations = [
+            estimate_orientation(seq_map, general_orientation)
+            for seq_map, general_orientation in zip(seg_maps, general_pages_orientations)
+        ]
+        return general_pages_orientations, origin_page_orientations
+
+    def _straighten_pages(
+        self,
+        pages: List[np.ndarray],
+        seg_maps: List[np.ndarray],
+        general_pages_orientations: Optional[List[Tuple[int, float]]] = None,
+        origin_pages_orientations: Optional[List[int]] = None,
+    ) -> List[np.ndarray]:
+        general_pages_orientations = (
+            general_pages_orientations if general_pages_orientations else self._general_page_orientations(pages)
+        )
+        origin_pages_orientations = (
+            origin_pages_orientations
+            if origin_pages_orientations
+            else [
+                estimate_orientation(seq_map, general_orientation)
+                for seq_map, general_orientation in zip(seg_maps, general_pages_orientations)
+            ]
+        )
+        return [
+            # We exapnd if the page is wider than tall and the angle is 90 or -90
+            rotate_image(page, angle, expand=page.shape[1] > page.shape[0] and abs(angle) == 90)
+            for page, angle in zip(pages, origin_pages_orientations)
+        ]
 
     @staticmethod
     def _generate_crops(
