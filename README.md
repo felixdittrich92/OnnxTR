@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/felixdittrich92/OnnxTR/graph/badge.svg?token=WVFRCQBOLI)](https://codecov.io/gh/felixdittrich92/OnnxTR)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/4fff4d764bb14fb8b4f4afeb9587231b)](https://app.codacy.com/gh/felixdittrich92/OnnxTR/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr/badge)](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr)
-[![Pypi](https://img.shields.io/badge/pypi-v0.2.0-blue.svg)](https://pypi.org/project/OnnxTR/)
+[![Pypi](https://img.shields.io/badge/pypi-v0.3.0-blue.svg)](https://pypi.org/project/OnnxTR/)
 
 > :warning: Please note that this is a wrapper around the [doctr](https://github.com/mindee/doctr) library to provide a Onnx pipeline for docTR. For feature requests, which are not directly related to the Onnx pipeline, please refer to the base project.
 
@@ -107,6 +107,34 @@ result = model(doc)
 result.show()
 ```
 
+![Visualization sample](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/doctr_example_script.gif)
+
+Or even rebuild the original document from its predictions:
+
+```python
+import matplotlib.pyplot as plt
+
+synthetic_pages = result.synthesize()
+plt.imshow(synthetic_pages[0]); plt.axis('off'); plt.show()
+```
+
+![Synthesis sample](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/synthesized_sample.png)
+
+The `ocr_predictor` returns a `Document` object with a nested structure (with `Page`, `Block`, `Line`, `Word`, `Artefact`).
+To get a better understanding of the document model, check out [documentation](https://mindee.github.io/doctr/modules/io.html#document-structure):
+
+You can also export them as a nested dict, more appropriate for JSON format / render it or export as XML (hocr format):
+
+```python
+json_output = result.export()  # nested dict
+text_output = result.render()  # human-readable text
+xml_output = result.export_as_xml()  # hocr format
+for output in xml_output:
+    xml_bytes_string = output[0]
+    xml_element = output[1]
+
+```
+
 <details>
   <summary>Advanced engine configuration options</summary>
 
@@ -139,34 +167,6 @@ predictor = ocr_predictor(
 ```
 
 </details>
-
-![Visualization sample](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/doctr_example_script.gif)
-
-Or even rebuild the original document from its predictions:
-
-```python
-import matplotlib.pyplot as plt
-
-synthetic_pages = result.synthesize()
-plt.imshow(synthetic_pages[0]); plt.axis('off'); plt.show()
-```
-
-![Synthesis sample](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/synthesized_sample.png)
-
-The `ocr_predictor` returns a `Document` object with a nested structure (with `Page`, `Block`, `Line`, `Word`, `Artefact`).
-To get a better understanding of the document model, check out [documentation](https://mindee.github.io/doctr/modules/io.html#document-structure):
-
-You can also export them as a nested dict, more appropriate for JSON format / render it or export as XML (hocr format):
-
-```python
-json_output = result.export()  # nested dict
-text_output = result.render()  # human-readable text
-xml_output = result.export_as_xml()  # hocr format
-for output in xml_output:
-    xml_bytes_string = output[0]
-    xml_element = output[1]
-
-```
 
 ## Loading custom exported models
 
