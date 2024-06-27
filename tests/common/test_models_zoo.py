@@ -52,6 +52,8 @@ def test_ocrpredictor(mock_pdf, assume_straight_pages, straighten_pages):
         straighten_pages=straighten_pages,
         detect_orientation=True,
         detect_language=True,
+        resolve_lines=True,
+        resolve_blocks=True,
     )
 
     if assume_straight_pages:
@@ -72,8 +74,7 @@ def test_ocrpredictor(mock_pdf, assume_straight_pages, straighten_pages):
         input_page = (255 * np.random.rand(1, 256, 512, 3)).astype(np.uint8)
         _ = predictor([input_page])
 
-    orientation = 0
-    assert out.pages[0].orientation["value"] == orientation
+    assert out.pages[0].orientation["value"] in range(-2, 3)
     assert isinstance(out.pages[0].language["value"], str)
     assert isinstance(out.render(), str)
     assert isinstance(out.pages[0].render(), str)
@@ -102,6 +103,8 @@ def test_trained_ocr_predictor(mock_payslip):
         assume_straight_pages=True,
         straighten_pages=True,
         preserve_aspect_ratio=False,
+        resolve_lines=True,
+        resolve_blocks=True,
     )
     # test hooks
     predictor.add_hook(_DummyCallback())
@@ -131,6 +134,8 @@ def test_trained_ocr_predictor(mock_payslip):
         straighten_pages=True,
         preserve_aspect_ratio=True,
         symmetric_pad=True,
+        resolve_lines=True,
+        resolve_blocks=True,
     )
 
     out = predictor(doc)

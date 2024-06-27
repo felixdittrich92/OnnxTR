@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 from scipy.special import expit
 
-from ...engine import Engine
+from ...engine import Engine, EngineConfig
 from ..postprocessor.base import GeneralDetectionPostProcessor
 
 __all__ = ["DBNet", "db_resnet50", "db_resnet34", "db_mobilenet_v3_large"]
@@ -33,8 +33,8 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/db_mobilenet_v3_large-1866973f.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/db_mobilenet_v3_large_static_8_bit-51659bb9.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.2.0/db_mobilenet_v3_large-4987e7bd.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.2.0/db_mobilenet_v3_large_static_8_bit-535a6f25.onnx",
     },
 }
 
@@ -45,6 +45,7 @@ class DBNet(Engine):
     Args:
     ----
         model_path: path or url to onnx model file
+        engine_cfg: configuration for the inference engine
         bin_thresh: threshold for binarization of the output feature map
         box_thresh: minimal objectness score to consider a box
         assume_straight_pages: if True, fit straight bounding boxes only
@@ -54,14 +55,15 @@ class DBNet(Engine):
 
     def __init__(
         self,
-        model_path,
+        model_path: str,
+        engine_cfg: EngineConfig = EngineConfig(),
         bin_thresh: float = 0.3,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path, **kwargs)
+        super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
         self.cfg = cfg
         self.assume_straight_pages = assume_straight_pages
         self.postprocessor = GeneralDetectionPostProcessor(
@@ -91,16 +93,20 @@ def _dbnet(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> DBNet:
     # Patch the url
     model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
     # Build the model
-    return DBNet(model_path, cfg=default_cfgs[arch], **kwargs)
+    return DBNet(model_path, cfg=default_cfgs[arch], engine_cfg=engine_cfg, **kwargs)
 
 
 def db_resnet34(
-    model_path: str = default_cfgs["db_resnet34"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+    model_path: str = default_cfgs["db_resnet34"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-34 backbone.
@@ -115,17 +121,21 @@ def db_resnet34(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _dbnet("db_resnet34", model_path, load_in_8_bit, **kwargs)
+    return _dbnet("db_resnet34", model_path, load_in_8_bit, engine_cfg, **kwargs)
 
 
 def db_resnet50(
-    model_path: str = default_cfgs["db_resnet50"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+    model_path: str = default_cfgs["db_resnet50"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-50 backbone.
@@ -140,17 +150,21 @@ def db_resnet50(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _dbnet("db_resnet50", model_path, load_in_8_bit, **kwargs)
+    return _dbnet("db_resnet50", model_path, load_in_8_bit, engine_cfg, **kwargs)
 
 
 def db_mobilenet_v3_large(
-    model_path: str = default_cfgs["db_mobilenet_v3_large"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+    model_path: str = default_cfgs["db_mobilenet_v3_large"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
     <https://arxiv.org/pdf/1911.08947.pdf>`_, using a MobileNet V3 Large backbone.
@@ -165,10 +179,11 @@ def db_mobilenet_v3_large(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
     -------
         text detection architecture
     """
-    return _dbnet("db_mobilenet_v3_large", model_path, load_in_8_bit, **kwargs)
+    return _dbnet("db_mobilenet_v3_large", model_path, load_in_8_bit, engine_cfg, **kwargs)

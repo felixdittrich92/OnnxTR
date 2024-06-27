@@ -140,15 +140,27 @@ def main():
     # Turn off model optimization during quantization
     if "parseq" not in input_model_path:  # Skip static quantization for Parseq
         print("Calibrating and quantizing model static...")
-        quantize_static(
-            input_model_path,
-            static_out_name,
-            dr,
-            quant_format=args.quant_format,
-            weight_type=QuantType.QUInt8,
-            activation_type=QuantType.QUInt8,
-            reduce_range=True,
-        )
+        try:
+            quantize_static(
+                input_model_path,
+                static_out_name,
+                dr,
+                quant_format=args.quant_format,
+                weight_type=QuantType.QInt8,
+                activation_type=QuantType.QUInt8,
+                reduce_range=True,
+            )
+        except Exception:
+            print("Error during static quantization --> Change weight_type also to QUInt8")
+            quantize_static(
+                input_model_path,
+                static_out_name,
+                dr,
+                quant_format=args.quant_format,
+                weight_type=QuantType.QUInt8,
+                activation_type=QuantType.QUInt8,
+                reduce_range=True,
+            )
 
         print("benchmarking static int8 model...")
         benchmark(calibration_dataset_path, static_out_name, task_shape)

@@ -5,9 +5,9 @@
 
 from typing import Any, List
 
-from onnxtr.models.preprocessor import PreProcessor
-
 from .. import recognition
+from ..engine import EngineConfig
+from ..preprocessor import PreProcessor
 from .predictor import RecognitionPredictor
 
 __all__ = ["recognition_predictor"]
@@ -25,12 +25,14 @@ ARCHS: List[str] = [
 ]
 
 
-def _predictor(arch: Any, load_in_8_bit: bool = False, **kwargs: Any) -> RecognitionPredictor:
+def _predictor(
+    arch: Any, load_in_8_bit: bool = False, engine_cfg: EngineConfig = EngineConfig(), **kwargs: Any
+) -> RecognitionPredictor:
     if isinstance(arch, str):
         if arch not in ARCHS:
             raise ValueError(f"unknown architecture '{arch}'")
 
-        _model = recognition.__dict__[arch](load_in_8_bit=load_in_8_bit)
+        _model = recognition.__dict__[arch](load_in_8_bit=load_in_8_bit, engine_cfg=engine_cfg)
     else:
         if not isinstance(
             arch, (recognition.CRNN, recognition.SAR, recognition.MASTER, recognition.ViTSTR, recognition.PARSeq)
@@ -48,7 +50,7 @@ def _predictor(arch: Any, load_in_8_bit: bool = False, **kwargs: Any) -> Recogni
 
 
 def recognition_predictor(
-    arch: Any = "crnn_vgg16_bn", load_in_8_bit: bool = False, **kwargs: Any
+    arch: Any = "crnn_vgg16_bn", load_in_8_bit: bool = False, engine_cfg: EngineConfig = EngineConfig(), **kwargs: Any
 ) -> RecognitionPredictor:
     """Text recognition architecture.
 
@@ -63,10 +65,11 @@ def recognition_predictor(
     ----
         arch: name of the architecture or model itself to use (e.g. 'crnn_vgg16_bn')
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration of inference engine
         **kwargs: optional parameters to be passed to the architecture
 
     Returns:
     -------
         Recognition predictor
     """
-    return _predictor(arch, load_in_8_bit, **kwargs)
+    return _predictor(arch, load_in_8_bit, engine_cfg, **kwargs)

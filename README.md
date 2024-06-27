@@ -72,7 +72,7 @@ Let's use the default `ocr_predictor` model for an example:
 
 ```python
 from onnxtr.io import DocumentFile
-from onnxtr.models import ocr_predictor
+from onnxtr.models import ocr_predictor, EngineConfig
 
 model = ocr_predictor(
     det_arch='fast_base',  # detection architecture
@@ -89,11 +89,15 @@ model = ocr_predictor(
     detect_language=False, # set to `True` if the language of the pages should be detected (default: False)
     # DocumentBuilder specific parameters
     resolve_lines=True,  # whether words should be automatically grouped into lines (default: True)
-    resolve_blocks=True,  # whether lines should be automatically grouped into blocks (default: True)
+    resolve_blocks=False,  # whether lines should be automatically grouped into blocks (default: False)
     paragraph_break=0.035,  # relative length of the minimum space separating paragraphs (default: 0.035)
     # OnnxTR specific parameters
     # NOTE: 8-Bit quantized models are not available for FAST detection models and can in general lead to poorer accuracy
     load_in_8_bit=False,  # set to `True` to load 8-bit quantized models instead of the full precision onces (default: False)
+    # Advanced engine configuration options
+    det_engine_cfg=EngineConfig(),  # detection model engine configuration (default: internal predefined configuration)
+    reco_engine_cfg=EngineConfig(),  # recognition model engine configuration (default: internal predefined configuration)
+    clf_engine_cfg=EngineConfig(),  # classification (orientation) model engine configuration (default: internal predefined configuration)
 )
 # PDF
 doc = DocumentFile.from_pdf("path/to/your/doc.pdf")
@@ -102,6 +106,39 @@ result = model(doc)
 # Display the result (requires matplotlib & mplcursors to be installed)
 result.show()
 ```
+
+<details>
+  <summary>Advanced engine configuration options</summary>
+
+You can also define advanced engine configurations for the models / predictors:
+
+```python
+from onnxruntime import SessionOptions
+
+from onnxtr.models import ocr_predictor, EngineConfig
+
+general_options = SessionOptions()  # For configuartion options see: https://onnxruntime.ai/docs/api/python/api_summary.html#sessionoptions
+general_options.enable_cpu_mem_arena = False
+
+# NOTE: The following would force to run only on the GPU if no GPU is available it will raise an error
+# List of strings e.g. ["CUDAExecutionProvider", "CPUExecutionProvider"] or a list of tuples with the provider and its options e.g.
+# [("CUDAExecutionProvider", {"device_id": 0}), ("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
+providers = [("CUDAExecutionProvider", {"device_id": 0})]  # For available providers see: https://onnxruntime.ai/docs/execution-providers/
+
+engine_config = EngineConfig(
+    session_options=general_options,
+    providers=providers
+)
+# We use the default predictor with the custom engine configuration
+# NOTE: You can define differnt engine configurations for detection, recognition and classification depending on your needs
+predictor = ocr_predictor(
+    det_engine_cfg=engine_config,
+    reco_engine_cfg=engine_config,
+    clf_engine_cfg=engine_config
+)
+```
+
+</details>
 
 ![Visualization sample](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/doctr_example_script.gif)
 

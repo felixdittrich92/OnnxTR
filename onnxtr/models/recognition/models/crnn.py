@@ -12,7 +12,7 @@ from scipy.special import softmax
 
 from onnxtr.utils import VOCABS
 
-from ...engine import Engine
+from ...engine import Engine, EngineConfig
 from ..core import RecognitionPostProcessor
 
 __all__ = ["CRNN", "crnn_vgg16_bn", "crnn_mobilenet_v3_small", "crnn_mobilenet_v3_large"]
@@ -113,6 +113,7 @@ class CRNN(Engine):
     ----
         model_path: path or url to onnx model file
         vocab: vocabulary used for encoding
+        engine_cfg: configuration for the inference engine
         cfg: configuration dictionary
         **kwargs: additional arguments to be passed to `Engine`
     """
@@ -123,10 +124,11 @@ class CRNN(Engine):
         self,
         model_path: str,
         vocab: str,
+        engine_cfg: EngineConfig = EngineConfig(),
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path, **kwargs)
+        super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
         self.vocab = vocab
         self.cfg = cfg
         self.postprocessor = CRNNPostProcessor(self.vocab)
@@ -152,6 +154,7 @@ def _crnn(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> CRNN:
     kwargs["vocab"] = kwargs.get("vocab", default_cfgs[arch]["vocab"])
@@ -163,11 +166,14 @@ def _crnn(
     model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
     # Build the model
-    return CRNN(model_path, cfg=_cfg, **kwargs)
+    return CRNN(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)
 
 
 def crnn_vgg16_bn(
-    model_path: str = default_cfgs["crnn_vgg16_bn"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+    model_path: str = default_cfgs["crnn_vgg16_bn"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> CRNN:
     """CRNN with a VGG-16 backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
@@ -182,17 +188,21 @@ def crnn_vgg16_bn(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _crnn("crnn_vgg16_bn", model_path, load_in_8_bit, **kwargs)
+    return _crnn("crnn_vgg16_bn", model_path, load_in_8_bit, engine_cfg, **kwargs)
 
 
 def crnn_mobilenet_v3_small(
-    model_path: str = default_cfgs["crnn_mobilenet_v3_small"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+    model_path: str = default_cfgs["crnn_mobilenet_v3_small"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> CRNN:
     """CRNN with a MobileNet V3 Small backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
@@ -207,17 +217,21 @@ def crnn_mobilenet_v3_small(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _crnn("crnn_mobilenet_v3_small", model_path, load_in_8_bit, **kwargs)
+    return _crnn("crnn_mobilenet_v3_small", model_path, load_in_8_bit, engine_cfg, **kwargs)
 
 
 def crnn_mobilenet_v3_large(
-    model_path: str = default_cfgs["crnn_mobilenet_v3_large"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+    model_path: str = default_cfgs["crnn_mobilenet_v3_large"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> CRNN:
     """CRNN with a MobileNet V3 Large backbone as described in `"An End-to-End Trainable Neural Network for Image-based
     Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
@@ -232,10 +246,11 @@ def crnn_mobilenet_v3_large(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _crnn("crnn_mobilenet_v3_large", model_path, load_in_8_bit, **kwargs)
+    return _crnn("crnn_mobilenet_v3_large", model_path, load_in_8_bit, engine_cfg, **kwargs)

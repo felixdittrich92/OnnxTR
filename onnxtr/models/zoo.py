@@ -6,6 +6,7 @@
 from typing import Any
 
 from .detection.zoo import detection_predictor
+from .engine import EngineConfig
 from .predictor import OCRPredictor
 from .recognition.zoo import recognition_predictor
 
@@ -24,6 +25,9 @@ def _predictor(
     straighten_pages: bool = False,
     detect_language: bool = False,
     load_in_8_bit: bool = False,
+    det_engine_cfg: EngineConfig = EngineConfig(),
+    reco_engine_cfg: EngineConfig = EngineConfig(),
+    clf_engine_cfg: EngineConfig = EngineConfig(),
     **kwargs,
 ) -> OCRPredictor:
     # Detection
@@ -34,6 +38,7 @@ def _predictor(
         preserve_aspect_ratio=preserve_aspect_ratio,
         symmetric_pad=symmetric_pad,
         load_in_8_bit=load_in_8_bit,
+        engine_cfg=det_engine_cfg,
     )
 
     # Recognition
@@ -41,6 +46,7 @@ def _predictor(
         reco_arch,
         batch_size=reco_bs,
         load_in_8_bit=load_in_8_bit,
+        engine_cfg=reco_engine_cfg,
     )
 
     return OCRPredictor(
@@ -52,6 +58,7 @@ def _predictor(
         detect_orientation=detect_orientation,
         straighten_pages=straighten_pages,
         detect_language=detect_language,
+        clf_engine_cfg=clf_engine_cfg,
         **kwargs,
     )
 
@@ -67,6 +74,9 @@ def ocr_predictor(
     straighten_pages: bool = False,
     detect_language: bool = False,
     load_in_8_bit: bool = False,
+    det_engine_cfg: EngineConfig = EngineConfig(),
+    reco_engine_cfg: EngineConfig = EngineConfig(),
+    clf_engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> OCRPredictor:
     """End-to-end OCR architecture using one model for localization, and another for text recognition.
@@ -99,6 +109,9 @@ def ocr_predictor(
         detect_language: if True, the language prediction will be added to the predictions for each
             page. Doing so will slightly deteriorate the overall latency.
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        det_engine_cfg: configuration of the detection engine
+        reco_engine_cfg: configuration of the recognition engine
+        clf_engine_cfg: configuration of the orientation classification engine
         kwargs: keyword args of `OCRPredictor`
 
     Returns:
@@ -116,5 +129,8 @@ def ocr_predictor(
         straighten_pages=straighten_pages,
         detect_language=detect_language,
         load_in_8_bit=load_in_8_bit,
+        det_engine_cfg=det_engine_cfg,
+        reco_engine_cfg=reco_engine_cfg,
+        clf_engine_cfg=clf_engine_cfg,
         **kwargs,
     )
