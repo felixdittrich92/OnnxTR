@@ -99,7 +99,7 @@ zip-safe = true
 exclude = ["docs*", "tests*", "scripts*"]
 
 [tool.setuptools.package-data]
-doctr = ["py.typed"]
+onnxtr = ["py.typed"]
 
 [tool.mypy]
 files = "onnxtr/"
