@@ -110,13 +110,34 @@ result.show()
 <details>
   <summary>Advanced engine configuration options</summary>
 
-Install from source:
+You can also define advanced engine configurations for the models / predictors:
 
-```bash
-git clone https://github.com/Lightning-AI/litgpt
-cd litgpt
-pip install -e '.[all]'
+```python
+from onnxruntime import SessionOptions
+
+from onnxtr.models import ocr_predictor, EngineConfig
+
+general_options = SessionOptions()  # For configuartion options see: https://onnxruntime.ai/docs/api/python/api_summary.html#sessionoptions
+general_options.enable_cpu_mem_arena = False
+
+# NOTE: The following would force to run only on the GPU if no GPU is available it will raise an error
+# List of strings e.g. ["CUDAExecutionProvider", "CPUExecutionProvider"] or a list of tuples with the provider and its options e.g.
+# [("CUDAExecutionProvider", {"device_id": 0}), ("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
+providers = [("CUDAExecutionProvider", {"device_id": 0})]  # For available providers see: https://onnxruntime.ai/docs/execution-providers/
+
+engine_config = EngineConfig(
+    session_options=general_options,
+    providers=providers
+)
+# We use the default predictor with the custom engine configuration
+# NOTE: You can define differnt engine configurations for detection, recognition and classification depending on your needs
+predictor = ocr_predictor(
+    det_engine_cfg=engine_config,
+    reco_engine_cfg=engine_config,
+    clf_engine_cfg=engine_config
+)
 ```
+
 </details>
 
 ![Visualization sample](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/doctr_example_script.gif)

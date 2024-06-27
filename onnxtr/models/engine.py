@@ -88,6 +88,7 @@ class Engine:
     """
 
     def __init__(self, url: str, engine_cfg: EngineConfig = EngineConfig(), **kwargs: Any) -> None:
+        engine_cfg = engine_cfg or EngineConfig()
         archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
         self.session_options = engine_cfg.session_options
         self.providers = engine_cfg.providers
