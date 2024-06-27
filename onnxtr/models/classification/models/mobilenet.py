@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-from ...engine import Engine
+from ...engine import Engine, EngineConfig
 
 __all__ = [
     "mobilenet_v3_small_crop_orientation",
@@ -43,6 +43,7 @@ class MobileNetV3(Engine):
     Args:
     ----
         model_path: path or url to onnx model file
+        engine_cfg: configuration for the inference engine
         cfg: configuration dictionary
         **kwargs: additional arguments to be passed to `Engine`
     """
@@ -50,10 +51,11 @@ class MobileNetV3(Engine):
     def __init__(
         self,
         model_path: str,
+        engine_cfg: EngineConfig = EngineConfig(),
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path, **kwargs)
+        super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
         self.cfg = cfg
 
     def __call__(
@@ -67,17 +69,19 @@ def _mobilenet_v3(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> MobileNetV3:
     # Patch the url
     model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
     _cfg = deepcopy(default_cfgs[arch])
-    return MobileNetV3(model_path, cfg=_cfg, **kwargs)
+    return MobileNetV3(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)
 
 
 def mobilenet_v3_small_crop_orientation(
     model_path: str = default_cfgs["mobilenet_v3_small_crop_orientation"]["url"],
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> MobileNetV3:
     """MobileNetV3-Small architecture as described in
@@ -94,18 +98,20 @@ def mobilenet_v3_small_crop_orientation(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the MobileNetV3 architecture
 
     Returns:
     -------
         MobileNetV3
     """
-    return _mobilenet_v3("mobilenet_v3_small_crop_orientation", model_path, load_in_8_bit, **kwargs)
+    return _mobilenet_v3("mobilenet_v3_small_crop_orientation", model_path, load_in_8_bit, engine_cfg, **kwargs)
 
 
 def mobilenet_v3_small_page_orientation(
     model_path: str = default_cfgs["mobilenet_v3_small_page_orientation"]["url"],
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> MobileNetV3:
     """MobileNetV3-Small architecture as described in
@@ -122,10 +128,11 @@ def mobilenet_v3_small_page_orientation(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the MobileNetV3 architecture
 
     Returns:
     -------
         MobileNetV3
     """
-    return _mobilenet_v3("mobilenet_v3_small_page_orientation", model_path, load_in_8_bit, **kwargs)
+    return _mobilenet_v3("mobilenet_v3_small_page_orientation", model_path, load_in_8_bit, engine_cfg, **kwargs)

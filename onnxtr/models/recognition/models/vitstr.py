@@ -11,7 +11,7 @@ from scipy.special import softmax
 
 from onnxtr.utils import VOCABS
 
-from ...engine import Engine
+from ...engine import Engine, EngineConfig
 from ..core import RecognitionPostProcessor
 
 __all__ = ["ViTSTR", "vitstr_small", "vitstr_base"]
@@ -43,6 +43,7 @@ class ViTSTR(Engine):
     ----
         model_path: path to onnx model file
         vocab: vocabulary used for encoding
+        engine_cfg: configuration for the inference engine
         cfg: dictionary containing information about the model
         **kwargs: additional arguments to be passed to `Engine`
     """
@@ -51,10 +52,11 @@ class ViTSTR(Engine):
         self,
         model_path: str,
         vocab: str,
+        engine_cfg: EngineConfig = EngineConfig(),
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path, **kwargs)
+        super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
         self.vocab = vocab
         self.cfg = cfg
 
@@ -112,6 +114,7 @@ def _vitstr(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> ViTSTR:
     # Patch the config
@@ -124,11 +127,14 @@ def _vitstr(
     model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
     # Build the model
-    return ViTSTR(model_path, cfg=_cfg, **kwargs)
+    return ViTSTR(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)
 
 
 def vitstr_small(
-    model_path: str = default_cfgs["vitstr_small"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+    model_path: str = default_cfgs["vitstr_small"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> ViTSTR:
     """ViTSTR-Small as described in `"Vision Transformer for Fast and Efficient Scene Text Recognition"
     <https://arxiv.org/pdf/2105.08582.pdf>`_.
@@ -143,17 +149,21 @@ def vitstr_small(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the ViTSTR architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _vitstr("vitstr_small", model_path, load_in_8_bit, **kwargs)
+    return _vitstr("vitstr_small", model_path, load_in_8_bit, engine_cfg, **kwargs)
 
 
 def vitstr_base(
-    model_path: str = default_cfgs["vitstr_base"]["url"], load_in_8_bit: bool = False, **kwargs: Any
+    model_path: str = default_cfgs["vitstr_base"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> ViTSTR:
     """ViTSTR-Base as described in `"Vision Transformer for Fast and Efficient Scene Text Recognition"
     <https://arxiv.org/pdf/2105.08582.pdf>`_.
@@ -168,10 +178,11 @@ def vitstr_base(
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the ViTSTR architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _vitstr("vitstr_base", model_path, load_in_8_bit, **kwargs)
+    return _vitstr("vitstr_base", model_path, load_in_8_bit, engine_cfg, **kwargs)

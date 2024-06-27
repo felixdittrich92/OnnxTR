@@ -11,7 +11,7 @@ from scipy.special import softmax
 
 from onnxtr.utils import VOCABS
 
-from ...engine import Engine
+from ...engine import Engine, EngineConfig
 from ..core import RecognitionPostProcessor
 
 __all__ = ["PARSeq", "parseq"]
@@ -35,6 +35,7 @@ class PARSeq(Engine):
     ----
         model_path: path to onnx model file
         vocab: vocabulary used for encoding
+        engine_cfg: configuration for the inference engine
         cfg: dictionary containing information about the model
         **kwargs: additional arguments to be passed to `Engine`
     """
@@ -43,10 +44,11 @@ class PARSeq(Engine):
         self,
         model_path: str,
         vocab: str,
+        engine_cfg: EngineConfig = EngineConfig(),
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path, **kwargs)
+        super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
         self.vocab = vocab
         self.cfg = cfg
         self.postprocessor = PARSeqPostProcessor(vocab=self.vocab)
@@ -102,6 +104,7 @@ def _parseq(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> PARSeq:
     # Patch the config
@@ -114,10 +117,15 @@ def _parseq(
     model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
     # Build the model
-    return PARSeq(model_path, cfg=_cfg, **kwargs)
+    return PARSeq(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)
 
 
-def parseq(model_path: str = default_cfgs["parseq"]["url"], load_in_8_bit: bool = False, **kwargs: Any) -> PARSeq:
+def parseq(
+    model_path: str = default_cfgs["parseq"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
+) -> PARSeq:
     """PARSeq architecture from
     `"Scene Text Recognition with Permuted Autoregressive Sequence Models" <https://arxiv.org/pdf/2207.06966>`_.
 
@@ -131,10 +139,11 @@ def parseq(model_path: str = default_cfgs["parseq"]["url"], load_in_8_bit: bool 
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the PARSeq architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _parseq("parseq", model_path, load_in_8_bit, **kwargs)
+    return _parseq("parseq", model_path, load_in_8_bit, engine_cfg, **kwargs)

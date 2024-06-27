@@ -6,6 +6,7 @@
 from typing import Any
 
 from .. import detection
+from ..engine import EngineConfig
 from ..preprocessor import PreProcessor
 from .predictor import DetectionPredictor
 
@@ -25,13 +26,19 @@ ARCHS = [
 
 
 def _predictor(
-    arch: Any, assume_straight_pages: bool = True, load_in_8_bit: bool = False, **kwargs: Any
+    arch: Any,
+    assume_straight_pages: bool = True,
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> DetectionPredictor:
     if isinstance(arch, str):
         if arch not in ARCHS:
             raise ValueError(f"unknown architecture '{arch}'")
 
-        _model = detection.__dict__[arch](assume_straight_pages=assume_straight_pages, load_in_8_bit=load_in_8_bit)
+        _model = detection.__dict__[arch](
+            assume_straight_pages=assume_straight_pages, load_in_8_bit=load_in_8_bit, engine_cfg=engine_cfg
+        )
     else:
         if not isinstance(arch, (detection.DBNet, detection.LinkNet, detection.FAST)):
             raise ValueError(f"unknown architecture: {type(arch)}")
@@ -53,6 +60,7 @@ def detection_predictor(
     arch: Any = "fast_base",
     assume_straight_pages: bool = True,
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> DetectionPredictor:
     """Text detection architecture.
@@ -68,10 +76,11 @@ def detection_predictor(
         arch: name of the architecture or model itself to use (e.g. 'db_resnet50')
         assume_straight_pages: If True, fit straight boxes to the page
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: optional keyword arguments passed to the architecture
 
     Returns:
     -------
         Detection predictor
     """
-    return _predictor(arch, assume_straight_pages, load_in_8_bit, **kwargs)
+    return _predictor(arch, assume_straight_pages, load_in_8_bit, engine_cfg=engine_cfg, **kwargs)

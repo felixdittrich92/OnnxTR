@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 
 from onnxtr.models.builder import DocumentBuilder
+from onnxtr.models.engine import EngineConfig
 from onnxtr.utils.geometry import extract_crops, extract_rcrops, rotate_image
 
 from .._utils import estimate_orientation, rectify_crops, rectify_loc_preds
@@ -34,6 +35,7 @@ class _OCRPredictor:
         detect_orientation: if True, the estimated general page orientation will be added to the predictions for each
             page. Doing so will slightly deteriorate the overall latency.
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        clf_engine_cfg: configuration of the orientation classification engine
         **kwargs: keyword args of `DocumentBuilder`
     """
 
@@ -48,15 +50,18 @@ class _OCRPredictor:
         symmetric_pad: bool = True,
         detect_orientation: bool = False,
         load_in_8_bit: bool = False,
+        clf_engine_cfg: EngineConfig = EngineConfig(),
         **kwargs: Any,
     ) -> None:
         self.assume_straight_pages = assume_straight_pages
         self.straighten_pages = straighten_pages
         self.crop_orientation_predictor = (
-            None if assume_straight_pages else crop_orientation_predictor(load_in_8_bit=load_in_8_bit)
+            None
+            if assume_straight_pages
+            else crop_orientation_predictor(load_in_8_bit=load_in_8_bit, engine_cfg=clf_engine_cfg)
         )
         self.page_orientation_predictor = (
-            page_orientation_predictor(load_in_8_bit=load_in_8_bit)
+            page_orientation_predictor(load_in_8_bit=load_in_8_bit, engine_cfg=clf_engine_cfg)
             if detect_orientation or straighten_pages or not assume_straight_pages
             else None
         )

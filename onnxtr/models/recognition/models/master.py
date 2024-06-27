@@ -11,7 +11,7 @@ from scipy.special import softmax
 
 from onnxtr.utils import VOCABS
 
-from ...engine import Engine
+from ...engine import Engine, EngineConfig
 from ..core import RecognitionPostProcessor
 
 __all__ = ["MASTER", "master"]
@@ -36,6 +36,7 @@ class MASTER(Engine):
     ----
         model_path: path or url to onnx model file
         vocab: vocabulary, (without EOS, SOS, PAD)
+        engine_cfg: configuration for the inference engine
         cfg: dictionary containing information about the model
         **kwargs: additional arguments to be passed to `Engine`
     """
@@ -44,10 +45,11 @@ class MASTER(Engine):
         self,
         model_path: str,
         vocab: str,
+        engine_cfg: EngineConfig = EngineConfig(),
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(url=model_path, **kwargs)
+        super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
 
         self.vocab = vocab
         self.cfg = cfg
@@ -114,6 +116,7 @@ def _master(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
     **kwargs: Any,
 ) -> MASTER:
     # Patch the config
@@ -125,10 +128,15 @@ def _master(
     # Patch the url
     model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
 
-    return MASTER(model_path, cfg=_cfg, **kwargs)
+    return MASTER(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)
 
 
-def master(model_path: str = default_cfgs["master"]["url"], load_in_8_bit: bool = False, **kwargs: Any) -> MASTER:
+def master(
+    model_path: str = default_cfgs["master"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
+) -> MASTER:
     """MASTER as described in paper: <https://arxiv.org/pdf/1910.02562.pdf>`_.
 
     >>> import numpy as np
@@ -141,10 +149,11 @@ def master(model_path: str = default_cfgs["master"]["url"], load_in_8_bit: bool 
     ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keywoard arguments passed to the MASTER architecture
 
     Returns:
     -------
         text recognition architecture
     """
-    return _master("master", model_path, load_in_8_bit, **kwargs)
+    return _master("master", model_path, load_in_8_bit, engine_cfg, **kwargs)

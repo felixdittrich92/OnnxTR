@@ -5,6 +5,8 @@
 
 from typing import Any, List
 
+from onnxtr.models.engine import EngineConfig
+
 from .. import classification
 from ..preprocessor import PreProcessor
 from .predictor import OrientationPredictor
@@ -14,12 +16,14 @@ __all__ = ["crop_orientation_predictor", "page_orientation_predictor"]
 ORIENTATION_ARCHS: List[str] = ["mobilenet_v3_small_crop_orientation", "mobilenet_v3_small_page_orientation"]
 
 
-def _orientation_predictor(arch: str, load_in_8_bit: bool = False, **kwargs: Any) -> OrientationPredictor:
+def _orientation_predictor(
+    arch: str, load_in_8_bit: bool = False, engine_cfg: EngineConfig = EngineConfig(), **kwargs: Any
+) -> OrientationPredictor:
     if arch not in ORIENTATION_ARCHS:
         raise ValueError(f"unknown architecture '{arch}'")
 
     # Load directly classifier from backbone
-    _model = classification.__dict__[arch](load_in_8_bit=load_in_8_bit)
+    _model = classification.__dict__[arch](load_in_8_bit=load_in_8_bit, engine_cfg=engine_cfg)
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
     kwargs["batch_size"] = kwargs.get("batch_size", 128 if "crop" in arch else 4)
@@ -32,7 +36,10 @@ def _orientation_predictor(arch: str, load_in_8_bit: bool = False, **kwargs: Any
 
 
 def crop_orientation_predictor(
-    arch: Any = "mobilenet_v3_small_crop_orientation", load_in_8_bit: bool = False, **kwargs: Any
+    arch: Any = "mobilenet_v3_small_crop_orientation",
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> OrientationPredictor:
     """Crop orientation classification architecture.
 
@@ -46,17 +53,21 @@ def crop_orientation_predictor(
     ----
         arch: name of the architecture to use (e.g. 'mobilenet_v3_small_crop_orientation')
         load_in_8_bit: load the 8-bit quantized version of the model
+        engine_cfg: configuration of inference engine
         **kwargs: keyword arguments to be passed to the OrientationPredictor
 
     Returns:
     -------
         OrientationPredictor
     """
-    return _orientation_predictor(arch, load_in_8_bit, **kwargs)
+    return _orientation_predictor(arch, load_in_8_bit, engine_cfg, **kwargs)
 
 
 def page_orientation_predictor(
-    arch: Any = "mobilenet_v3_small_page_orientation", load_in_8_bit: bool = False, **kwargs: Any
+    arch: Any = "mobilenet_v3_small_page_orientation",
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig = EngineConfig(),
+    **kwargs: Any,
 ) -> OrientationPredictor:
     """Page orientation classification architecture.
 
@@ -70,10 +81,11 @@ def page_orientation_predictor(
     ----
         arch: name of the architecture to use (e.g. 'mobilenet_v3_small_page_orientation')
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments to be passed to the OrientationPredictor
 
     Returns:
     -------
         OrientationPredictor
     """
-    return _orientation_predictor(arch, load_in_8_bit, **kwargs)
+    return _orientation_predictor(arch, load_in_8_bit, engine_cfg, **kwargs)

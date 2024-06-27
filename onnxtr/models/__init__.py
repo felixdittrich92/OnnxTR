@@ -1,3 +1,4 @@
+from .engine import EngineConfig
 from .classification import *
 from .detection import *
 from .recognition import *

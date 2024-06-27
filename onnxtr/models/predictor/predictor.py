@@ -10,6 +10,7 @@ import numpy as np
 from onnxtr.io.elements import Document
 from onnxtr.models._utils import get_language
 from onnxtr.models.detection.predictor import DetectionPredictor
+from onnxtr.models.engine import EngineConfig
 from onnxtr.models.recognition.predictor import RecognitionPredictor
 from onnxtr.utils.geometry import detach_scores
 from onnxtr.utils.repr import NestedObject
@@ -35,6 +36,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             page. Doing so will slightly deteriorate the overall latency.
         detect_language: if True, the language prediction will be added to the predictions for each
             page. Doing so will slightly deteriorate the overall latency.
+        clf_engine_cfg: configuration of the orientation classification engine
         **kwargs: keyword args of `DocumentBuilder`
     """
 
@@ -50,6 +52,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
         symmetric_pad: bool = True,
         detect_orientation: bool = False,
         detect_language: bool = False,
+        clf_engine_cfg: EngineConfig = EngineConfig(),
         **kwargs: Any,
     ) -> None:
         self.det_predictor = det_predictor
@@ -61,6 +64,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             preserve_aspect_ratio,
             symmetric_pad,
             detect_orientation,
+            clf_engine_cfg=clf_engine_cfg,
             **kwargs,
         )
         self.detect_orientation = detect_orientation
