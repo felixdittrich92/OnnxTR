@@ -64,3 +64,11 @@ def test_engine_cfg(det_arch, reco_arch):
     assert predictor.reco_predictor.model.providers == ["CPUExecutionProvider"]
     assert not predictor.reco_predictor.model.session_options.enable_cpu_mem_arena
     _test_predictor(predictor)
+
+    det_predictor = models.detection_predictor(det_arch, engine_cfg=engine_cfg)
+    assert det_predictor.model.providers == ["CPUExecutionProvider"]
+    assert not det_predictor.model.session_options.enable_cpu_mem_arena
+
+    reco_predictor = models.recognition_predictor(reco_arch, engine_cfg=engine_cfg)
+    assert reco_predictor.model.providers == ["CPUExecutionProvider"]
+    assert not reco_predictor.model.session_options.enable_cpu_mem_arena
