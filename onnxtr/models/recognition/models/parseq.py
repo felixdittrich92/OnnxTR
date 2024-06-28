@@ -44,7 +44,7 @@ class PARSeq(Engine):
         self,
         model_path: str,
         vocab: str,
-        engine_cfg: EngineConfig = EngineConfig(),
+        engine_cfg: Optional[EngineConfig] = None,
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
@@ -104,7 +104,7 @@ def _parseq(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> PARSeq:
     # Patch the config
@@ -123,7 +123,7 @@ def _parseq(
 def parseq(
     model_path: str = default_cfgs["parseq"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> PARSeq:
     """PARSeq architecture from

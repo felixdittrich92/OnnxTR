@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any
+from typing import Any, Optional
 
 from .. import detection
 from ..engine import EngineConfig
@@ -29,7 +29,7 @@ def _predictor(
     arch: Any,
     assume_straight_pages: bool = True,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> DetectionPredictor:
     if isinstance(arch, str):
@@ -48,7 +48,7 @@ def _predictor(
 
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
-    kwargs["batch_size"] = kwargs.get("batch_size", 4)
+    kwargs["batch_size"] = kwargs.get("batch_size", 2)
     predictor = DetectionPredictor(
         PreProcessor(_model.cfg["input_shape"][1:], **kwargs),
         _model,
@@ -60,7 +60,7 @@ def detection_predictor(
     arch: Any = "fast_base",
     assume_straight_pages: bool = True,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> DetectionPredictor:
     """Text detection architecture.

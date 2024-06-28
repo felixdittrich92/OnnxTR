@@ -124,7 +124,7 @@ class CRNN(Engine):
         self,
         model_path: str,
         vocab: str,
-        engine_cfg: EngineConfig = EngineConfig(),
+        engine_cfg: Optional[EngineConfig] = None,
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
@@ -154,7 +154,7 @@ def _crnn(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> CRNN:
     kwargs["vocab"] = kwargs.get("vocab", default_cfgs[arch]["vocab"])
@@ -172,7 +172,7 @@ def _crnn(
 def crnn_vgg16_bn(
     model_path: str = default_cfgs["crnn_vgg16_bn"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> CRNN:
     """CRNN with a VGG-16 backbone as described in `"An End-to-End Trainable Neural Network for Image-based
@@ -201,7 +201,7 @@ def crnn_vgg16_bn(
 def crnn_mobilenet_v3_small(
     model_path: str = default_cfgs["crnn_mobilenet_v3_small"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> CRNN:
     """CRNN with a MobileNet V3 Small backbone as described in `"An End-to-End Trainable Neural Network for Image-based
@@ -230,7 +230,7 @@ def crnn_mobilenet_v3_small(
 def crnn_mobilenet_v3_large(
     model_path: str = default_cfgs["crnn_mobilenet_v3_large"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> CRNN:
     """CRNN with a MobileNet V3 Large backbone as described in `"An End-to-End Trainable Neural Network for Image-based

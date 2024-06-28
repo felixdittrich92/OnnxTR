@@ -45,7 +45,7 @@ class MASTER(Engine):
         self,
         model_path: str,
         vocab: str,
-        engine_cfg: EngineConfig = EngineConfig(),
+        engine_cfg: Optional[EngineConfig] = None,
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
@@ -116,7 +116,7 @@ def _master(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> MASTER:
     # Patch the config
@@ -134,7 +134,7 @@ def _master(
 def master(
     model_path: str = default_cfgs["master"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> MASTER:
     """MASTER as described in paper: <https://arxiv.org/pdf/1910.02562.pdf>`_.

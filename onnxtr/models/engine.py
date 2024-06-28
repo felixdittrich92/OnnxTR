@@ -49,7 +49,7 @@ class EngineConfig:
                     {
                         "device_id": 0,
                         "arena_extend_strategy": "kNextPowerOfTwo",
-                        "cudnn_conv_algo_search": "EXHAUSTIVE",
+                        "cudnn_conv_algo_search": "DEFAULT",
                         "do_copy_in_default_stream": True,
                     },
                 ),
@@ -87,8 +87,8 @@ class Engine:
         **kwargs: additional arguments to be passed to `download_from_url`
     """
 
-    def __init__(self, url: str, engine_cfg: EngineConfig = EngineConfig(), **kwargs: Any) -> None:
-        engine_cfg = engine_cfg or EngineConfig()
+    def __init__(self, url: str, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any) -> None:
+        engine_cfg = engine_cfg if isinstance(engine_cfg, EngineConfig) else EngineConfig()
         archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
         self.session_options = engine_cfg.session_options
         self.providers = engine_cfg.providers

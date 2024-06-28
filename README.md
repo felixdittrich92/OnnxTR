@@ -77,8 +77,8 @@ from onnxtr.models import ocr_predictor, EngineConfig
 model = ocr_predictor(
     det_arch='fast_base',  # detection architecture
     reco_arch='vitstr_base',  # recognition architecture
-    det_bs=4, # detection batch size
-    reco_bs=1024, # recognition batch size
+    det_bs=2, # detection batch size
+    reco_bs=512, # recognition batch size
     assume_straight_pages=True,  # set to `False` if the pages are not straight (rotation, perspective, etc.) (default: True)
     straighten_pages=False,  # set to `True` if the pages should be straightened before final processing (default: False)
     # Preprocessing related parameters
@@ -151,7 +151,7 @@ general_options.enable_cpu_mem_arena = False
 # NOTE: The following would force to run only on the GPU if no GPU is available it will raise an error
 # List of strings e.g. ["CUDAExecutionProvider", "CPUExecutionProvider"] or a list of tuples with the provider and its options e.g.
 # [("CUDAExecutionProvider", {"device_id": 0}), ("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
-providers = [("CUDAExecutionProvider", {"device_id": 0})]  # For available providers see: https://onnxruntime.ai/docs/execution-providers/
+providers = [("CUDAExecutionProvider", {"device_id": 0, "cudnn_conv_algo_search": "DEFAULT"})]  # For available providers see: https://onnxruntime.ai/docs/execution-providers/
 
 engine_config = EngineConfig(
     session_options=general_options,
@@ -183,7 +183,7 @@ model = ocr_predictor(det_arch=det_model, reco_arch=reco_model)
 
 ## Models architectures
 
-Credits where it's due: this repository is implementing, among others, architectures from published research papers.
+Credits where it's due: this repository provides ONNX models for the following architectures, converted from the docTR models:
 
 ### Text Detection
 

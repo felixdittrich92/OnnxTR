@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any
+from typing import Any, Optional
 
 from .detection.zoo import detection_predictor
 from .engine import EngineConfig
@@ -19,15 +19,15 @@ def _predictor(
     assume_straight_pages: bool = True,
     preserve_aspect_ratio: bool = True,
     symmetric_pad: bool = True,
-    det_bs: int = 4,
-    reco_bs: int = 1024,
+    det_bs: int = 2,
+    reco_bs: int = 512,
     detect_orientation: bool = False,
     straighten_pages: bool = False,
     detect_language: bool = False,
     load_in_8_bit: bool = False,
-    det_engine_cfg: EngineConfig = EngineConfig(),
-    reco_engine_cfg: EngineConfig = EngineConfig(),
-    clf_engine_cfg: EngineConfig = EngineConfig(),
+    det_engine_cfg: Optional[EngineConfig] = None,
+    reco_engine_cfg: Optional[EngineConfig] = None,
+    clf_engine_cfg: Optional[EngineConfig] = None,
     **kwargs,
 ) -> OCRPredictor:
     # Detection
@@ -74,9 +74,9 @@ def ocr_predictor(
     straighten_pages: bool = False,
     detect_language: bool = False,
     load_in_8_bit: bool = False,
-    det_engine_cfg: EngineConfig = EngineConfig(),
-    reco_engine_cfg: EngineConfig = EngineConfig(),
-    clf_engine_cfg: EngineConfig = EngineConfig(),
+    det_engine_cfg: Optional[EngineConfig] = None,
+    reco_engine_cfg: Optional[EngineConfig] = None,
+    clf_engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> OCRPredictor:
     """End-to-end OCR architecture using one model for localization, and another for text recognition.
