@@ -50,7 +50,7 @@ class _OCRPredictor:
         symmetric_pad: bool = True,
         detect_orientation: bool = False,
         load_in_8_bit: bool = False,
-        clf_engine_cfg: EngineConfig = EngineConfig(),
+        clf_engine_cfg: Optional[EngineConfig] = None,
         **kwargs: Any,
     ) -> None:
         self.assume_straight_pages = assume_straight_pages

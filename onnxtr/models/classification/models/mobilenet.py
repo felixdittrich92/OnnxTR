@@ -51,7 +51,7 @@ class MobileNetV3(Engine):
     def __init__(
         self,
         model_path: str,
-        engine_cfg: EngineConfig = EngineConfig(),
+        engine_cfg: Optional[EngineConfig] = None,
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
@@ -69,7 +69,7 @@ def _mobilenet_v3(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> MobileNetV3:
     # Patch the url
@@ -81,7 +81,7 @@ def _mobilenet_v3(
 def mobilenet_v3_small_crop_orientation(
     model_path: str = default_cfgs["mobilenet_v3_small_crop_orientation"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> MobileNetV3:
     """MobileNetV3-Small architecture as described in
@@ -111,7 +111,7 @@ def mobilenet_v3_small_crop_orientation(
 def mobilenet_v3_small_page_orientation(
     model_path: str = default_cfgs["mobilenet_v3_small_page_orientation"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> MobileNetV3:
     """MobileNetV3-Small architecture as described in

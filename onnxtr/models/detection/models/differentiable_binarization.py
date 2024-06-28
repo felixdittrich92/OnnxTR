@@ -56,7 +56,7 @@ class DBNet(Engine):
     def __init__(
         self,
         model_path: str,
-        engine_cfg: EngineConfig = EngineConfig(),
+        engine_cfg: Optional[EngineConfig] = None,
         bin_thresh: float = 0.3,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
@@ -93,7 +93,7 @@ def _dbnet(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> DBNet:
     # Patch the url
@@ -105,7 +105,7 @@ def _dbnet(
 def db_resnet34(
     model_path: str = default_cfgs["db_resnet34"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
@@ -134,7 +134,7 @@ def db_resnet34(
 def db_resnet50(
     model_path: str = default_cfgs["db_resnet50"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
@@ -163,7 +163,7 @@ def db_resnet50(
 def db_mobilenet_v3_large(
     model_path: str = default_cfgs["db_mobilenet_v3_large"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> DBNet:
     """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"

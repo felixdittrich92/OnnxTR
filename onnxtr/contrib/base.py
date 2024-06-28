@@ -6,8 +6,8 @@
 from typing import Any, List, Optional
 
 import numpy as np
+import onnxruntime as ort
 
-from onnxtr.file_utils import requires_package
 from onnxtr.utils.data import download_from_url
 
 
@@ -44,9 +44,6 @@ class _BasePredictor:
         -------
             Any: the ONNX loaded model
         """
-        requires_package("onnxruntime", "`.contrib` module requires `onnxruntime` to be installed.")
-        import onnxruntime as ort
-
         if not url and not model_path:
             raise ValueError("You must provide either a url or a model_path")
         onnx_model_path = model_path if model_path else str(download_from_url(url, cache_subdir="models", **kwargs))  # type: ignore[arg-type]

@@ -56,7 +56,7 @@ class LinkNet(Engine):
     def __init__(
         self,
         model_path: str,
-        engine_cfg: EngineConfig = EngineConfig(),
+        engine_cfg: Optional[EngineConfig] = None,
         bin_thresh: float = 0.1,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
@@ -94,7 +94,7 @@ def _linknet(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> LinkNet:
     # Patch the url
@@ -106,7 +106,7 @@ def _linknet(
 def linknet_resnet18(
     model_path: str = default_cfgs["linknet_resnet18"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> LinkNet:
     """LinkNet as described in `"LinkNet: Exploiting Encoder Representations for Efficient Semantic Segmentation"
@@ -135,7 +135,7 @@ def linknet_resnet18(
 def linknet_resnet34(
     model_path: str = default_cfgs["linknet_resnet34"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> LinkNet:
     """LinkNet as described in `"LinkNet: Exploiting Encoder Representations for Efficient Semantic Segmentation"
@@ -164,7 +164,7 @@ def linknet_resnet34(
 def linknet_resnet50(
     model_path: str = default_cfgs["linknet_resnet50"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> LinkNet:
     """LinkNet as described in `"LinkNet: Exploiting Encoder Representations for Efficient Semantic Segmentation"

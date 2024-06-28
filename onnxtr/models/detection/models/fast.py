@@ -54,7 +54,7 @@ class FAST(Engine):
     def __init__(
         self,
         model_path: str,
-        engine_cfg: EngineConfig = EngineConfig(),
+        engine_cfg: Optional[EngineConfig] = None,
         bin_thresh: float = 0.1,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
@@ -92,7 +92,7 @@ def _fast(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> FAST:
     if load_in_8_bit:
@@ -104,7 +104,7 @@ def _fast(
 def fast_tiny(
     model_path: str = default_cfgs["fast_tiny"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"
@@ -133,7 +133,7 @@ def fast_tiny(
 def fast_small(
     model_path: str = default_cfgs["fast_small"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"
@@ -162,7 +162,7 @@ def fast_small(
 def fast_base(
     model_path: str = default_cfgs["fast_base"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"

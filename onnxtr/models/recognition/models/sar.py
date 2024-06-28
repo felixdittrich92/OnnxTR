@@ -44,7 +44,7 @@ class SAR(Engine):
         self,
         model_path: str,
         vocab: str,
-        engine_cfg: EngineConfig = EngineConfig(),
+        engine_cfg: Optional[EngineConfig] = None,
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
@@ -103,7 +103,7 @@ def _sar(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> SAR:
     # Patch the config
@@ -122,7 +122,7 @@ def _sar(
 def sar_resnet31(
     model_path: str = default_cfgs["sar_resnet31"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig = EngineConfig(),
+    engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
 ) -> SAR:
     """SAR with a resnet-31 feature extractor as described in `"Show, Attend and Read:A Simple and Strong
