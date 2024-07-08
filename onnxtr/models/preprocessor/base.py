@@ -67,11 +67,12 @@ class PreProcessor(NestedObject):
             if x.dtype not in (np.uint8, np.float32):
                 raise TypeError("unsupported data type for numpy.ndarray")
         x = shape_translate(x, "HWC")
-        # Data type & 255 division
-        if x.dtype == np.uint8:
-            x = x.astype(np.float32) / 255.0
+
         # Resizing
         x = self.resize(x)
+        # Data type & 255 division
+        if x.dtype == np.uint8 or np.max(x) > 1:
+            x = x.astype(np.float32) / 255.0
 
         return x
 
@@ -95,13 +96,12 @@ class PreProcessor(NestedObject):
                     raise TypeError("unsupported data type for numpy.ndarray")
             x = shape_translate(x, "BHWC")
 
-            # Data type & 255 division
-            if x.dtype == np.uint8:
-                x = x.astype(np.float32) / 255.0
             # Resizing
             if (x.shape[1], x.shape[2]) != self.resize.output_size:
                 x = np.array([self.resize(sample) for sample in x])
-
+            # Data type & 255 division
+            if x.dtype == np.uint8:
+                x = x.astype(np.float32) / 255.0
             batches = [x]
 
         elif isinstance(x, list) and all(isinstance(sample, np.ndarray) for sample in x):

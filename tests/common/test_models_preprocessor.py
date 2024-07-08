@@ -35,5 +35,5 @@ def test_preprocessor(batch_size, output_size, input_tensor, expected_batches, e
     assert all(isinstance(b, np.ndarray) for b in out)
     assert all(b.dtype == np.float32 for b in out)
     assert all(b.shape[1:3] == output_size for b in out)
-    assert all(np.all(np.abs(b - expected_value) < 1e-6) for b in out)
+    assert all(np.all(b == expected_value) for b in out)
     assert len(repr(processor).split("\n")) == 4

@@ -5,14 +5,16 @@
 
 import logging
 import platform
-from typing import Optional
+from typing import Optional, Union
 
 from PIL import ImageFont
 
 __all__ = ["get_font"]
 
 
-def get_font(font_family: Optional[str] = None, font_size: int = 13) -> ImageFont.ImageFont:
+def get_font(
+    font_family: Optional[str] = None, font_size: int = 13
+) -> Union[ImageFont.FreeTypeFont, ImageFont.ImageFont]:
     """Resolves a compatible ImageFont for the system
 
     Args:
@@ -29,7 +31,7 @@ def get_font(font_family: Optional[str] = None, font_size: int = 13) -> ImageFon
         try:
             font = ImageFont.truetype("FreeMono.ttf" if platform.system() == "Linux" else "Arial.ttf", font_size)
         except OSError:  # pragma: no cover
-            font = ImageFont.load_default()
+            font = ImageFont.load_default()  # type: ignore[assignment]
             logging.warning(
                 "unable to load recommended font family. Loading default PIL font,"
                 "font size issues may be expected."
