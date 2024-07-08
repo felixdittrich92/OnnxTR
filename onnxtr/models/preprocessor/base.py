@@ -100,7 +100,7 @@ class PreProcessor(NestedObject):
             if (x.shape[1], x.shape[2]) != self.resize.output_size:
                 x = np.array([self.resize(sample) for sample in x])
             # Data type & 255 division
-            if x.dtype == np.uint8 or np.max(x) > 1:
+            if x.dtype == np.uint8:
                 x = x.astype(np.float32) / 255.0
             batches = [x]
 
