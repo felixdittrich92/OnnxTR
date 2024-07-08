@@ -31,7 +31,7 @@ def get_font(
         try:
             font = ImageFont.truetype("FreeMono.ttf" if platform.system() == "Linux" else "Arial.ttf", font_size)
         except OSError:  # pragma: no cover
-            font = ImageFont.load_default()
+            font = ImageFont.load_default()  # type: ignore[assignment]
             logging.warning(
                 "unable to load recommended font family. Loading default PIL font,"
                 "font size issues may be expected."
