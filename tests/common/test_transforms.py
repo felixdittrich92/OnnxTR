@@ -10,23 +10,23 @@ def test_resize():
     input_t = np.ones((64, 64, 3), dtype=np.float32)
     out = transfo(input_t)
 
-    assert np.all(out == 1)
+    assert np.all(out == 255)
     assert out.shape[:2] == output_size
-    assert repr(transfo) == f"Resize(output_size={output_size}, interpolation='1')"
+    assert repr(transfo) == f"Resize(output_size={output_size}, interpolation='2')"
 
     transfo = Resize(output_size, preserve_aspect_ratio=True)
     input_t = np.ones((32, 64, 3), dtype=np.float32)
     out = transfo(input_t)
 
     assert out.shape[:2] == output_size
-    assert not np.all(out == 1)
+    assert not np.all(out == 255)
     # Asymetric padding
-    assert np.all(out[-1] == 0) and np.all(out[0] == 0)
+    assert np.all(out[-1] == 0) and np.all(out[0] == 255)
 
     # Symetric padding
     transfo = Resize(output_size, preserve_aspect_ratio=True, symmetric_pad=True)
     assert repr(transfo) == (
-        f"Resize(output_size={output_size}, interpolation='1', " f"preserve_aspect_ratio=True, symmetric_pad=True)"
+        f"Resize(output_size={output_size}, interpolation='2', " f"preserve_aspect_ratio=True, symmetric_pad=True)"
     )
     out = transfo(input_t)
     assert out.shape[:2] == output_size
@@ -34,7 +34,7 @@ def test_resize():
     assert np.all(out[-1] == 0) and np.all(out[0] == 0)
 
     # Inverse aspect ratio
-    input_t = np.ones((3, 64, 32), dtype=np.float32)
+    input_t = np.ones((64, 32, 3), dtype=np.float32)
     out = transfo(input_t)
 
     assert not np.all(out == 1)
@@ -43,7 +43,7 @@ def test_resize():
     # Same aspect ratio
     output_size = (32, 128)
     transfo = Resize(output_size, preserve_aspect_ratio=True)
-    out = transfo(np.ones((3, 16, 64), dtype=np.float32))
+    out = transfo(np.ones((16, 64, 3), dtype=np.float32))
     assert out.shape[:2] == output_size
 
 

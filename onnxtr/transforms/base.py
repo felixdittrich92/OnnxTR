@@ -5,8 +5,8 @@
 
 from typing import Tuple, Union
 
-import cv2
 import numpy as np
+from PIL import Image, ImageOps
 
 __all__ = ["Resize", "Normalize"]
 
@@ -17,64 +17,51 @@ class Resize:
     def __init__(
         self,
         size: Union[int, Tuple[int, int]],
-        interpolation=cv2.INTER_LINEAR,
+        interpolation=Image.Resampling.BILINEAR,
         preserve_aspect_ratio: bool = False,
         symmetric_pad: bool = False,
     ) -> None:
-        super().__init__()
-        self.size = size
+        self.size = size if isinstance(size, tuple) else (size, size)
         self.interpolation = interpolation
         self.preserve_aspect_ratio = preserve_aspect_ratio
         self.symmetric_pad = symmetric_pad
         self.output_size = size if isinstance(size, tuple) else (size, size)
 
-        if not isinstance(self.size, (int, tuple, list)):
-            raise AssertionError("size should be either a tuple, a list or an int")
+        if not isinstance(self.size, (tuple, int)):
+            raise AssertionError("size should be either a tuple or an int")
 
-    def __call__(
-        self,
-        img: np.ndarray,
-    ) -> np.ndarray:
-        if img.ndim == 3:
-            h, w = img.shape[0:2]
+    def __call__(self, img: np.ndarray) -> np.ndarray:
+        img = (img * 255).astype(np.uint8) if img.dtype != np.uint8 else img
+        h, w = img.shape[:2] if img.ndim == 3 else img.shape[1:3]
+        sh, sw = self.size
+
+        if not self.preserve_aspect_ratio:
+            return np.array(Image.fromarray(img).resize((sw, sh), resample=self.interpolation))
+
+        actual_ratio = h / w
+        target_ratio = sh / sw
+
+        if target_ratio == actual_ratio:
+            return np.array(Image.fromarray(img).resize((sw, sh), resample=self.interpolation))
+
+        if actual_ratio > target_ratio:
+            tmp_size = (int(sh / actual_ratio), sh)
         else:
-            h, w = img.shape[1:3]
-        sh, sw = self.size if isinstance(self.size, tuple) else (self.size, self.size)
+            tmp_size = (sw, int(sw * actual_ratio))
 
-        # Calculate aspect ratio of the image
-        aspect = w / h
+        img_resized = Image.fromarray(img).resize(tmp_size, resample=self.interpolation)
+        pad_left = pad_top = 0
+        pad_right = sw - img_resized.width
+        pad_bottom = sh - img_resized.height
 
-        # Compute scaling and padding sizes
-        if self.preserve_aspect_ratio:
-            if aspect > 1:  # Horizontal image
-                new_w = sw
-                new_h = int(sw / aspect)
-            elif aspect < 1:  # Vertical image
-                new_h = sh
-                new_w = int(sh * aspect)
-            else:  # Square image
-                new_h, new_w = sh, sw
+        if self.symmetric_pad:
+            pad_left = pad_right // 2
+            pad_right -= pad_left
+            pad_top = pad_bottom // 2
+            pad_bottom -= pad_top
 
-            img_resized = cv2.resize(img, (new_w, new_h), interpolation=self.interpolation)
-
-            # Calculate padding
-            pad_top = max((sh - new_h) // 2, 0)
-            pad_bottom = max(sh - new_h - pad_top, 0)
-            pad_left = max((sw - new_w) // 2, 0)
-            pad_right = max(sw - new_w - pad_left, 0)
-
-            # Pad the image
-            img_resized = cv2.copyMakeBorder(  # type: ignore[call-overload]
-                img_resized, pad_top, pad_bottom, pad_left, pad_right, borderType=cv2.BORDER_CONSTANT, value=0
-            )
-
-            # Ensure the image matches the target size by resizing it again if needed
-            img_resized = cv2.resize(img_resized, (sw, sh), interpolation=self.interpolation)
-        else:
-            # Resize the image without preserving aspect ratio
-            img_resized = cv2.resize(img, (sw, sh), interpolation=self.interpolation)
-
-        return img_resized
+        img_resized = ImageOps.expand(img_resized, (pad_left, pad_top, pad_right, pad_bottom))
+        return np.array(img_resized)
 
     def __repr__(self) -> str:
         interpolate_str = self.interpolation
