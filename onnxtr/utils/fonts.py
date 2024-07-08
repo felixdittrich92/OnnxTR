@@ -5,14 +5,16 @@
 
 import logging
 import platform
-from typing import Optional
+from typing import Optional, Union
 
 from PIL import ImageFont
 
 __all__ = ["get_font"]
 
 
-def get_font(font_family: Optional[str] = None, font_size: int = 13) -> ImageFont.ImageFont:
+def get_font(
+    font_family: Optional[str] = None, font_size: int = 13
+) -> Union[ImageFont.FreeTypeFont, ImageFont.ImageFont]:
     """Resolves a compatible ImageFont for the system
 
     Args:
