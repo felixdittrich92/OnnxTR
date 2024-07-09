@@ -71,7 +71,7 @@ class PreProcessor(NestedObject):
         # Resizing
         x = self.resize(x)
         # Data type & 255 division
-        if x.dtype == np.uint8 or np.max(x) > 1:
+        if x.dtype == np.uint8:
             x = x.astype(np.float32) / 255.0
 
         return x
