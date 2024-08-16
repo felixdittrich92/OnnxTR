@@ -127,6 +127,7 @@ module = [
 	"weasyprint.*",
 	"pypdfium2.*",
 	"langdetect.*",
+    "huggingface_hub.*",
     "rapidfuzz.*",
     "anyascii.*",
     "tqdm.*",
