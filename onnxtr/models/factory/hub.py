@@ -207,6 +207,10 @@ def from_hub(repo_id: str, **kwargs: Any):
     elif task == "recognition":
         model = models.recognition.__dict__[arch](model_path, input_shape=cfg["input_shape"], vocab=cfg["vocab"])
 
+    # convert all values which are lists to tuples
+    for key, value in cfg.items():
+        if isinstance(value, list):
+            cfg[key] = tuple(value)
     # update model cfg
     model.cfg = cfg
 
