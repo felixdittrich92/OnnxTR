@@ -208,9 +208,8 @@ res = predictor(img)
 ```
 
 You can find the available models on the HuggingFace Hub [here](https://huggingface.co/models?search=onnxtr).
-[Collection](https://huggingface.co/collections/Felix92/onnxtr-66bf213a9f88f7346c90e842)
 
-[multilingualParseq](https://huggingface.co/Felix92/onnxtr-parseq-multilingual-v1)
+[Collection](https://huggingface.co/collections/Felix92/onnxtr-66bf213a9f88f7346c90e842)
 
 </details>
 
