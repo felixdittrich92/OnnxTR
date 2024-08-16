@@ -21,11 +21,9 @@ from huggingface_hub import (
     get_token_permission,
     hf_hub_download,
     login,
-    snapshot_download,
 )
 
 from onnxtr import models
-
 
 __all__ = ["login_to_hub", "push_to_hf_hub", "from_hub", "_save_model_and_config_for_hf_hub"]
 
@@ -80,7 +78,9 @@ def _save_model_and_config_for_hf_hub(model: Any, save_dir: str, arch: str, task
         json.dump(model_config, f, indent=2, ensure_ascii=False)
 
 
-def push_to_hf_hub(model: Any, model_name: str, task: str, **kwargs) -> None:  # pragma: no cover
+def push_to_hf_hub(
+    model: Any, model_name: str, task: str, override: bool = False, **kwargs
+) -> None:  # pragma: no cover
     """Save model and its configuration on HF hub
 
     >>> from onnxtr.models import login_to_hub, push_to_hf_hub
@@ -94,6 +94,7 @@ def push_to_hf_hub(model: Any, model_name: str, task: str, **kwargs) -> None:  #
         model: Onnx model to be saved
         model_name: name of the model which is also the repository name
         task: task name
+        override: whether to override the existing model / repo on HF hub
         **kwargs: keyword arguments for push_to_hf_hub
     """
     run_config = kwargs.get("run_config", None)
@@ -163,7 +164,7 @@ def push_to_hf_hub(model: Any, model_name: str, task: str, **kwargs) -> None:  #
     commit_message = f"Add {model_name} model"
 
     local_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub", model_name)
-    repo_url = HfApi().create_repo(model_name, token=get_token(), exist_ok=False)
+    repo_url = HfApi().create_repo(model_name, token=get_token(), exist_ok=override)
     repo = Repository(local_dir=local_cache_dir, clone_from=repo_url)
 
     with repo.commit(commit_message):

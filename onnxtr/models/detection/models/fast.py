@@ -62,6 +62,7 @@ class FAST(Engine):
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
+
         self.cfg = cfg
         self.assume_straight_pages = assume_straight_pages
 

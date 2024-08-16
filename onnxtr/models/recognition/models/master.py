@@ -53,6 +53,7 @@ class MASTER(Engine):
 
         self.vocab = vocab
         self.cfg = cfg
+
         self.postprocessor = MASTERPostProcessor(vocab=self.vocab)
 
     def __call__(

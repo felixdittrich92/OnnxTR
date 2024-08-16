@@ -56,7 +56,7 @@ class MobileNetV3(Engine):
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
-        self.model_path = model_path
+
         self.cfg = cfg
 
     def __call__(

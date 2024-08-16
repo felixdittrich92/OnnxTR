@@ -90,6 +90,8 @@ class Engine:
     def __init__(self, url: str, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any) -> None:
         engine_cfg = engine_cfg if isinstance(engine_cfg, EngineConfig) else EngineConfig()
         archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
+        # Store model path for each model
+        self.model_path = archive_path
         self.session_options = engine_cfg.session_options
         self.providers = engine_cfg.providers
         self.runtime = InferenceSession(archive_path, providers=self.providers, sess_options=self.session_options)

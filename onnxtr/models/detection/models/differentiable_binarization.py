@@ -64,8 +64,10 @@ class DBNet(Engine):
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
+
         self.cfg = cfg
         self.assume_straight_pages = assume_straight_pages
+
         self.postprocessor = GeneralDetectionPostProcessor(
             assume_straight_pages=self.assume_straight_pages, bin_thresh=bin_thresh, box_thresh=box_thresh
         )
