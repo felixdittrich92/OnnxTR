@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import textwrap
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from huggingface_hub import (
     HfApi,
@@ -24,6 +24,7 @@ from huggingface_hub import (
 )
 
 from onnxtr import models
+from onnxtr.models.engine import EngineConfig
 
 __all__ = ["login_to_hub", "push_to_hf_hub", "from_hub", "_save_model_and_config_for_hf_hub"]
 
@@ -178,7 +179,7 @@ def push_to_hf_hub(
     repo.git_push()
 
 
-def from_hub(repo_id: str, **kwargs: Any):
+def from_hub(repo_id: str, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any):
     """Instantiate & load a pretrained model from HF hub.
 
     >>> from onnxtr.models import from_hub
@@ -187,7 +188,8 @@ def from_hub(repo_id: str, **kwargs: Any):
     Args:
     ----
         repo_id: HuggingFace model hub repo
-        kwargs: kwargs of `hf_hub_download` or `snapshot_download`
+        engine_cfg: configuration for the inference engine (optional)
+        kwargs: kwargs of `hf_hub_download`
 
     Returns:
     -------
@@ -204,11 +206,13 @@ def from_hub(repo_id: str, **kwargs: Any):
     cfg.pop("task")
 
     if task == "classification":
-        model = models.classification.__dict__[arch](model_path, classes=cfg["classes"])
+        model = models.classification.__dict__[arch](model_path, classes=cfg["classes"], engine_cfg=engine_cfg)
     elif task == "detection":
-        model = models.detection.__dict__[arch](model_path)
+        model = models.detection.__dict__[arch](model_path, engine_cfg=engine_cfg)
     elif task == "recognition":
-        model = models.recognition.__dict__[arch](model_path, input_shape=cfg["input_shape"], vocab=cfg["vocab"])
+        model = models.recognition.__dict__[arch](
+            model_path, input_shape=cfg["input_shape"], vocab=cfg["vocab"], engine_cfg=engine_cfg
+        )
 
     # convert all values which are lists to tuples
     for key, value in cfg.items():
