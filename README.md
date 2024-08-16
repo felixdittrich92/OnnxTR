@@ -181,8 +181,7 @@ det_model = linknet_resnet18("path_to_custom_model.onnx")
 model = ocr_predictor(det_arch=det_model, reco_arch=reco_model)
 ```
 
-<details>
-  <summary>Loading models from HuggingFace Hub</summary>
+## Loading models from HuggingFace Hub
 
 You can also load models from the HuggingFace Hub:
 
@@ -211,7 +210,23 @@ You can find the available models on the HuggingFace Hub [here](https://huggingf
 
 [Collection](https://huggingface.co/collections/Felix92/onnxtr-66bf213a9f88f7346c90e842)
 
-</details>
+or push your own models to the hub.
+
+```python
+from onnxtr.models import parseq, push_to_hf_hub, login_to_hub
+from onnxtr.utils.vocabs import VOCABS
+
+# Login to the hub
+login_to_hub()
+
+# Recogniton model
+model = parseq("~/onnxtr-parseq-multilingual-v1.onnx", vocab=VOCABS["multilingual"])
+push_to_hf_hub(model, model_name="onnxtr-parseq-multilingual-v1", task="recognition", arch="parseq", override=False)
+
+# Detection model
+model = linknet_resnet18("~/onnxtr-linknet-resnet18.onnx")
+push_to_hf_hub(model, model_name="onnxtr-linknet-resnet18", task="detection", arch="linknet_resnet18", override=True)
+```
 
 ## Models architectures
 
