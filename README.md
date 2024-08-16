@@ -210,11 +210,11 @@ predictor = ocr_predictor(
 res = predictor(img)
 ```
 
-You can find the available models on the HuggingFace Hub [here](https://huggingface.co/models?search=onnxtr).
+HF Hub search: [here](https://huggingface.co/models?search=onnxtr).
 
-[Collection](https://huggingface.co/collections/Felix92/onnxtr-66bf213a9f88f7346c90e842)
+Collection: [here](https://huggingface.co/collections/Felix92/onnxtr-66bf213a9f88f7346c90e842)
 
-or push your own models to the hub.
+Or push your own models to the hub:
 
 ```python
 from onnxtr.models import parseq, push_to_hf_hub, login_to_hub
