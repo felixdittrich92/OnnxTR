@@ -57,6 +57,7 @@ class ViTSTR(Engine):
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
+
         self.vocab = vocab
         self.cfg = cfg
 

@@ -181,6 +181,39 @@ det_model = linknet_resnet18("path_to_custom_model.onnx")
 model = ocr_predictor(det_arch=det_model, reco_arch=reco_model)
 ```
 
+<details>
+  <summary>Loading models from HuggingFace Hub</summary>
+
+You can also load models from the HuggingFace Hub:
+
+```python
+from onnxtr.io import DocumentFile
+from onnxtr.models import ocr_predictor, from_hub
+
+img = DocumentFile.from_images(['<image_path>'])
+# Load your model from the hub
+model = from_hub('onnxtr/my-model')
+
+# Pass it to the predictor
+# If your model is a recognition model:
+predictor = ocr_predictor(det_arch='db_mobilenet_v3_large',
+                          reco_arch=model)
+
+# If your model is a detection model:
+predictor = ocr_predictor(det_arch=model,
+                          reco_arch='crnn_mobilenet_v3_small')
+
+# Get your predictions
+res = predictor(img)
+```
+
+You can find the available models on the HuggingFace Hub [here](https://huggingface.co/models?search=onnxtr).
+[Collection](https://huggingface.co/collections/Felix92/onnxtr-66bf213a9f88f7346c90e842)
+
+[multilingualParseq](https://huggingface.co/Felix92/onnxtr-parseq-multilingual-v1)
+
+</details>
+
 ## Models architectures
 
 Credits where it's due: this repository provides ONNX models for the following architectures, converted from the docTR models:
