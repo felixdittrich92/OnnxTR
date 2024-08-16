@@ -109,7 +109,10 @@ def push_to_hf_hub(
     readme = textwrap.dedent(
         f"""
     ---
-    language: en
+    language:
+    - en
+    - fr
+    license: apache-2.0
     ---
 
     <p align="center">
