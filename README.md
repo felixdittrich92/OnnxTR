@@ -195,12 +195,16 @@ model = from_hub('onnxtr/my-model')
 
 # Pass it to the predictor
 # If your model is a recognition model:
-predictor = ocr_predictor(det_arch='db_mobilenet_v3_large',
-                          reco_arch=model)
+predictor = ocr_predictor(
+    det_arch='db_mobilenet_v3_large',
+    reco_arch=model
+)
 
 # If your model is a detection model:
-predictor = ocr_predictor(det_arch=model,
-                          reco_arch='crnn_mobilenet_v3_small')
+predictor = ocr_predictor(
+    det_arch=model,
+    reco_arch='crnn_mobilenet_v3_small'
+)
 
 # Get your predictions
 res = predictor(img)
@@ -221,11 +225,23 @@ login_to_hub()
 
 # Recogniton model
 model = parseq("~/onnxtr-parseq-multilingual-v1.onnx", vocab=VOCABS["multilingual"])
-push_to_hf_hub(model, model_name="onnxtr-parseq-multilingual-v1", task="recognition", arch="parseq", override=False)
+push_to_hf_hub(
+    model,
+    model_name="onnxtr-parseq-multilingual-v1",
+    task="recognition",  # The task for which the model is intended [detection, recognition, classification]
+    arch="parseq",  # The name of the model architecture
+    override=False  # Set to `True` if you want to override an existing model / repository
+)
 
 # Detection model
 model = linknet_resnet18("~/onnxtr-linknet-resnet18.onnx")
-push_to_hf_hub(model, model_name="onnxtr-linknet-resnet18", task="detection", arch="linknet_resnet18", override=True)
+push_to_hf_hub(
+    model,
+    model_name="onnxtr-linknet-resnet18",
+    task="detection",
+    arch="linknet_resnet18",
+    override=True
+)
 ```
 
 ## Models architectures
