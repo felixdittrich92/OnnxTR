@@ -18,7 +18,7 @@ def synthesize_page(
     draw_proba: bool = False,
     font_family: Optional[str] = None,
 ) -> np.ndarray:
-    """Draw a the content of the element page (OCR response) on a blank page.
+    """Draw the content of the element page (OCR response) on a blank page.
 
     Args:
     ----
@@ -33,38 +33,61 @@ def synthesize_page(
     """
     # Draw template
     h, w = page["dimensions"]
-    response = 255 * np.ones((h, w, 3), dtype=np.int32)
+    response = 255 * np.ones((h * 2, w *2, 3), dtype=np.int32)
 
-    # Draw each word
+    # Draw each line
     for block in page["blocks"]:
         for line in block["lines"]:
-            for word in line["words"]:
-                # Get absolute word geometry
-                (xmin, ymin), (xmax, ymax) = word["geometry"]
-                xmin, xmax = int(round(w * xmin)), int(round(w * xmax))
-                ymin, ymax = int(round(h * ymin)), int(round(h * ymax))
+            # Get absolute line geometry
+            (xmin, ymin), (xmax, ymax) = line["geometry"]
+            xmin, xmax = int(round(w * xmin)), int(round(w * xmax))
+            ymin, ymax = int(round(h * ymin)), int(round(h * ymax))
 
-                # White drawing context adapted to font size, 0.75 factor to convert pts --> pix
-                font = get_font(font_family, int(0.75 * (ymax - ymin)))
-                img = Image.new("RGB", (xmax - xmin, ymax - ymin), color=(255, 255, 255))
-                d = ImageDraw.Draw(img)
-                # Draw in black the value of the word
-                try:
-                    d.text((0, 0), word["value"], font=font, fill=(0, 0, 0))
-                except UnicodeEncodeError:
-                    # When character cannot be encoded, use its anyascii version
-                    d.text((0, 0), anyascii(word["value"]), font=font, fill=(0, 0, 0))
+            # Concatenate words to form the line text
+            line_text = ' '.join([word["value"] for word in line["words"]])
 
-                # Colorize if draw_proba
-                if draw_proba:
-                    p = int(255 * word["confidence"])
-                    mask = np.where(np.array(img) == 0, 1, 0)
-                    proba: np.ndarray = np.array([255 - p, 0, p])
-                    color = mask * proba[np.newaxis, np.newaxis, :]
-                    white_mask = 255 * (1 - mask)
-                    img = color + white_mask
+            # White drawing context adapted to font size, 0.75 factor to convert pts --> pix
+            font = get_font(font_family, int(0.75 * (ymax - ymin)))
+            d = ImageDraw.Draw(Image.new("RGB", (1, 1)))  # Temporary context for sizing
+            text_size = font.getbbox(line_text)[-2:]
 
-                # Write to response page
-                response[ymin:ymax, xmin:xmax, :] = np.array(img)
+            # Resize xmax/ymax to fit the text
+            img_w, img_h = text_size
+            if img_w > (xmax - xmin):
+                xmax = xmin + img_w
+            if img_h > (ymax - ymin):
+                ymax = ymin + img_h
+
+            # Ensure the dimensions don't exceed the response array's size
+            xmax = min(xmax, w)
+            ymax = min(ymax, h)
+            img_w = xmax - xmin
+            img_h = ymax - ymin
+
+            # Draw the final image with the adjusted size
+            img = Image.new("RGB", (img_w, img_h), color=(255, 255, 255))
+            d = ImageDraw.Draw(img)
+
+            try:
+                d.text((0, 0), line_text, font=font, fill=(0, 0, 0))
+            except UnicodeEncodeError:
+                d.text((0, 0), anyascii(line_text), font=font, fill=(0, 0, 0))
+
+            # Colorize if draw_proba
+            if draw_proba:
+                avg_confidence = np.mean([word["confidence"] for word in line["words"]])
+                p = int(255 * avg_confidence)
+                mask = np.where(np.array(img) == 0, 1, 0)
+                proba = np.array([255 - p, 0, p])
+                color = mask * proba[np.newaxis, np.newaxis, :]
+                white_mask = 255 * (1 - mask)
+                img = color + white_mask
+
+            # Ensure that the dimensions match and fit within the response
+            img_slice = np.array(img)[:(ymax - ymin), :(xmax - xmin), :]
+
+            response[ymin:ymax, xmin:xmax, :] = img_slice
+
+        # TODO: Test and optimize more also rotated text possible ??
 
     return response
