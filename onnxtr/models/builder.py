@@ -266,7 +266,7 @@ class DocumentBuilder(NestedObject):
                 Line([
                     Word(
                         *word_preds[idx],
-                        tuple([tuple(pt) for pt in boxes[idx].tolist()]),  # type: ignore[arg-type]
+                        tuple(tuple(pt) for pt in boxes[idx].tolist()),  # type: ignore[arg-type]
                         float(objectness_scores[idx]),
                         crop_orientations[idx],
                     )
