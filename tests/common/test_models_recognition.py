@@ -134,4 +134,4 @@ def test_recognition_zoo(arch_name, quantized):
     assert all(isinstance(word, str) and isinstance(conf, float) for word, conf in out)
 
     with pytest.raises(ValueError):
-        predictor = recognition.zoo.recognition_predictor(arch="wrong_model")
+        _ = recognition.zoo.recognition_predictor(arch="wrong_model")
