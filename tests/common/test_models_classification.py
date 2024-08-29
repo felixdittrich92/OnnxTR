@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pytest
 
-from onnxtr.models import classification
+from onnxtr.models import classification, detection
 from onnxtr.models.classification.predictor import OrientationPredictor
 from onnxtr.models.engine import Engine
 
@@ -76,6 +76,15 @@ def test_crop_orientation_model(mock_text_box, quantized):
     assert classifier([text_box_0, text_box_270, text_box_180, text_box_90])[1] == [0, -90, 180, 90]
     assert all(isinstance(pred, float) for pred in classifier([text_box_0, text_box_270, text_box_180, text_box_90])[2])
 
+    # Test custom model loading
+    classifier = classification.crop_orientation_predictor(
+        classification.mobilenet_v3_small_crop_orientation(load_in_8_bit=quantized)
+    )
+    assert isinstance(classifier, OrientationPredictor)
+
+    with pytest.raises(ValueError):
+        _ = classification.crop_orientation_predictor(detection.db_resnet34())
+
 
 @pytest.mark.parametrize("quantized", [False, True])
 def test_page_orientation_model(mock_payslip, quantized):
@@ -91,3 +100,12 @@ def test_page_orientation_model(mock_payslip, quantized):
     # 270 degrees is equivalent to -90 degrees
     assert classifier([text_box_0, text_box_270, text_box_180, text_box_90])[1] == [0, -90, 180, 90]
     assert all(isinstance(pred, float) for pred in classifier([text_box_0, text_box_270, text_box_180, text_box_90])[2])
+
+    # Test custom model loading
+    classifier = classification.page_orientation_predictor(
+        classification.mobilenet_v3_small_page_orientation(load_in_8_bit=quantized)
+    )
+    assert isinstance(classifier, OrientationPredictor)
+
+    with pytest.raises(ValueError):
+        _ = classification.page_orientation_predictor(detection.db_resnet34())

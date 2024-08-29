@@ -13,6 +13,7 @@ import numpy as np
 from ...engine import Engine, EngineConfig
 
 __all__ = [
+    "MobileNetV3",
     "mobilenet_v3_small_crop_orientation",
     "mobilenet_v3_small_page_orientation",
 ]

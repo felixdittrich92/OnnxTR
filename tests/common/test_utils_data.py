@@ -1,10 +1,21 @@
 import os
+import tempfile
 from pathlib import PosixPath
 from unittest.mock import patch
 
 import pytest
 
-from onnxtr.utils.data import download_from_url
+from onnxtr.utils.data import _urlretrieve, download_from_url
+
+
+def test__urlretrieve():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        file_path = os.path.join(temp_dir, "crnn_mobilenet_v3_small-bded4d49.onnx")
+        _urlretrieve(
+            "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/crnn_mobilenet_v3_small-bded4d49.onnx",
+            file_path,
+        )
+        assert os.path.exists(file_path), f"File {file_path} does not exist."
 
 
 @patch("onnxtr.utils.data._urlretrieve")

@@ -132,3 +132,6 @@ def test_recognition_zoo(arch_name, quantized):
     out = predictor(input_array)
     assert isinstance(out, list) and len(out) == batch_size
     assert all(isinstance(word, str) and isinstance(conf, float) for word, conf in out)
+
+    with pytest.raises(ValueError):
+        _ = recognition.zoo.recognition_predictor(arch="wrong_model")
