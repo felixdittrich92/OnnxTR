@@ -17,16 +17,21 @@ ORIENTATION_ARCHS: List[str] = ["mobilenet_v3_small_crop_orientation", "mobilene
 
 
 def _orientation_predictor(
-    arch: str, load_in_8_bit: bool = False, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any
+    arch: Any, model_type: str, load_in_8_bit: bool = False, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any
 ) -> OrientationPredictor:
-    if arch not in ORIENTATION_ARCHS:
-        raise ValueError(f"unknown architecture '{arch}'")
+    if isinstance(arch, str):
+        if arch not in ORIENTATION_ARCHS:
+            raise ValueError(f"unknown architecture '{arch}'")
+        # Load directly classifier from backbone
+        _model = classification.__dict__[arch](load_in_8_bit=load_in_8_bit, engine_cfg=engine_cfg)
+    else:
+        if not isinstance(arch, classification.MobileNetV3):
+            raise ValueError(f"unknown architecture: {type(arch)}")
+        _model = arch
 
-    # Load directly classifier from backbone
-    _model = classification.__dict__[arch](load_in_8_bit=load_in_8_bit, engine_cfg=engine_cfg)
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
-    kwargs["batch_size"] = kwargs.get("batch_size", 512 if "crop" in arch else 2)
+    kwargs["batch_size"] = kwargs.get("batch_size", 512 if model_type == "crop" else 2)
     input_shape = _model.cfg["input_shape"][1:]
     predictor = OrientationPredictor(
         PreProcessor(input_shape, preserve_aspect_ratio=True, symmetric_pad=True, **kwargs),
@@ -60,7 +65,8 @@ def crop_orientation_predictor(
     -------
         OrientationPredictor
     """
-    return _orientation_predictor(arch, load_in_8_bit, engine_cfg, **kwargs)
+    model_type = "crop"
+    return _orientation_predictor(arch, model_type, load_in_8_bit, engine_cfg, **kwargs)
 
 
 def page_orientation_predictor(
@@ -88,4 +94,5 @@ def page_orientation_predictor(
     -------
         OrientationPredictor
     """
-    return _orientation_predictor(arch, load_in_8_bit, engine_cfg, **kwargs)
+    model_type = "page"
+    return _orientation_predictor(arch, model_type, load_in_8_bit, engine_cfg, **kwargs)

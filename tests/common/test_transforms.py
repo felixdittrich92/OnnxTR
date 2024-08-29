@@ -64,3 +64,9 @@ def test_normalize(input_shape):
 
     assert np.all(out == 1)
     assert repr(transfo) == f"Normalize(mean={mean}, std={std})"
+
+    with pytest.raises(AssertionError):
+        Normalize(mean="32")
+
+    with pytest.raises(AssertionError):
+        Normalize(std="32")

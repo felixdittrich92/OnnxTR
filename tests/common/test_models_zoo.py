@@ -4,6 +4,8 @@ import pytest
 from onnxtr import models
 from onnxtr.io import Document, DocumentFile
 from onnxtr.models import detection, recognition
+from onnxtr.models.classification import mobilenet_v3_small_crop_orientation, mobilenet_v3_small_page_orientation
+from onnxtr.models.classification.zoo import crop_orientation_predictor, page_orientation_predictor
 from onnxtr.models.detection.predictor import DetectionPredictor
 from onnxtr.models.detection.zoo import ARCHS as DET_ARCHS
 from onnxtr.models.detection.zoo import detection_predictor
@@ -83,6 +85,24 @@ def test_ocrpredictor(mock_pdf, assume_straight_pages, straighten_pages):
 
     with pytest.raises(ValueError):
         _ = ocr_predictor("unknown_arch")
+
+    # Test with custom orientation models
+    custom_crop_orientation_model = mobilenet_v3_small_crop_orientation()
+    custom_page_orientation_model = mobilenet_v3_small_page_orientation()
+
+    if assume_straight_pages:
+        if predictor.detect_orientation or predictor.straighten_pages:
+            # Overwrite the default orientation models
+            predictor.crop_orientation_predictor = crop_orientation_predictor(custom_crop_orientation_model)
+            predictor.page_orientation_predictor = page_orientation_predictor(custom_page_orientation_model)
+    else:
+        # Overwrite the default orientation models
+        predictor.crop_orientation_predictor = crop_orientation_predictor(custom_crop_orientation_model)
+        predictor.page_orientation_predictor = page_orientation_predictor(custom_page_orientation_model)
+
+    out = predictor(doc)
+    orientation = 0
+    assert out.pages[0].orientation["value"] == orientation
 
 
 def test_trained_ocr_predictor(mock_payslip):
