@@ -91,6 +91,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
         ]
         if self.detect_orientation:
             general_pages_orientations, origin_pages_orientations = self._get_orientations(pages, seg_maps)
+            print(general_pages_orientations, origin_pages_orientations)
             orientations = [
                 {"value": orientation_page, "confidence": None} for orientation_page in origin_pages_orientations
             ]
@@ -119,6 +120,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             loc_preds,  # type: ignore[arg-type]
             channels_last=True,
             assume_straight_pages=self.assume_straight_pages,
+            assume_horizontal=self._page_orientation_disabled,
         )
         # Rectify crop orientation and get crop orientation predictions
         crop_orientations: Any = []

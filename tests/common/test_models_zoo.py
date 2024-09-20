@@ -25,14 +25,18 @@ class _DummyCallback:
 
 
 @pytest.mark.parametrize(
-    "assume_straight_pages, straighten_pages",
+    "assume_straight_pages, straighten_pages, disable_page_orientation, disable_crop_orientation",
     [
-        [True, False],
-        [False, False],
-        [True, True],
+        [True, False, False, False],
+        [False, False, True, True],
+        [True, True, False, False],
+        [False, True, True, True],
+        [True, False, True, False],
     ],
 )
-def test_ocrpredictor(mock_pdf, assume_straight_pages, straighten_pages):
+def test_ocrpredictor(
+    mock_pdf, assume_straight_pages, straighten_pages, disable_page_orientation, disable_crop_orientation
+):
     det_bsize = 4
     det_predictor = DetectionPredictor(
         PreProcessor(output_size=(1024, 1024), batch_size=det_bsize),
@@ -56,6 +60,15 @@ def test_ocrpredictor(mock_pdf, assume_straight_pages, straighten_pages):
         detect_language=True,
         resolve_lines=True,
         resolve_blocks=True,
+        disable_page_orientation=disable_page_orientation,
+        disable_crop_orientation=disable_crop_orientation,
+    )
+
+    assert (
+        predictor._page_orientation_disabled if disable_page_orientation else not predictor._page_orientation_disabled
+    )
+    assert (
+        predictor._crop_orientation_disabled if disable_crop_orientation else not predictor._crop_orientation_disabled
     )
 
     if assume_straight_pages:

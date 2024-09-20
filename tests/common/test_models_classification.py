@@ -85,6 +85,14 @@ def test_crop_orientation_model(mock_text_box, quantized):
     with pytest.raises(ValueError):
         _ = classification.crop_orientation_predictor(detection.db_resnet34())
 
+    # Test with disabled predictor
+    classifier = classification.crop_orientation_predictor("mobilenet_v3_small_crop_orientation", disabled=True)
+    assert classifier([text_box_0, text_box_270, text_box_180, text_box_90]) == [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1.0, 1.0, 1.0, 1.0],
+    ]
+
 
 @pytest.mark.parametrize("quantized", [False, True])
 def test_page_orientation_model(mock_payslip, quantized):
@@ -109,3 +117,11 @@ def test_page_orientation_model(mock_payslip, quantized):
 
     with pytest.raises(ValueError):
         _ = classification.page_orientation_predictor(detection.db_resnet34())
+
+    # Test with disabled predictor
+    classifier = classification.crop_orientation_predictor("mobilenet_v3_small_page_orientation", disabled=True)
+    assert classifier([text_box_0, text_box_270, text_box_180, text_box_90]) == [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1.0, 1.0, 1.0, 1.0],
+    ]
