@@ -9,7 +9,7 @@ from pathlib import Path
 from setuptools import setup
 
 PKG_NAME = "onnxtr"
-VERSION = os.getenv("BUILD_VERSION", "0.4.2a0")
+VERSION = os.getenv("BUILD_VERSION", "0.5.0a0")
 
 
 if __name__ == "__main__":
