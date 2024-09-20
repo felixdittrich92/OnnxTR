@@ -40,8 +40,10 @@ For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/get
 
 ```shell
 pip install "onnxtr[cpu]"
+pip install "onnxtr[cpu-headless]"  # same as cpu but with opencv-headless
 # with gpu support
 pip install "onnxtr[gpu]"
+pip install "onnxtr[gpu-headless]"  # same as gpu but with opencv-headless
 # with HTML support
 pip install "onnxtr[html]"
 # with support for visualization
