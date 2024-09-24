@@ -88,34 +88,7 @@ def benchmark_mean_diff(
     print(f"Mean difference between original and quantized model: {mean_diff:.2f}")
 
 
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input_model", required=True, help="input model")
-    parser.add_argument(
-        "--task",
-        required=True,
-        type=str,
-        choices=["crop_orientation", "page_orientation", "detection", "recognition"],
-        help="task shape",
-    )
-    parser.add_argument(
-        "--calibrate_dataset",
-        type=str,
-        required=True,
-        help="calibration data set (word crop images for recognition, crop_orientation else page images for detection, page_orientation)",  # noqa
-    )
-    parser.add_argument(
-        "--quant_format",
-        default=QuantFormat.QDQ,
-        type=QuantFormat.from_string,
-        choices=list(QuantFormat),
-    )
-    args = parser.parse_args()
-    return args
-
-
-def main():
-    args = get_args()
+def main(args):
     input_model_path = args.input_model
     calibration_dataset_path = args.calibrate_dataset
     if args.task == "crop_orientation":
@@ -187,4 +160,30 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="OnnxTR script to quantize models and benchmark the quantized models",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--input_model", required=True, help="input model")
+    parser.add_argument(
+        "--task",
+        required=True,
+        type=str,
+        choices=["crop_orientation", "page_orientation", "detection", "recognition"],
+        help="task shape",
+    )
+    parser.add_argument(
+        "--calibrate_dataset",
+        type=str,
+        required=True,
+        help="calibration data set (word crop images for recognition, crop_orientation else page images for detection, page_orientation)",  # noqa
+    )
+    parser.add_argument(
+        "--quant_format",
+        default=QuantFormat.QDQ,
+        type=QuantFormat.from_string,
+        choices=list(QuantFormat),
+    )
+    args = parser.parse_args()
+
+    main(args)
