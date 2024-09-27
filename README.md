@@ -87,6 +87,9 @@ model = ocr_predictor(
     # Additional parameters - meta information
     detect_orientation=False,  # set to `True` if the orientation of the pages should be detected (default: False)
     detect_language=False, # set to `True` if the language of the pages should be detected (default: False)
+    # Orientation specific parameters in combination with `assume_straight_pages=False` and/or `straighten_pages=True`
+    disable_crop_orientation=False,  # set to `True` if the crop orientation classification should be disabled (default: False)
+    disable_page_orientation=False,  # set to `True` if the general page orientation classification should be disabled (default: False)
     # DocumentBuilder specific parameters
     resolve_lines=True,  # whether words should be automatically grouped into lines (default: True)
     resolve_blocks=False,  # whether lines should be automatically grouped into blocks (default: False)
