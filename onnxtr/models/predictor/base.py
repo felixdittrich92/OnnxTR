@@ -9,7 +9,7 @@ import numpy as np
 
 from onnxtr.models.builder import DocumentBuilder
 from onnxtr.models.engine import EngineConfig
-from onnxtr.utils.geometry import extract_crops, extract_rcrops, rotate_image
+from onnxtr.utils.geometry import extract_crops, extract_rcrops, remove_image_padding, rotate_image
 
 from .._utils import estimate_orientation, rectify_crops, rectify_loc_preds
 from ..classification import crop_orientation_predictor, page_orientation_predictor
@@ -118,8 +118,8 @@ class _OCRPredictor:
             ]
         )
         return [
-            # expand if height and width are not equal
-            rotate_image(page, angle, expand=page.shape[0] != page.shape[1])
+            # expand if height and width are not equal, afterwards remove padding
+            remove_image_padding(rotate_image(page, angle, expand=page.shape[0] != page.shape[1]))
             for page, angle in zip(pages, origin_pages_orientations)
         ]
 

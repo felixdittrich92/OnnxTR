@@ -391,6 +391,26 @@ def rotate_image(
     return rot_img
 
 
+def remove_image_padding(image: np.ndarray) -> np.ndarray:
+    """Remove black border padding from an image
+
+    Args:
+    ----
+        image: numpy tensor to remove padding from
+
+    Returns:
+    -------
+        Image with padding removed
+    """
+    # Find the bounding box of the non-black region
+    rows = np.any(image, axis=1)
+    cols = np.any(image, axis=0)
+    rmin, rmax = np.where(rows)[0][[0, -1]]
+    cmin, cmax = np.where(cols)[0][[0, -1]]
+
+    return image[rmin : rmax + 1, cmin : cmax + 1]
+
+
 def estimate_page_angle(polys: np.ndarray) -> float:
     """Takes a batch of rotated previously ORIENTED polys (N, 4, 2) (rectified by the classifier) and return the
     estimated angle ccw in degrees
