@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[cpu,viz,html,testing] --upgrade
+          pip install -e .[cpu-headless,viz,html,testing] --upgrade
       - name: Run unittests
         run: |
           coverage run -m pytest tests/common/ -rs

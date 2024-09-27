@@ -33,7 +33,6 @@ dependencies = [
     # Additional typing support is brought by numpy>=1.22.4, but core build sticks to >=1.16.0
     "numpy>=1.16.0,<3.0.0",
     "scipy>=1.4.0,<2.0.0",
-    "opencv-python>=4.5.0,<5.0.0",
     "pypdfium2>=4.11.0,<5.0.0",
     "pyclipper>=1.2.0,<2.0.0",
     "shapely>=1.6.0,<3.0.0",
@@ -49,9 +48,19 @@ dependencies = [
 [project.optional-dependencies]
 cpu = [
     "onnxruntime>=1.11.0",
+    "opencv-python>=4.5.0,<5.0.0",
 ]
 gpu = [
     "onnxruntime-gpu>=1.11.0",
+    "opencv-python>=4.5.0,<5.0.0",
+]
+cpu-headless = [
+    "onnxruntime>=1.11.0",
+    "opencv-python-headless>=4.5.0,<5.0.0",
+]
+gpu-headless = [
+    "onnxruntime-gpu>=1.11.0",
+    "opencv-python-headless>=4.5.0,<5.0.0",
 ]
 html = [
     "weasyprint>=55.0",
@@ -73,6 +82,7 @@ quality = [
 dev = [
     # Runtime
     "onnxruntime>=1.11.0",
+    "opencv-python>=4.5.0,<5.0.0",
     # HTML
     "weasyprint>=55.0",
     # Visualization

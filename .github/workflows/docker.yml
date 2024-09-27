@@ -23,7 +23,7 @@ jobs:
       matrix:
         # Must match version at https://www.python.org/ftp/python/
         python: ["3.10.13"]
-        system: ["cpu", "gpu"]
+        system: ["cpu-headless", "gpu-headless"]
 
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
     permissions:
