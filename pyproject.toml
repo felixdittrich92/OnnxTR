@@ -107,7 +107,7 @@ changelog = "https://github.com/felixdittrich92/OnnxTR/releases"
 zip-safe = true
 
 [tool.setuptools.packages.find]
-exclude = ["docs*", "tests*", "scripts*"]
+exclude = ["docs*", "tests*", "scripts*", "demo*"]
 
 [tool.setuptools.package-data]
 onnxtr = ["py.typed"]
@@ -166,6 +166,7 @@ known-third-party = ["onnxruntime", "cv2"]
 "onnxtr/models/**.py" = ["N806", "F841"]
 "tests/**.py" = ["D"]
 "scripts/**.py" = ["D"]
+"demo/**.py" = ["D"]
 ".github/**.py" = ["D"]
 
 

@@ -1,0 +1,46 @@
+name: Sync Huging Face demo
+on:
+  push:
+#    tags:
+#    - 'v*'
+#  pull_request:
+#    branches: main
+#  schedule:
+#    - cron: '0 2 29 * *'  # At 02:00 on day-of-month 29
+
+
+jobs:
+  test-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        run: |
+          cd demo
+          pip install -r requirements.txt
+      - name: Start Gradio demo
+        run: |
+          cd demo
+          nohup python app.py &
+          sleep 10  # Allow some time for the Gradio server to start
+      - name: Check demo build
+        run: |
+          curl --fail http://127.0.0.1:7860/ || exit 1
+
+  sync-to-hub:
+    needs: test-demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Add remote
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: cd demo && git remote add space https://Felix92:$HF_TOKEN@huggingface.co/spaces/Felix92/OnnxTR-OCR
+      - name: Push to hub
+        env:
+          HF: ${{ secrets.HF_TOKEN }}
+        run: cd demo && git push --force https://Felix92:$HF_TOKEN:$HF@huggingface.co/spaces/Felix92/OnnxTR-OCR main
