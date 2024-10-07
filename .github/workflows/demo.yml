@@ -59,5 +59,7 @@ jobs:
             python -c "
             from huggingface_hub import HfApi
             api = HfApi(token='${{ secrets.HF_TOKEN }}')
-            api.upload_folder(repo_id='Felix92/OnnxTR-OCR', repo_type='space', folder_path='demo/')
+            repo_id = 'Felix92/OnnxTR-OCR'
+            api.upload_folder(repo_id=repo_id, repo_type='space', folder_path='demo/')
+            api.restart_space(repo_id=repo_id, factory_reboot=True)
             "
