@@ -1,0 +1,74 @@
+name: Sync Hugging Face demo
+
+on:
+  # Run 'test-demo' on every pull request to the main branch
+  pull_request:
+    branches: [main]
+
+  # Run 'sync-to-hub' on push when tagging (e.g., 'v*') and on a scheduled cron job
+  push:
+    tags:
+      - 'v*'
+
+  schedule:
+    - cron: '0 2 10 * *'  # At 02:00 on day-of-month 10 (every month)
+
+jobs:
+  # This job runs on every pull request to main
+  test-demo:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.9"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Cache python modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('demo/requirements.txt') }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r demo/requirements.txt --upgrade
+      - name: Start Gradio demo
+        run: |
+          nohup python demo/app.py &
+          sleep 10  # Allow some time for the Gradio server to start
+      - name: Check demo build
+        run: |
+          curl --fail http://127.0.0.1:7860/ || exit 1
+
+  # This job only runs when a new version tag is pushed or during the cron job
+  sync-to-hub:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'schedule'
+    needs: test-demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install huggingface_hub
+        run: pip install huggingface-hub
+      - name: Upload folder to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          from huggingface_hub import HfApi
+          api = HfApi(token='${{ secrets.HF_TOKEN }}')
+          repo_id = 'Felix92/OnnxTR-OCR'
+          api.upload_folder(repo_id=repo_id, repo_type='space', folder_path='demo/')
+          api.restart_space(repo_id=repo_id, factory_reboot=True)
+          "
