@@ -48,11 +48,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Add remote
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: cd demo && git remote add space https://Felix92:$HF_TOKEN@huggingface.co/spaces/Felix92/OnnxTR-OCR
+    #  - name: Add remote
+    #    env:
+    #      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    #    run: cd demo && git remote add space https://Felix92:$HF_TOKEN@huggingface.co/spaces/Felix92/OnnxTR-OCR
       - name: Push to hub
         env:
           HF: ${{ secrets.HF_TOKEN }}
-        run: cd demo && git push --force https://Felix92:$HF_TOKEN:$HF@huggingface.co/spaces/Felix92/OnnxTR-OCR main
+        run: |
+          cd demo
+          git add .
+          git commit -m "Sync hf demo"
+          git push --force https://Felix92:$HF_TOKEN:$HF@huggingface.co/spaces/Felix92/OnnxTR-OCR main
+
