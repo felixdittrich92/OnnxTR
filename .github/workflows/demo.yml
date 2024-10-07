@@ -60,6 +60,6 @@ jobs:
           git config --global user.email "felixdittrich92@gmailcom"
           git config --global user.name "Felix92"
           git add .
-          git commit -m "Sync hf demo"
+          git commit -m "Sync hf demo" --allow-empty
           git push --force https://Felix92:$HF_TOKEN:$HF@huggingface.co/spaces/Felix92/OnnxTR-OCR main
 
