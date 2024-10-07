@@ -11,19 +11,31 @@ on:
 
 jobs:
   test-demo:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.9"]
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Cache python modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('demo/requirements.txt') }}
       - name: Install dependencies
         run: |
-          cd demo
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          pip install -r demo/requirements.txt --upgrade
       - name: Start Gradio demo
         run: |
-          cd demo
-          nohup python app.py &
+          nohup python demo/app.py &
           sleep 10  # Allow some time for the Gradio server to start
       - name: Check demo build
         run: |
