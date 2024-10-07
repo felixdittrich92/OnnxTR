@@ -48,7 +48,6 @@ jobs:
 
   # This job only runs when a new version tag is pushed or during the cron job
   sync-to-hub:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'schedule'
     needs: test-demo
     runs-on: ubuntu-latest
     steps:
