@@ -42,25 +42,22 @@ jobs:
           curl --fail http://127.0.0.1:7860/ || exit 1
 
   sync-to-hub:
-    needs: test-demo
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-    #  - name: Add remote
-    #    env:
-    #      HF_TOKEN: ${{ secrets.HF_SSH }}
-    #    run: cd demo && git remote add space https://Felix92:$HF_TOKEN@huggingface.co/spaces/Felix92/OnnxTR-OCR
-      - name: Push to hub
-        env:
-          HF: ${{ secrets.HF_SSH }}
-        run: |
-          cd demo
-          git config --global user.email "felixdittrich92@gmailcom"
-          git config --global user.name "Felix92"
-          git checkout -b main
-          git add .
-          git commit -m "Sync hf demo" --allow-empty
-          git push --force https://Felix92:$HF_TOKEN:$HF@huggingface.co/spaces/Felix92/OnnxTR-OCR main
-
+      needs: test-demo
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: 3.9
+        - name: Install huggingface_hub
+          run: pip install huggingface-hub
+        - name: Upload folder to Hugging Face
+          run: |
+            python -c "
+            from huggingface_hub import HfApi
+            api = HfApi(token='${{ secrets.HF_TOKEN }}')
+            api.upload_folder(repo_id='Felix92/OnnxTR-OCR', repo_type='space', folder_path='demo/')
+            "
