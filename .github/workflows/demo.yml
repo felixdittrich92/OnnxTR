@@ -50,11 +50,11 @@ jobs:
           fetch-depth: 0
     #  - name: Add remote
     #    env:
-    #      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    #      HF_TOKEN: ${{ secrets.HF_SSH }}
     #    run: cd demo && git remote add space https://Felix92:$HF_TOKEN@huggingface.co/spaces/Felix92/OnnxTR-OCR
       - name: Push to hub
         env:
-          HF: ${{ secrets.HF_TOKEN }}
+          HF: ${{ secrets.HF_SSH }}
         run: |
           cd demo
           git config --global user.email "felixdittrich92@gmailcom"
