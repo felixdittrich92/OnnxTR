@@ -36,6 +36,7 @@ def _synthesize(
     min_font_size: int = 6,
     max_font_size: int = 50,
 ) -> Image.Image:
+    print(entry)
     if len(entry["geometry"]) == 2:
         (xmin, ymin), (xmax, ymax) = entry["geometry"]
         polygon = [(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]
@@ -68,7 +69,7 @@ def _synthesize(
             font_size = max(int(font_size * smoothing_factor), min_font_size)
             font = get_font(font_family, font_size)
             text_width, text_height = font.getbbox(word_text)[2:4]
-    except ValueError:
+    except ValueError:  # pragma: no cover
         font = get_font(font_family, min_font_size)
 
     # Create a mask for the word
@@ -80,7 +81,7 @@ def _synthesize(
     try:
         try:
             d.text((xmin, ymin), word_text, font=font, fill=(0, 0, 0), anchor="lt")
-        except UnicodeEncodeError:
+        except UnicodeEncodeError:  # pragma: no cover
             d.text((xmin, ymin), anyascii(word_text), font=font, fill=(0, 0, 0), anchor="lt")
     # Catch generic exceptions to avoid crashing the whole rendering
     except Exception:  # pragma: no cover
