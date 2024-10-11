@@ -36,7 +36,6 @@ def _synthesize(
     min_font_size: int = 6,
     max_font_size: int = 50,
 ) -> Image.Image:
-    print(entry)
     if len(entry["geometry"]) == 2:
         (xmin, ymin), (xmax, ymax) = entry["geometry"]
         polygon = [(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]
