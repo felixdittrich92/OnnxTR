@@ -13,6 +13,9 @@ on:
   schedule:
     - cron: '0 2 10 * *'  # At 02:00 on day-of-month 10 (every month)
 
+  # Allow manual triggering of the workflow
+  workflow_dispatch:
+
 jobs:
   # This job runs on every pull request to main
   test-demo:
