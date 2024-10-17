@@ -177,14 +177,14 @@ def analyze_page(
     img = page
 
     predictor = load_predictor(
-        det_arch,
-        reco_arch,
-        assume_straight_pages,
-        straighten_pages,
-        detect_language,
-        load_in_8_bit,
-        bin_thresh,
-        box_thresh,
+        det_arch=det_arch,
+        reco_arch=reco_arch,
+        assume_straight_pages=assume_straight_pages,
+        straighten_pages=straighten_pages,
+        detect_language=detect_language,
+        load_in_8_bit=load_in_8_bit,
+        bin_thresh=bin_thresh,
+        box_thresh=box_thresh,
         disable_crop_orientation=disable_crop_orientation,
         disable_page_orientation=disable_page_orientation,
     )
