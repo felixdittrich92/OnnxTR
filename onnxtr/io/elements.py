@@ -216,7 +216,7 @@ class Block(Element):
             box_resolution_fn = (
                 resolve_enclosing_rbbox if isinstance(lines[0].geometry, np.ndarray) else resolve_enclosing_bbox
             )
-            geometry = box_resolution_fn(line_boxes + artefact_boxes)  # type: ignore[arg-type]
+            geometry = box_resolution_fn(line_boxes + artefact_boxes)  # type: ignore
 
         super().__init__(lines=lines, artefacts=artefacts)
         self.geometry = geometry
