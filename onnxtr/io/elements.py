@@ -163,7 +163,7 @@ class Line(Element):
         if geometry is None:
             # Check whether this is a rotated or straight box
             box_resolution_fn = resolve_enclosing_rbbox if len(words[0].geometry) == 4 else resolve_enclosing_bbox
-            geometry = box_resolution_fn([w.geometry for w in words])  # type: ignore[operator]
+            geometry = box_resolution_fn([w.geometry for w in words])  # type: ignore[misc]
 
         super().__init__(words=words)
         self.geometry = geometry
@@ -216,7 +216,7 @@ class Block(Element):
             box_resolution_fn = (
                 resolve_enclosing_rbbox if isinstance(lines[0].geometry, np.ndarray) else resolve_enclosing_bbox
             )
-            geometry = box_resolution_fn(line_boxes + artefact_boxes)  # type: ignore[operator]
+            geometry = box_resolution_fn(line_boxes + artefact_boxes)  # type: ignore
 
         super().__init__(lines=lines, artefacts=artefacts)
         self.geometry = geometry
@@ -293,6 +293,10 @@ class Page(Element):
 
     def synthesize(self, **kwargs) -> np.ndarray:
         """Synthesize the page from the predictions
+
+        Args:
+        ----
+            **kwargs: keyword arguments passed to the `synthesize_page` method
 
         Returns
         -------
@@ -442,11 +446,15 @@ class Document(Element):
     def synthesize(self, **kwargs) -> List[np.ndarray]:
         """Synthesize all pages from their predictions
 
+        Args:
+        ----
+            **kwargs: keyword arguments passed to the `Page.synthesize` method
+
         Returns
         -------
             list of synthesized pages
         """
-        return [page.synthesize() for page in self.pages]
+        return [page.synthesize(**kwargs) for page in self.pages]
 
     def export_as_xml(self, **kwargs) -> List[Tuple[bytes, ET.ElementTree]]:
         """Export the document as XML (hOCR-format)

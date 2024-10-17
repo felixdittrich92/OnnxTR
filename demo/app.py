@@ -9,7 +9,7 @@ from matplotlib.figure import Figure
 from PIL import Image
 
 from onnxtr.io import DocumentFile
-from onnxtr.models import ocr_predictor
+from onnxtr.models import from_hub, ocr_predictor
 from onnxtr.models.predictor import OCRPredictor
 from onnxtr.utils.visualization import visualize_page
 
@@ -35,12 +35,17 @@ RECO_ARCHS: List[str] = [
     "parseq",
 ]
 
+CUSTOM_RECO_ARCHS: List[str] = [
+    "Felix92/onnxtr-parseq-multilingual-v1",
+]
+
 
 def load_predictor(
     det_arch: str,
     reco_arch: str,
     assume_straight_pages: bool,
     straighten_pages: bool,
+    export_as_straight_boxes: bool,
     detect_language: bool,
     load_in_8_bit: bool,
     bin_thresh: float,
@@ -58,6 +63,7 @@ def load_predictor(
         disable_crop_orientation: whether to disable crop orientation or not
         disable_page_orientation: whether to disable page orientation or not
         straighten_pages: whether to straighten rotated pages or not
+        export_as_straight_boxes: whether to export straight boxes
         detect_language: whether to detect the language of the text
         load_in_8_bit: whether to load the image in 8 bit mode
         bin_thresh: binarization threshold for the segmentation map
@@ -68,13 +74,13 @@ def load_predictor(
         instance of OCRPredictor
     """
     predictor = ocr_predictor(
-        det_arch,
-        reco_arch,
+        det_arch=det_arch,
+        reco_arch=reco_arch if reco_arch not in CUSTOM_RECO_ARCHS else from_hub(reco_arch),
         assume_straight_pages=assume_straight_pages,
         straighten_pages=straighten_pages,
         detect_language=detect_language,
         load_in_8_bit=load_in_8_bit,
-        export_as_straight_boxes=straighten_pages,
+        export_as_straight_boxes=export_as_straight_boxes,
         detect_orientation=not assume_straight_pages,
         disable_crop_orientation=disable_crop_orientation,
         disable_page_orientation=disable_page_orientation,
@@ -132,6 +138,7 @@ def analyze_page(
     disable_crop_orientation: bool,
     disable_page_orientation: bool,
     straighten_pages: bool,
+    export_as_straight_boxes: bool,
     detect_language: bool,
     load_in_8_bit: bool,
     bin_thresh: float,
@@ -149,6 +156,7 @@ def analyze_page(
         disable_crop_orientation: whether to disable crop orientation or not
         disable_page_orientation: whether to disable page orientation or not
         straighten_pages: whether to straighten rotated pages or not
+        export_as_straight_boxes: whether to export straight boxes
         detect_language: whether to detect the language of the text
         load_in_8_bit: whether to load the image in 8 bit mode
         bin_thresh: binarization threshold for the segmentation map
@@ -156,7 +164,7 @@ def analyze_page(
 
     Returns:
     -------
-        input image, segmentation heatmap, output image, OCR output
+        input image, segmentation heatmap, output image, OCR output, synthesized page
     """
     if uploaded_file is None:
         return None, "Please upload a document", None, None, None
@@ -165,19 +173,23 @@ def analyze_page(
         doc = DocumentFile.from_pdf(uploaded_file)
     else:
         doc = DocumentFile.from_images(uploaded_file)
+    try:
+        page = doc[page_idx - 1]
+    except IndexError:
+        page = doc[-1]
 
-    page = doc[page_idx - 1]
     img = page
 
     predictor = load_predictor(
-        det_arch,
-        reco_arch,
-        assume_straight_pages,
-        straighten_pages,
-        detect_language,
-        load_in_8_bit,
-        bin_thresh,
-        box_thresh,
+        det_arch=det_arch,
+        reco_arch=reco_arch,
+        assume_straight_pages=assume_straight_pages,
+        straighten_pages=straighten_pages,
+        export_as_straight_boxes=export_as_straight_boxes,
+        detect_language=detect_language,
+        load_in_8_bit=load_in_8_bit,
+        bin_thresh=bin_thresh,
+        box_thresh=box_thresh,
         disable_crop_orientation=disable_crop_orientation,
         disable_page_orientation=disable_page_orientation,
     )
@@ -194,7 +206,12 @@ def analyze_page(
 
     out_img = matplotlib_to_pil(fig)
 
-    return img, seg_heatmap, out_img, page_export
+    if assume_straight_pages or straighten_pages:
+        synthesized_page = out.synthesize()[0]
+    else:
+        synthesized_page = None
+
+    return img, seg_heatmap, out_img, page_export, synthesized_page
 
 
 with gr.Blocks(fill_height=True) as demo:
@@ -226,11 +243,14 @@ with gr.Blocks(fill_height=True) as demo:
             upload = gr.File(label="Upload File [JPG | PNG | PDF]", file_types=["pdf", "jpg", "png"])
             page_selection = gr.Slider(minimum=1, maximum=10, step=1, value=1, label="Page selection")
             det_model = gr.Dropdown(choices=DET_ARCHS, value=DET_ARCHS[0], label="Text detection model")
-            reco_model = gr.Dropdown(choices=RECO_ARCHS, value=RECO_ARCHS[0], label="Text recognition model")
+            reco_model = gr.Dropdown(
+                choices=RECO_ARCHS + CUSTOM_RECO_ARCHS, value=RECO_ARCHS[0], label="Text recognition model"
+            )
             assume_straight = gr.Checkbox(value=True, label="Assume straight pages")
             disable_crop_orientation = gr.Checkbox(value=False, label="Disable crop orientation")
             disable_page_orientation = gr.Checkbox(value=False, label="Disable page orientation")
             straighten = gr.Checkbox(value=False, label="Straighten pages")
+            export_as_straight_boxes = gr.Checkbox(value=False, label="Export as straight boxes")
             det_language = gr.Checkbox(value=False, label="Detect language")
             load_in_8_bit = gr.Checkbox(value=False, label="Load 8-bit quantized models")
             binarization_threshold = gr.Slider(
@@ -243,11 +263,11 @@ with gr.Blocks(fill_height=True) as demo:
                 input_image = gr.Image(label="Input page", width=600)
                 segmentation_heatmap = gr.Image(label="Segmentation heatmap", width=600)
                 output_image = gr.Image(label="Output page", width=600)
-            with gr.Column(scale=2):
-                with gr.Row():
-                    gr.Markdown("### OCR output")
-                with gr.Row():
+            with gr.Row():
+                with gr.Column(scale=3):
                     ocr_output = gr.JSON(label="OCR output", render=True, scale=1)
+                with gr.Column(scale=3):
+                    synthesized_page = gr.Image(label="Synthesized page", width=600)
 
     analyze_button.click(
         analyze_page,
@@ -260,12 +280,13 @@ with gr.Blocks(fill_height=True) as demo:
             disable_crop_orientation,
             disable_page_orientation,
             straighten,
+            export_as_straight_boxes,
             det_language,
             load_in_8_bit,
             binarization_threshold,
             box_threshold,
         ],
-        outputs=[input_image, segmentation_heatmap, output_image, ocr_output],
+        outputs=[input_image, segmentation_heatmap, output_image, ocr_output, synthesized_page],
     )
 
 demo.launch(inbrowser=True, allowed_paths=["./data/logo.jpg"])
