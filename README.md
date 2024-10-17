@@ -82,8 +82,10 @@ model = ocr_predictor(
     reco_arch='vitstr_base',  # recognition architecture
     det_bs=2, # detection batch size
     reco_bs=512, # recognition batch size
+    # Document related parameters
     assume_straight_pages=True,  # set to `False` if the pages are not straight (rotation, perspective, etc.) (default: True)
     straighten_pages=False,  # set to `True` if the pages should be straightened before final processing (default: False)
+    export_as_straight_boxes=False,  # set to `True` if the boxes should be exported as if the pages were straight (default: False)
     # Preprocessing related parameters
     preserve_aspect_ratio=True,  # set to `False` if the aspect ratio should not be preserved (default: True)
     symmetric_pad=True,  # set to `False` to disable symmetric padding (default: True)
