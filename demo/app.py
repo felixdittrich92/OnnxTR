@@ -45,6 +45,7 @@ def load_predictor(
     reco_arch: str,
     assume_straight_pages: bool,
     straighten_pages: bool,
+    export_as_straight_boxes: bool,
     detect_language: bool,
     load_in_8_bit: bool,
     bin_thresh: float,
@@ -62,6 +63,7 @@ def load_predictor(
         disable_crop_orientation: whether to disable crop orientation or not
         disable_page_orientation: whether to disable page orientation or not
         straighten_pages: whether to straighten rotated pages or not
+        export_as_straight_boxes: whether to export straight boxes
         detect_language: whether to detect the language of the text
         load_in_8_bit: whether to load the image in 8 bit mode
         bin_thresh: binarization threshold for the segmentation map
@@ -78,7 +80,7 @@ def load_predictor(
         straighten_pages=straighten_pages,
         detect_language=detect_language,
         load_in_8_bit=load_in_8_bit,
-        export_as_straight_boxes=straighten_pages,
+        export_as_straight_boxes=export_as_straight_boxes,
         detect_orientation=not assume_straight_pages,
         disable_crop_orientation=disable_crop_orientation,
         disable_page_orientation=disable_page_orientation,
@@ -136,6 +138,7 @@ def analyze_page(
     disable_crop_orientation: bool,
     disable_page_orientation: bool,
     straighten_pages: bool,
+    export_as_straight_boxes: bool,
     detect_language: bool,
     load_in_8_bit: bool,
     bin_thresh: float,
@@ -153,6 +156,7 @@ def analyze_page(
         disable_crop_orientation: whether to disable crop orientation or not
         disable_page_orientation: whether to disable page orientation or not
         straighten_pages: whether to straighten rotated pages or not
+        export_as_straight_boxes: whether to export straight boxes
         detect_language: whether to detect the language of the text
         load_in_8_bit: whether to load the image in 8 bit mode
         bin_thresh: binarization threshold for the segmentation map
@@ -181,6 +185,7 @@ def analyze_page(
         reco_arch=reco_arch,
         assume_straight_pages=assume_straight_pages,
         straighten_pages=straighten_pages,
+        export_as_straight_boxes=export_as_straight_boxes,
         detect_language=detect_language,
         load_in_8_bit=load_in_8_bit,
         bin_thresh=bin_thresh,
@@ -245,6 +250,7 @@ with gr.Blocks(fill_height=True) as demo:
             disable_crop_orientation = gr.Checkbox(value=False, label="Disable crop orientation")
             disable_page_orientation = gr.Checkbox(value=False, label="Disable page orientation")
             straighten = gr.Checkbox(value=False, label="Straighten pages")
+            export_as_straight_boxes = gr.Checkbox(value=False, label="Export as straight boxes")
             det_language = gr.Checkbox(value=False, label="Detect language")
             load_in_8_bit = gr.Checkbox(value=False, label="Load 8-bit quantized models")
             binarization_threshold = gr.Slider(
@@ -274,6 +280,7 @@ with gr.Blocks(fill_height=True) as demo:
             disable_crop_orientation,
             disable_page_orientation,
             straighten,
+            export_as_straight_boxes,
             det_language,
             load_in_8_bit,
             binarization_threshold,
