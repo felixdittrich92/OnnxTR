@@ -206,8 +206,8 @@ def analyze_page(
 
     out_img = matplotlib_to_pil(fig)
 
-    if assume_straight_pages or straighten_pages:
-        synthesized_page = out.synthesize()[0]
+    if assume_straight_pages or (not assume_straight_pages and straighten_pages):
+        synthesized_page = out.pages[0].synthesize()
     else:
         synthesized_page = None
 
