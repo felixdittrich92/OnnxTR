@@ -240,7 +240,7 @@ with gr.Blocks(fill_height=True) as demo:
     )
     with gr.Row():
         with gr.Column(scale=1):
-            upload = gr.File(label="Upload File [JPG | PNG | PDF]", file_types=["pdf", "jpg", "png"])
+            upload = gr.File(label="Upload File [JPG | PNG | PDF]", file_types=[".pdf", ".jpg", ".png"])
             page_selection = gr.Slider(minimum=1, maximum=10, step=1, value=1, label="Page selection")
             det_model = gr.Dropdown(choices=DET_ARCHS, value=DET_ARCHS[0], label="Text detection model")
             reco_model = gr.Dropdown(
@@ -260,14 +260,14 @@ with gr.Blocks(fill_height=True) as demo:
             analyze_button = gr.Button("Analyze page")
         with gr.Column(scale=3):
             with gr.Row():
-                input_image = gr.Image(label="Input page", width=600)
-                segmentation_heatmap = gr.Image(label="Segmentation heatmap", width=600)
-                output_image = gr.Image(label="Output page", width=600)
+                input_image = gr.Image(label="Input page", width=700, height=500)
+                segmentation_heatmap = gr.Image(label="Segmentation heatmap", width=700, height=500)
+                output_image = gr.Image(label="Output page", width=700, height=500)
             with gr.Row():
                 with gr.Column(scale=3):
-                    ocr_output = gr.JSON(label="OCR output", render=True, scale=1)
+                    ocr_output = gr.JSON(label="OCR output", render=True, scale=1, height=500)
                 with gr.Column(scale=3):
-                    synthesized_page = gr.Image(label="Synthesized page", width=600)
+                    synthesized_page = gr.Image(label="Synthesized page", width=700, height=500)
 
     analyze_button.click(
         analyze_page,

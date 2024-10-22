@@ -321,15 +321,15 @@ Benchmarking performed on the FUNSD dataset and CORD dataset.
 
 docTR / OnnxTR models used for the benchmarks are `fast_base` (full precision) | `db_resnet50` (8-bit variant) for detection and `crnn_vgg16_bn` for recognition.
 
-The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.17s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset in **full precision**.
+The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.17s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset in **full precision** on CPU.
 
 - CPU benchmarks:
 
 |Library                          |FUNSD (199 pages)              |CORD  (900 pages)              |
 |---------------------------------|-------------------------------|-------------------------------|
 |docTR (CPU) - v0.8.1             | ~1.29s / Page                 | ~0.60s / Page                 |
-|**OnnxTR (CPU)** - v0.4.1        | ~0.57s / Page                 | **~0.25s / Page**             |
-|**OnnxTR (CPU) 8-bit** - v0.4.1  | **~0.38s / Page**             | **~0.14s / Page**             |
+|**OnnxTR (CPU)** - v0.5.1        | ~0.57s / Page                 | **~0.25s / Page**             |
+|**OnnxTR (CPU) 8-bit** - v0.5.1  | **~0.38s / Page**             | **~0.14s / Page**             |
 |EasyOCR (CPU) - v1.7.1           | ~1.96s / Page                 | ~1.75s / Page                 |
 |**PyTesseract (CPU)** - v0.3.10  | **~0.50s / Page**             | ~0.52s / Page                 |
 |Surya (line) (CPU) - v0.4.4      | ~48.76s / Page                | ~35.49s / Page                |
@@ -341,7 +341,8 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 |-------------------------------------|-------------------------------|-------------------------------|
 |docTR (GPU) - v0.8.1                 | ~0.07s / Page                 | ~0.05s / Page                 |
 |**docTR (GPU) float16** - v0.8.1     | **~0.06s / Page**             | **~0.03s / Page**             |
-|OnnxTR (GPU) - v0.4.1                | **~0.06s / Page**             | ~0.04s / Page                 |
+|OnnxTR (GPU) - v0.5.1                | **~0.06s / Page**             | ~0.04s / Page                 |
+|**OnnxTR (GPU) float16 - v0.5.1**    | **~0.05s / Page**             | **~0.03s / Page**             |
 |EasyOCR (GPU) - v1.7.1               | ~0.31s / Page                 | ~0.19s / Page                 |
 |Surya (GPU) float16 - v0.4.4         | ~3.70s / Page                 | ~2.81s / Page                 |
 |**PaddleOCR (GPU) - no cls - v2.7.3**| ~0.08s / Page                 | **~0.03s / Page**             |
