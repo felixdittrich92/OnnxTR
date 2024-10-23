@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python: ["3.9"]
+        python: ["3.10"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -61,7 +61,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.10"
       - name: Install huggingface_hub
         run: pip install huggingface-hub
       - name: Upload folder to Hugging Face

@@ -27,7 +27,7 @@ What you can expect from this repository:
 
 ### Prerequisites
 
-Python 3.9 (or higher) and [pip](https://pip.pypa.io/en/stable/) are required to install OnnxTR.
+Python 3.10 (or higher) and [pip](https://pip.pypa.io/en/stable/) are required to install OnnxTR.
 
 ### Latest release
 
