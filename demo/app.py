@@ -9,7 +9,7 @@ from matplotlib.figure import Figure
 from PIL import Image
 
 from onnxtr.io import DocumentFile
-from onnxtr.models import from_hub, ocr_predictor
+from onnxtr.models import EngineConfig, from_hub, ocr_predictor
 from onnxtr.models.predictor import OCRPredictor
 from onnxtr.utils.visualization import visualize_page
 
@@ -43,6 +43,7 @@ CUSTOM_RECO_ARCHS: List[str] = [
 def load_predictor(
     det_arch: str,
     reco_arch: str,
+    use_gpu: bool,
     assume_straight_pages: bool,
     straighten_pages: bool,
     export_as_straight_boxes: bool,
@@ -59,6 +60,7 @@ def load_predictor(
     ----
         det_arch: detection architecture
         reco_arch: recognition architecture
+        use_gpu: whether to use the GPU or not
         assume_straight_pages: whether to assume straight pages or not
         disable_crop_orientation: whether to disable crop orientation or not
         disable_page_orientation: whether to disable page orientation or not
@@ -73,6 +75,11 @@ def load_predictor(
     -------
         instance of OCRPredictor
     """
+    engine_cfg = (
+        EngineConfig()
+        if use_gpu
+        else EngineConfig(providers=[("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})])
+    )
     predictor = ocr_predictor(
         det_arch=det_arch,
         reco_arch=reco_arch if reco_arch not in CUSTOM_RECO_ARCHS else from_hub(reco_arch),
@@ -84,6 +91,9 @@ def load_predictor(
         detect_orientation=not assume_straight_pages,
         disable_crop_orientation=disable_crop_orientation,
         disable_page_orientation=disable_page_orientation,
+        det_engine_cfg=engine_cfg,
+        reco_engine_cfg=engine_cfg,
+        clf_engine_cfg=engine_cfg,
     )
     predictor.det_predictor.model.postprocessor.bin_thresh = bin_thresh
     predictor.det_predictor.model.postprocessor.box_thresh = box_thresh
@@ -134,6 +144,7 @@ def analyze_page(
     page_idx: int,
     det_arch: str,
     reco_arch: str,
+    use_gpu: bool,
     assume_straight_pages: bool,
     disable_crop_orientation: bool,
     disable_page_orientation: bool,
@@ -152,6 +163,7 @@ def analyze_page(
         page_idx: index of the page to analyze
         det_arch: detection architecture
         reco_arch: recognition architecture
+        use_gpu: whether to use the GPU or not
         assume_straight_pages: whether to assume straight pages or not
         disable_crop_orientation: whether to disable crop orientation or not
         disable_page_orientation: whether to disable page orientation or not
@@ -183,6 +195,7 @@ def analyze_page(
     predictor = load_predictor(
         det_arch=det_arch,
         reco_arch=reco_arch,
+        use_gpu=use_gpu,
         assume_straight_pages=assume_straight_pages,
         straighten_pages=straighten_pages,
         export_as_straight_boxes=export_as_straight_boxes,
@@ -215,27 +228,28 @@ def analyze_page(
 
 
 with gr.Blocks(fill_height=True) as demo:
-    gr.Markdown(
+    gr.HTML(
         """
-        <p align="center">
-            <img src="https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/logo.jpg" width="15%">
-        </p>
+        <div style="text-align: center;">
+            <p style="display: flex; justify-content: center;">
+                <img src="https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/logo.jpg" width="15%">
+            </p>
 
-        <div align="center">
+            <h1>OnnxTR OCR Demo</h1>
 
-        # OnnxTR OCR Demo
-
-        [![GitHub OnnxTR](https://img.shields.io/badge/GitHub-blue?logo=github)](https://github.com/felixdittrich92/OnnxTR)
-
-        [![PyPI](https://img.shields.io/pypi/v/onnxtr?color=blue)](https://pypi.org/project/onnxtr/)
-
+            <p style="display: flex; justify-content: center; gap: 10px;">
+                <a href="https://github.com/felixdittrich92/OnnxTR" target="_blank">
+                    <img src="https://img.shields.io/badge/GitHub-blue?logo=github" alt="GitHub OnnxTR">
+                </a>
+                <a href="https://pypi.org/project/onnxtr/" target="_blank">
+                    <img src="https://img.shields.io/pypi/v/onnxtr?color=blue" alt="PyPI">
+                </a>
+            </p>
         </div>
-
-        ## To use this interactive demo for OnnxTR:
-
-        ### 1. Upload a document (PDF, JPG, or PNG)
-        ### 2. Select the model architectures for text detection and recognition you want to use
-        ### 3. Press the "Analyze page" button to process the uploaded document
+        <h2>To use this interactive demo for OnnxTR:</h2>
+        <h3> 1. Upload a document (PDF, JPG, or PNG)</h3>
+        <h3> 2. Select the model architectures for text detection and recognition you want to use</h3>
+        <h3> 3. Press the "Analyze page" button to process the uploaded document</h3>
         """
     )
     with gr.Row():
@@ -246,6 +260,7 @@ with gr.Blocks(fill_height=True) as demo:
             reco_model = gr.Dropdown(
                 choices=RECO_ARCHS + CUSTOM_RECO_ARCHS, value=RECO_ARCHS[0], label="Text recognition model"
             )
+            use_gpu = gr.Checkbox(value=True, label="Use GPU")
             assume_straight = gr.Checkbox(value=True, label="Assume straight pages")
             disable_crop_orientation = gr.Checkbox(value=False, label="Disable crop orientation")
             disable_page_orientation = gr.Checkbox(value=False, label="Disable page orientation")
@@ -276,6 +291,7 @@ with gr.Blocks(fill_height=True) as demo:
             page_selection,
             det_model,
             reco_model,
+            use_gpu,
             assume_straight,
             disable_crop_orientation,
             disable_page_orientation,

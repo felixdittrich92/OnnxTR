@@ -1,2 +1,2 @@
--e git+https://github.com/felixdittrich92/OnnxTR.git#egg=onnxtr[cpu-headless,viz]
+-e git+https://github.com/felixdittrich92/OnnxTR.git#egg=onnxtr[gpu-headless,viz]
 gradio>=4.37.1,<6.0.0
