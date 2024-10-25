@@ -1,5 +1,20 @@
 import io
+import os
 from typing import Any, List, Union
+
+# NOTE: This is a fix to run the demo on the HuggingFace Zero GPU or CPU spaces
+if os.environ.get("SPACES_ZERO_GPU") is not None:
+    import spaces
+else:
+
+    class spaces:  # noqa: N801
+        @staticmethod
+        def GPU(func):  # noqa: N802
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
+
+            return wrapper
+
 
 import cv2
 import gradio as gr
@@ -139,6 +154,7 @@ def matplotlib_to_pil(fig: Union[Figure, np.ndarray]) -> Image.Image:
     return Image.open(buf)
 
 
+@spaces.GPU
 def analyze_page(
     uploaded_file: Any,
     page_idx: int,
