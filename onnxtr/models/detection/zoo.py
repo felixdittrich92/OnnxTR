@@ -59,6 +59,9 @@ def _predictor(
 def detection_predictor(
     arch: Any = "fast_base",
     assume_straight_pages: bool = True,
+    preserve_aspect_ratio: bool = True,
+    symmetric_pad: bool = True,
+    batch_size: int = 2,
     load_in_8_bit: bool = False,
     engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
@@ -75,6 +78,10 @@ def detection_predictor(
     ----
         arch: name of the architecture or model itself to use (e.g. 'db_resnet50')
         assume_straight_pages: If True, fit straight boxes to the page
+        preserve_aspect_ratio: If True, pad the input document image to preserve the aspect ratio before
+            running the detection model on it
+        symmetric_pad: if True, pad the image symmetrically instead of padding at the bottom-right
+        batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: optional keyword arguments passed to the architecture
@@ -83,4 +90,13 @@ def detection_predictor(
     -------
         Detection predictor
     """
-    return _predictor(arch, assume_straight_pages, load_in_8_bit, engine_cfg=engine_cfg, **kwargs)
+    return _predictor(
+        arch=arch,
+        assume_straight_pages=assume_straight_pages,
+        preserve_aspect_ratio=preserve_aspect_ratio,
+        symmetric_pad=symmetric_pad,
+        batch_size=batch_size,
+        load_in_8_bit=load_in_8_bit,
+        engine_cfg=engine_cfg,
+        **kwargs,
+    )

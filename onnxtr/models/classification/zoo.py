@@ -51,6 +51,7 @@ def _orientation_predictor(
 
 def crop_orientation_predictor(
     arch: Any = "mobilenet_v3_small_crop_orientation",
+    batch_size: int = 512,
     load_in_8_bit: bool = False,
     engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
@@ -66,6 +67,7 @@ def crop_orientation_predictor(
     Args:
     ----
         arch: name of the architecture to use (e.g. 'mobilenet_v3_small_crop_orientation')
+        batch_size: number of samples the model processes in parallel
         load_in_8_bit: load the 8-bit quantized version of the model
         engine_cfg: configuration of inference engine
         **kwargs: keyword arguments to be passed to the OrientationPredictor
@@ -75,11 +77,19 @@ def crop_orientation_predictor(
         OrientationPredictor
     """
     model_type = "crop"
-    return _orientation_predictor(arch, model_type, load_in_8_bit, engine_cfg, **kwargs)
+    return _orientation_predictor(
+        arch=arch,
+        batch_size=batch_size,
+        model_type=model_type,
+        load_in_8_bit=load_in_8_bit,
+        engine_cfg=engine_cfg,
+        **kwargs,
+    )
 
 
 def page_orientation_predictor(
     arch: Any = "mobilenet_v3_small_page_orientation",
+    batch_size: int = 2,
     load_in_8_bit: bool = False,
     engine_cfg: Optional[EngineConfig] = None,
     **kwargs: Any,
@@ -95,6 +105,7 @@ def page_orientation_predictor(
     Args:
     ----
         arch: name of the architecture to use (e.g. 'mobilenet_v3_small_page_orientation')
+        batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments to be passed to the OrientationPredictor
@@ -104,4 +115,11 @@ def page_orientation_predictor(
         OrientationPredictor
     """
     model_type = "page"
-    return _orientation_predictor(arch, model_type, load_in_8_bit, engine_cfg, **kwargs)
+    return _orientation_predictor(
+        arch=arch,
+        batch_size=batch_size,
+        model_type=model_type,
+        load_in_8_bit=load_in_8_bit,
+        engine_cfg=engine_cfg,
+        **kwargs,
+    )
