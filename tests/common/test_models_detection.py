@@ -116,7 +116,9 @@ def test_detection_models(arch_name, input_shape, output_size, out_prob, quantiz
 )
 def test_detection_zoo(arch_name, quantized):
     # Model
-    predictor = detection.zoo.detection_predictor(arch_name, load_in_8_bit=quantized)
+    predictor = detection.zoo.detection_predictor(
+        arch_name, load_in_8_bit=quantized, preserve_aspect_ratio=False, symmetric_pad=False
+    )
     # object check
     assert isinstance(predictor, DetectionPredictor)
     input_array = np.random.rand(2, 3, 1024, 1024).astype(np.float32)

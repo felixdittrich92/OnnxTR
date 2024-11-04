@@ -50,7 +50,12 @@ def _predictor(
 
 
 def recognition_predictor(
-    arch: Any = "crnn_vgg16_bn", load_in_8_bit: bool = False, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any
+    arch: Any = "crnn_vgg16_bn",
+    symmetric_pad: bool = False,
+    batch_size: int = 128,
+    load_in_8_bit: bool = False,
+    engine_cfg: Optional[EngineConfig] = None,
+    **kwargs: Any,
 ) -> RecognitionPredictor:
     """Text recognition architecture.
 
@@ -64,6 +69,8 @@ def recognition_predictor(
     Args:
     ----
         arch: name of the architecture or model itself to use (e.g. 'crnn_vgg16_bn')
+        symmetric_pad: if True, pad the image symmetrically instead of padding at the bottom-right
+        batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration of inference engine
         **kwargs: optional parameters to be passed to the architecture
@@ -72,4 +79,11 @@ def recognition_predictor(
     -------
         Recognition predictor
     """
-    return _predictor(arch, load_in_8_bit, engine_cfg, **kwargs)
+    return _predictor(
+        arch=arch,
+        symmetric_pad=symmetric_pad,
+        batch_size=batch_size,
+        load_in_8_bit=load_in_8_bit,
+        engine_cfg=engine_cfg,
+        **kwargs,
+    )
