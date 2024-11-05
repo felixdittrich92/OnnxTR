@@ -4,7 +4,7 @@ updates:
     directory: "/"
     open-pull-requests-limit: 10
     target-branch: "main"
-    labels: ["topic: build"]
+    labels: ["build"]
     schedule:
       interval: weekly
       day: sunday
@@ -14,7 +14,7 @@ updates:
     directory: "/"
     open-pull-requests-limit: 10
     target-branch: "main"
-    labels: ["topic: CI/CD"]
+    labels: ["CI/CD"]
     schedule:
       interval: weekly
       day: sunday
