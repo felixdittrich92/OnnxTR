@@ -54,7 +54,7 @@ jobs:
 
       - name: Build Docker image
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           build-args: |
@@ -71,7 +71,7 @@ jobs:
       - name: Push Docker image
         # Push only if the CI is not triggered by "PR on main"
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           build-args: |
