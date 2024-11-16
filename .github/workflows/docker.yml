@@ -21,9 +21,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        image: ["python:3.10-slim", "nvidia/cuda:12.4.0-base-ubuntu22.04"]
         # Must match version at https://www.python.org/ftp/python/
-        python: ["3.10.13"]
-        system: ["cpu-headless", "gpu-headless"]
+        python: [3.10.13]
 
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
     permissions:
@@ -41,6 +41,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Sanitize docker tag
+        run:
+          PREFIX_DOCKER_TAG="OnnxTR-${{ matrix.image == 'nvidia/cuda:12.4.0-base-ubuntu22.04' && 'gpu' || 'cpu' }}-py${{ matrix.python }}-"
+          PREFIX_DOCKER_TAG=$(echo PREFIX_DOCKER_TAG|sed 's/,/-/g')
+          echo PREFIX_DOCKER_TAG=${PREFIX_DOCKER_TAG} >> $GITHUB_ENV
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -48,18 +54,20 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
             # used only on schedule event
-            type=schedule,pattern={{date 'YYYY-MM'}},prefix=OnnxTR-${{ matrix.system }}-py${{ matrix.python }}-
+            type=schedule,pattern={{date 'YYYY-MM'}},prefix=${{ env.PREFIX_DOCKER_TAG }}
             # used only if a tag following semver is published
-            type=semver,pattern={{raw}},prefix=OnnxTR-${{ matrix.system }}-py${{ matrix.python }}-
+            type=semver,pattern={{raw}},prefix=${{ env.PREFIX_DOCKER_TAG }}
 
       - name: Build Docker image
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
+          # Set SYSTEM to 'gpu' if the image is nvidia/cuda:12.4.0-base-ubuntu22.04 and 'cpu' otherwise
           build-args: |
+            BASE_IMAGE=${{ matrix.image }}
+            SYSTEM=${{ matrix.image == 'nvidia/cuda:12.4.0-base-ubuntu22.04' && 'gpu' || 'cpu' }}
             PYTHON_VERSION=${{ matrix.python }}
-            SYSTEM=${{ matrix.system }}
             ONNXTR_REPO=${{ github.repository }}
             ONNXTR_VERSION=${{ github.sha }}
           push: false  # push only if `import onnxtr` works
@@ -70,13 +78,15 @@ jobs:
 
       - name: Push Docker image
         # Push only if the CI is not triggered by "PR on main"
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (startsWith(github.ref, 'refs/tags') && github.event_name == 'push') }}
         uses: docker/build-push-action@v6
         with:
           context: .
+          # Set SYSTEM to 'gpu' if the image is nvidia/cuda:12.4.0-base-ubuntu22.04 and 'cpu' otherwise
           build-args: |
+            BASE_IMAGE=${{ matrix.image }}
+            SYSTEM=${{ matrix.image == 'nvidia/cuda:12.4.0-base-ubuntu22.04' && 'gpu' || 'cpu' }}
             PYTHON_VERSION=${{ matrix.python }}
-            SYSTEM=${{ matrix.system }}
             ONNXTR_REPO=${{ github.repository }}
             ONNXTR_VERSION=${{ github.sha }}
           push: true
