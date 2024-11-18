@@ -7,6 +7,8 @@ ENV LANG=C.UTF-8
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
+ARG SYSTEM=gpu-headless
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # - Other packages
     build-essential \
