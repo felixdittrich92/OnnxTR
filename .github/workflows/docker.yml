@@ -43,7 +43,7 @@ jobs:
 
       - name: Sanitize docker tag
         run:
-          PREFIX_DOCKER_TAG="OnnxTR-${{ matrix.image == 'nvidia/cuda:12.6.2-base-ubuntu24.04' && 'gpu' || 'cpu' }}-py${{ matrix.python }}-"
+          PREFIX_DOCKER_TAG="OnnxTR-${{ matrix.image == 'ubuntu:24.04' && 'cpu' || 'gpu' }}-py${{ matrix.python }}-"
           PREFIX_DOCKER_TAG=$(echo PREFIX_DOCKER_TAG|sed 's/,/-/g')
           echo PREFIX_DOCKER_TAG=${PREFIX_DOCKER_TAG} >> $GITHUB_ENV
 
@@ -63,11 +63,11 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          # Set SYSTEM to 'gpu-headless' if the image is nvidia/cuda:12.6.2-base-ubuntu24.04
-          # and 'cpu-headless' otherwise
+          # Set SYSTEM to 'cpu-headless' if the image is ubuntu:24.04
+          # and 'gpu-headless' otherwise
           build-args: |
             BASE_IMAGE=${{ matrix.image }}
-            SYSTEM=${{ matrix.image == 'nvidia/cuda:12.4.0-base-ubuntu22.04' && 'gpu-headless' || 'cpu-headless' }}
+            SYSTEM=${{ matrix.image == 'ubuntu:24.04' && 'cpu-headless' || 'gpu-headless' }}
             PYTHON_VERSION=${{ matrix.python }}
             ONNXTR_REPO=${{ github.repository }}
             ONNXTR_VERSION=${{ github.sha }}
@@ -83,11 +83,11 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          # Set SYSTEM to 'gpu-headless' if the image is nvidia/cuda:12.6.2-base-ubuntu24.04
-          # and 'cpu-headless' otherwise
+          # Set SYSTEM to 'cpu-headless' if the image is ubuntu:24.04
+          # and 'gpu-headless' otherwise
           build-args: |
             BASE_IMAGE=${{ matrix.image }}
-            SYSTEM=${{ matrix.image == 'nvidia/cuda:12.4.0-base-ubuntu22.04' && 'gpu-headless' || 'cpu-headless' }}
+            SYSTEM=${{ matrix.image == 'ubuntu:24.04' && 'cpu-headless' || 'gpu-headless' }}
             PYTHON_VERSION=${{ matrix.python }}
             ONNXTR_REPO=${{ github.repository }}
             ONNXTR_VERSION=${{ github.sha }}

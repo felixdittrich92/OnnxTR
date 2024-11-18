@@ -1,13 +1,14 @@
-ARG IMAGE=nvidia/cuda:12.4.0-base-ubuntu22.04
+ARG BASE_IMAGE
 
-FROM ${IMAGE}
+FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-ARG SYSTEM=gpu-headless
+ARG SYSTEM
+ARG PYTHON_VERSION
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # - Other packages
@@ -27,7 +28,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 fi
 
 # Install Python
-ARG PYTHON_VERSION=3.10.13
 
 RUN wget http://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz && \
     tar -zxf Python-$PYTHON_VERSION.tgz && \
