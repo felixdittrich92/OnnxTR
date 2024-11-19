@@ -19,7 +19,6 @@ class OrientationPredictor(NestedObject):
     4 possible orientations: 0, 90, 180, 270 (-90) degrees counter clockwise.
 
     Args:
-    ----
         pre_processor: transform inputs for easier batched model inference
         model: core classification architecture (backbone + classification head)
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False

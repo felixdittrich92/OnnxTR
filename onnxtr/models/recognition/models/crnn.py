@@ -49,7 +49,6 @@ class CRNNPostProcessor(RecognitionPostProcessor):
     """Postprocess raw prediction of the model (logits) to a list of words using CTC decoding
 
     Args:
-    ----
         vocab: string containing the ordered sequence of supported characters
     """
 
@@ -69,13 +68,11 @@ class CRNNPostProcessor(RecognitionPostProcessor):
         <https://github.com/githubharald/CTCDecoder>`_.
 
         Args:
-        ----
             logits: model output, shape: N x T x C
             vocab: vocabulary to use
             blank: index of blank label
 
         Returns:
-        -------
             A list of tuples: (word, confidence)
         """
         # Gather the most confident characters, and assign the smallest conf among those to the sequence prob
@@ -94,11 +91,9 @@ class CRNNPostProcessor(RecognitionPostProcessor):
         with label_to_idx mapping dictionnary
 
         Args:
-        ----
             logits: raw output of the model, shape (N, C + 1, seq_len)
 
         Returns:
-        -------
             A tuple of 2 lists: a list of str (words) and a list of float (probs)
 
         """
@@ -110,7 +105,6 @@ class CRNN(Engine):
     """CRNN Onnx loader
 
     Args:
-    ----
         model_path: path or url to onnx model file
         vocab: vocabulary used for encoding
         engine_cfg: configuration for the inference engine
@@ -187,14 +181,12 @@ def crnn_vgg16_bn(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
-    -------
         text recognition architecture
     """
     return _crnn("crnn_vgg16_bn", model_path, load_in_8_bit, engine_cfg, **kwargs)
@@ -216,14 +208,12 @@ def crnn_mobilenet_v3_small(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
-    -------
         text recognition architecture
     """
     return _crnn("crnn_mobilenet_v3_small", model_path, load_in_8_bit, engine_cfg, **kwargs)
@@ -245,14 +235,12 @@ def crnn_mobilenet_v3_large(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the CRNN architecture
 
     Returns:
-    -------
         text recognition architecture
     """
     return _crnn("crnn_mobilenet_v3_large", model_path, load_in_8_bit, engine_cfg, **kwargs)

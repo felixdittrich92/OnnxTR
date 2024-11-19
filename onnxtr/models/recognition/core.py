@@ -13,7 +13,6 @@ class RecognitionPostProcessor(NestedObject):
     """Abstract class to postprocess the raw output of the model
 
     Args:
-    ----
         vocab: string containing the ordered sequence of supported characters
     """
 

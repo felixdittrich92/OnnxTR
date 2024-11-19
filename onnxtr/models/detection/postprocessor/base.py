@@ -21,7 +21,6 @@ class GeneralDetectionPostProcessor(DetectionPostProcessor):
     """Implements a post processor for FAST model.
 
     Args:
-    ----
         bin_thresh: threshold used to binzarized p_map at inference time
         box_thresh: minimal objectness score to consider a box
         assume_straight_pages: whether the inputs were expected to have horizontal text elements
@@ -43,11 +42,9 @@ class GeneralDetectionPostProcessor(DetectionPostProcessor):
         """Expand a polygon (points) by a factor unclip_ratio, and returns a polygon
 
         Args:
-        ----
             points: The first parameter.
 
         Returns:
-        -------
             a box in absolute coordinates (xmin, ymin, xmax, ymax) or (4, 2) array (quadrangle)
         """
         if not self.assume_straight_pages:
@@ -92,16 +89,14 @@ class GeneralDetectionPostProcessor(DetectionPostProcessor):
         """Compute boxes from a bitmap/pred_map: find connected components then filter boxes
 
         Args:
-        ----
             pred: Pred map from differentiable linknet output
             bitmap: Bitmap map computed from pred (binarized)
             angle_tol: Comparison tolerance of the angle with the median angle across the page
             ratio_tol: Under this limit aspect ratio, we cannot resolve the direction of the crop
 
         Returns:
-        -------
             np tensor boxes for the bitmap, each box is a 6-element list
-                containing x, y, w, h, alpha, score for the box
+            containing x, y, w, h, alpha, score for the box
         """
         height, width = bitmap.shape[:2]
         boxes: List[Union[np.ndarray, List[float]]] = []

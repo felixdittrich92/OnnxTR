@@ -41,7 +41,6 @@ class FAST(Engine):
     """FAST Onnx loader
 
     Args:
-    ----
         model_path: path or url to onnx model file
         engine_cfg: configuration for the inference engine
         bin_thresh: threshold for binarization of the output feature map
@@ -118,14 +117,12 @@ def fast_tiny(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
-    -------
         text detection architecture
     """
     return _fast("fast_tiny", model_path, load_in_8_bit, engine_cfg, **kwargs)
@@ -147,14 +144,12 @@ def fast_small(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
-    -------
         text detection architecture
     """
     return _fast("fast_small", model_path, load_in_8_bit, engine_cfg, **kwargs)
@@ -176,14 +171,12 @@ def fast_base(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
-    -------
         text detection architecture
     """
     return _fast("fast_base", model_path, load_in_8_bit, engine_cfg, **kwargs)

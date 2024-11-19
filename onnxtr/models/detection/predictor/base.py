@@ -18,7 +18,6 @@ class DetectionPredictor(NestedObject):
     """Implements an object able to localize text elements in a document
 
     Args:
-    ----
         pre_processor: transform inputs for easier batched model inference
         model: core detection architecture
     """

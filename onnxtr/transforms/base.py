@@ -12,7 +12,14 @@ __all__ = ["Resize", "Normalize"]
 
 
 class Resize:
-    """Resize the input image to the given size"""
+    """Resize the input image to the given size
+
+    Args:
+        size: the target size of the image
+        interpolation: the interpolation method to use
+        preserve_aspect_ratio: whether to preserve the aspect ratio of the image
+        symmetric_pad: whether to symmetrically pad the image
+    """
 
     def __init__(
         self,
@@ -72,7 +79,12 @@ class Resize:
 
 
 class Normalize:
-    """Normalize the input image"""
+    """Normalize the input image
+
+    Args:
+        mean: mean values to subtract
+        std: standard deviation values to divide
+    """
 
     def __init__(
         self,

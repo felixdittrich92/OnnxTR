@@ -62,7 +62,6 @@ class Word(Element):
     """Implements a word element
 
     Args:
-    ----
         value: the text string of the word
         confidence: the confidence associated with the text prediction
         geometry: bounding box of the word in format ((xmin, ymin), (xmax, ymax)) where coordinates are relative to
@@ -106,7 +105,6 @@ class Artefact(Element):
     """Implements a non-textual element
 
     Args:
-    ----
         artefact_type: the type of artefact
         confidence: the confidence of the type prediction
         geometry: bounding box of the word in format ((xmin, ymin), (xmax, ymax)) where coordinates are relative to
@@ -139,7 +137,6 @@ class Line(Element):
     """Implements a line element as a collection of words
 
     Args:
-    ----
         words: list of word elements
         geometry: bounding box of the word in format ((xmin, ymin), (xmax, ymax)) where coordinates are relative to
             the page's size. If not specified, it will be resolved by default to the smallest bounding box enclosing
@@ -186,7 +183,6 @@ class Block(Element):
     """Implements a block element as a collection of lines and artefacts
 
     Args:
-    ----
         lines: list of line elements
         artefacts: list of artefacts
         geometry: bounding box of the word in format ((xmin, ymin), (xmax, ymax)) where coordinates are relative to
@@ -240,7 +236,6 @@ class Page(Element):
     """Implements a page element as a collection of blocks
 
     Args:
-    ----
         page: image encoded as a numpy array in uint8
         blocks: list of block elements
         page_idx: the index of the page in the input raw document
@@ -295,11 +290,9 @@ class Page(Element):
         """Synthesize the page from the predictions
 
         Args:
-        ----
             **kwargs: keyword arguments passed to the `synthesize_page` method
 
         Returns
-        -------
             synthesized page
         """
         return synthesize_page(self.export(), **kwargs)
@@ -309,11 +302,9 @@ class Page(Element):
         convention: https://github.com/kba/hocr-spec/blob/master/1.2/spec.md
 
         Args:
-        ----
             file_title: the title of the XML file
 
         Returns:
-        -------
             a tuple of the XML byte string, and its ElementTree
         """
         p_idx = self.page_idx
@@ -421,7 +412,6 @@ class Document(Element):
     """Implements a document element as a collection of pages
 
     Args:
-    ----
         pages: list of page elements
     """
 
@@ -447,11 +437,9 @@ class Document(Element):
         """Synthesize all pages from their predictions
 
         Args:
-        ----
             **kwargs: keyword arguments passed to the `Page.synthesize` method
 
-        Returns
-        -------
+        Returns:
             list of synthesized pages
         """
         return [page.synthesize(**kwargs) for page in self.pages]
@@ -460,11 +448,9 @@ class Document(Element):
         """Export the document as XML (hOCR-format)
 
         Args:
-        ----
             **kwargs: additional keyword arguments passed to the Page.export_as_xml method
 
         Returns:
-        -------
             list of tuple of (bytes, ElementTree)
         """
         return [page.export_as_xml(**kwargs) for page in self.pages]

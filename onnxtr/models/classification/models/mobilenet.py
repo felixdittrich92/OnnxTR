@@ -42,7 +42,6 @@ class MobileNetV3(Engine):
     """MobileNetV3 Onnx loader
 
     Args:
-    ----
         model_path: path or url to onnx model file
         engine_cfg: configuration for the inference engine
         cfg: configuration dictionary
@@ -97,14 +96,12 @@ def mobilenet_v3_small_crop_orientation(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the MobileNetV3 architecture
 
     Returns:
-    -------
         MobileNetV3
     """
     return _mobilenet_v3("mobilenet_v3_small_crop_orientation", model_path, load_in_8_bit, engine_cfg, **kwargs)
@@ -127,14 +124,12 @@ def mobilenet_v3_small_page_orientation(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the MobileNetV3 architecture
 
     Returns:
-    -------
         MobileNetV3
     """
     return _mobilenet_v3("mobilenet_v3_small_page_orientation", model_path, load_in_8_bit, engine_cfg, **kwargs)

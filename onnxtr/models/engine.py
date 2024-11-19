@@ -25,7 +25,6 @@ class EngineConfig:
     """Implements a configuration class for the engine of a model
 
     Args:
-    ----
         providers: list of providers to use for inference ref.: https://onnxruntime.ai/docs/execution-providers/
         session_options: configuration for the inference session ref.: https://onnxruntime.ai/docs/api/python/api_summary.html#sessionoptions
     """
@@ -81,7 +80,6 @@ class Engine:
     """Implements an abstract class for the engine of a model
 
     Args:
-    ----
         url: the url to use to download a model if needed
         engine_cfg: the configuration of the engine
         **kwargs: additional arguments to be passed to `download_from_url`

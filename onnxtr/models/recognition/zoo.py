@@ -67,7 +67,6 @@ def recognition_predictor(
         >>> out = model([input_page])
 
     Args:
-    ----
         arch: name of the architecture or model itself to use (e.g. 'crnn_vgg16_bn')
         symmetric_pad: if True, pad the image symmetrically instead of padding at the bottom-right
         batch_size: number of samples the model processes in parallel
@@ -76,7 +75,6 @@ def recognition_predictor(
         **kwargs: optional parameters to be passed to the architecture
 
     Returns:
-    -------
         Recognition predictor
     """
     return _predictor(
