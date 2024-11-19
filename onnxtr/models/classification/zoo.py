@@ -65,7 +65,6 @@ def crop_orientation_predictor(
     >>> out = model([input_crop])
 
     Args:
-    ----
         arch: name of the architecture to use (e.g. 'mobilenet_v3_small_crop_orientation')
         batch_size: number of samples the model processes in parallel
         load_in_8_bit: load the 8-bit quantized version of the model
@@ -73,7 +72,6 @@ def crop_orientation_predictor(
         **kwargs: keyword arguments to be passed to the OrientationPredictor
 
     Returns:
-    -------
         OrientationPredictor
     """
     model_type = "crop"
@@ -103,7 +101,6 @@ def page_orientation_predictor(
     >>> out = model([input_page])
 
     Args:
-    ----
         arch: name of the architecture to use (e.g. 'mobilenet_v3_small_page_orientation')
         batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
@@ -111,7 +108,6 @@ def page_orientation_predictor(
         **kwargs: keyword arguments to be passed to the OrientationPredictor
 
     Returns:
-    -------
         OrientationPredictor
     """
     model_type = "page"

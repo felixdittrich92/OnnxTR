@@ -32,7 +32,6 @@ class SAR(Engine):
     """SAR Onnx loader
 
     Args:
-    ----
         model_path: path to onnx model file
         vocab: vocabulary used for encoding
         engine_cfg: configuration for the inference engine
@@ -75,7 +74,6 @@ class SARPostProcessor(RecognitionPostProcessor):
     """Post processor for SAR architectures
 
     Args:
-    ----
         embedding: string containing the ordered sequence of supported characters
     """
 
@@ -137,14 +135,12 @@ def sar_resnet31(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the SAR architecture
 
     Returns:
-    -------
         text recognition architecture
     """
     return _sar("sar_resnet31", model_path, load_in_8_bit, engine_cfg, **kwargs)

@@ -59,7 +59,6 @@ def _save_model_and_config_for_hf_hub(model: Any, save_dir: str, arch: str, task
     """Save model and config to disk for pushing to huggingface hub
 
     Args:
-    ----
         model: Onnx model to be saved
         save_dir: directory to save model and config
         arch: architecture name
@@ -91,7 +90,6 @@ def push_to_hf_hub(
     >>> push_to_hf_hub(model, 'my-model', 'recognition', arch='crnn_mobilenet_v3_small')
 
     Args:
-    ----
         model: Onnx model to be saved
         model_name: name of the model which is also the repository name
         task: task name
@@ -186,13 +184,11 @@ def from_hub(repo_id: str, engine_cfg: Optional[EngineConfig] = None, **kwargs: 
     >>> model = from_hub("onnxtr/my-model")
 
     Args:
-    ----
         repo_id: HuggingFace model hub repo
         engine_cfg: configuration for the inference engine (optional)
-        kwargs: kwargs of `hf_hub_download`
+        **kwargs: kwargs of `hf_hub_download`
 
     Returns:
-    -------
         Model loaded with the checkpoint
     """
     # Get the config

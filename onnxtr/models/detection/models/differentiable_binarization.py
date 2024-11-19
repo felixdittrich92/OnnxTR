@@ -43,7 +43,6 @@ class DBNet(Engine):
     """DBNet Onnx loader
 
     Args:
-    ----
         model_path: path or url to onnx model file
         engine_cfg: configuration for the inference engine
         bin_thresh: threshold for binarization of the output feature map
@@ -120,14 +119,12 @@ def db_resnet34(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
-    -------
         text detection architecture
     """
     return _dbnet("db_resnet34", model_path, load_in_8_bit, engine_cfg, **kwargs)
@@ -149,14 +146,12 @@ def db_resnet50(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
-    -------
         text detection architecture
     """
     return _dbnet("db_resnet50", model_path, load_in_8_bit, engine_cfg, **kwargs)
@@ -178,14 +173,12 @@ def db_mobilenet_v3_large(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the DBNet architecture
 
     Returns:
-    -------
         text detection architecture
     """
     return _dbnet("db_mobilenet_v3_large", model_path, load_in_8_bit, engine_cfg, **kwargs)

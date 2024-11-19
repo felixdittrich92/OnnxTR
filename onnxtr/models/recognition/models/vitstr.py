@@ -40,7 +40,6 @@ class ViTSTR(Engine):
     """ViTSTR Onnx loader
 
     Args:
-    ----
         model_path: path to onnx model file
         vocab: vocabulary used for encoding
         engine_cfg: configuration for the inference engine
@@ -83,7 +82,6 @@ class ViTSTRPostProcessor(RecognitionPostProcessor):
     """Post processor for ViTSTR architecture
 
     Args:
-    ----
         vocab: string containing the ordered sequence of supported characters
     """
 
@@ -147,14 +145,12 @@ def vitstr_small(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the ViTSTR architecture
 
     Returns:
-    -------
         text recognition architecture
     """
     return _vitstr("vitstr_small", model_path, load_in_8_bit, engine_cfg, **kwargs)
@@ -176,14 +172,12 @@ def vitstr_base(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keyword arguments of the ViTSTR architecture
 
     Returns:
-    -------
         text recognition architecture
     """
     return _vitstr("vitstr_base", model_path, load_in_8_bit, engine_cfg, **kwargs)

@@ -75,7 +75,6 @@ def detection_predictor(
     >>> out = model([input_page])
 
     Args:
-    ----
         arch: name of the architecture or model itself to use (e.g. 'db_resnet50')
         assume_straight_pages: If True, fit straight boxes to the page
         preserve_aspect_ratio: If True, pad the input document image to preserve the aspect ratio before
@@ -87,7 +86,6 @@ def detection_predictor(
         **kwargs: optional keyword arguments passed to the architecture
 
     Returns:
-    -------
         Detection predictor
     """
     return _predictor(

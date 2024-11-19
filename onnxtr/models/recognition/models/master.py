@@ -33,7 +33,6 @@ class MASTER(Engine):
     """MASTER Onnx loader
 
     Args:
-    ----
         model_path: path or url to onnx model file
         vocab: vocabulary, (without EOS, SOS, PAD)
         engine_cfg: configuration for the inference engine
@@ -64,12 +63,10 @@ class MASTER(Engine):
         """Call function
 
         Args:
-        ----
             x: images
             return_model_output: if True, return logits
 
         Returns:
-        -------
             A dictionnary containing eventually logits and predictions.
         """
         logits = self.run(x)
@@ -87,7 +84,6 @@ class MASTERPostProcessor(RecognitionPostProcessor):
     """Post-processor for the MASTER model
 
     Args:
-    ----
         vocab: string containing the ordered sequence of supported characters
     """
 
@@ -147,14 +143,12 @@ def master(
     >>> out = model(input_tensor)
 
     Args:
-    ----
         model_path: path to onnx model file, defaults to url in default_cfgs
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
         **kwargs: keywoard arguments passed to the MASTER architecture
 
     Returns:
-    -------
         text recognition architecture
     """
     return _master("master", model_path, load_in_8_bit, engine_cfg, **kwargs)

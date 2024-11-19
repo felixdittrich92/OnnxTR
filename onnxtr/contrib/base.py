@@ -16,7 +16,6 @@ class _BasePredictor:
     Base class for all predictors
 
     Args:
-    ----
         batch_size: the batch size to use
         url: the url to use to download a model if needed
         model_path: the path to the model to use
@@ -35,13 +34,11 @@ class _BasePredictor:
         Download the model from the given url if needed
 
         Args:
-        ----
             url: the url to use
             model_path: the path to the model to use
             **kwargs: additional arguments to be passed to `download_from_url`
 
         Returns:
-        -------
             Any: the ONNX loaded model
         """
         if not url and not model_path:
@@ -54,11 +51,9 @@ class _BasePredictor:
         Preprocess the input image
 
         Args:
-        ----
             img: the input image to preprocess
 
         Returns:
-        -------
             np.ndarray: the preprocessed image
         """
         raise NotImplementedError
@@ -68,12 +63,10 @@ class _BasePredictor:
         Postprocess the model output
 
         Args:
-        ----
             output: the model output to postprocess
             input_images: the input images used to generate the output
 
         Returns:
-        -------
             Any: the postprocessed output
         """
         raise NotImplementedError
@@ -83,11 +76,9 @@ class _BasePredictor:
         Call the model on the given inputs
 
         Args:
-        ----
             inputs: the inputs to use
 
         Returns:
-        -------
             Any: the postprocessed output
         """
         self._inputs = inputs
