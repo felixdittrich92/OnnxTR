@@ -139,6 +139,9 @@ jobs:
       - name: Check if `import onnxtr` works
         run: docker run --platform=${{ matrix.platform }} ${{ steps.build.outputs.imageid }} python3 -c 'import onnxtr; print(onnxtr.__version__)'
 
+      - name: Inspect the image
+        run: docker buildx imagetools inspect ${{ steps.build.outputs.imageid }}
+
       - name: Push Docker image
         # Fully served from the GHA layer cache of the build above, so this is fast
         if: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (startsWith(github.ref, 'refs/tags') && github.event_name == 'push') }}
