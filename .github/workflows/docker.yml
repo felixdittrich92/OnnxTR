@@ -1,5 +1,5 @@
 # https://docs.github.com/en/actions/publishing-packages/publishing-docker-images#publishing-images-to-github-packages
-#
+
 name: Docker image on ghcr.io
 
 on:
@@ -57,6 +57,12 @@ jobs:
       # local image store - hence the explicit `load: true` on the build step.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to the Container registry
         uses: docker/login-action@v4
@@ -131,7 +137,7 @@ jobs:
           cache-to: type=gha,scope=${{ env.CACHE_SCOPE }},mode=max
 
       - name: Check if `import onnxtr` works
-        run: docker run ${{ steps.build.outputs.imageid }} python3 -c 'import onnxtr; print(onnxtr.__version__)'
+        run: docker run --platform=${{ matrix.platform }} ${{ steps.build.outputs.imageid }} python3 -c 'import onnxtr; print(onnxtr.__version__)'
 
       - name: Push Docker image
         # Fully served from the GHA layer cache of the build above, so this is fast
