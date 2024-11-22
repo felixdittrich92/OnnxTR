@@ -3,7 +3,6 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageOps
@@ -23,7 +22,7 @@ class Resize:
 
     def __init__(
         self,
-        size: Union[int, Tuple[int, int]],
+        size: int | tuple[int, int],
         interpolation=Image.Resampling.BILINEAR,
         preserve_aspect_ratio: bool = False,
         symmetric_pad: bool = False,
@@ -88,8 +87,8 @@ class Normalize:
 
     def __init__(
         self,
-        mean: Union[float, Tuple[float, float, float]] = (0.485, 0.456, 0.406),
-        std: Union[float, Tuple[float, float, float]] = (0.229, 0.224, 0.225),
+        mean: float | tuple[float, float, float] = (0.485, 0.456, 0.406),
+        std: float | tuple[float, float, float] = (0.229, 0.224, 0.225),
     ) -> None:
         self.mean = mean
         self.std = std

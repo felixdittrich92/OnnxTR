@@ -6,7 +6,6 @@
 import importlib.metadata
 import importlib.util
 import logging
-from typing import Optional
 
 __all__ = ["requires_package"]
 
@@ -14,7 +13,7 @@ ENV_VARS_TRUE_VALUES = {"1", "ON", "YES", "TRUE"}
 ENV_VARS_TRUE_AND_AUTO_VALUES = ENV_VARS_TRUE_VALUES.union({"AUTO"})
 
 
-def requires_package(name: str, extra_message: Optional[str] = None) -> None:  # pragma: no cover
+def requires_package(name: str, extra_message: str | None = None) -> None:  # pragma: no cover
     """
     package requirement helper
 

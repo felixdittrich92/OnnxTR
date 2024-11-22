@@ -7,7 +7,8 @@
 [![codecov](https://codecov.io/gh/felixdittrich92/OnnxTR/graph/badge.svg?token=WVFRCQBOLI)](https://codecov.io/gh/felixdittrich92/OnnxTR)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/4fff4d764bb14fb8b4f4afeb9587231b)](https://app.codacy.com/gh/felixdittrich92/OnnxTR/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr/badge)](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr)
-[![Pypi](https://img.shields.io/badge/pypi-v0.5.1-blue.svg)](https://pypi.org/project/OnnxTR/)
+[![Pypi](https://img.shields.io/badge/pypi-v0.6.0-blue.svg)](https://pypi.org/project/OnnxTR/)
+[![Docker Images](https://img.shields.io/badge/Docker-4287f5?style=flat&logo=docker&logoColor=white)](https://github.com/felixdittrich92/OnnxTR/pkgs/container/onnxtr)
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/Felix92/OnnxTR-OCR)
 
 > :warning: Please note that this is a wrapper around the [doctr](https://github.com/mindee/doctr) library to provide a Onnx pipeline for docTR. For feature requests, which are not directly related to the Onnx pipeline, please refer to the base project.
@@ -328,8 +329,8 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 |Library                          |FUNSD (199 pages)              |CORD  (900 pages)              |
 |---------------------------------|-------------------------------|-------------------------------|
 |docTR (CPU) - v0.8.1             | ~1.29s / Page                 | ~0.60s / Page                 |
-|**OnnxTR (CPU)** - v0.5.1        | ~0.57s / Page                 | **~0.25s / Page**             |
-|**OnnxTR (CPU) 8-bit** - v0.5.1  | **~0.38s / Page**             | **~0.14s / Page**             |
+|**OnnxTR (CPU)** - v0.6.0        | ~0.57s / Page                 | **~0.25s / Page**             |
+|**OnnxTR (CPU) 8-bit** - v0.6.0  | **~0.38s / Page**             | **~0.14s / Page**             |
 |EasyOCR (CPU) - v1.7.1           | ~1.96s / Page                 | ~1.75s / Page                 |
 |**PyTesseract (CPU)** - v0.3.10  | **~0.50s / Page**             | ~0.52s / Page                 |
 |Surya (line) (CPU) - v0.4.4      | ~48.76s / Page                | ~35.49s / Page                |
@@ -341,8 +342,8 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 |-------------------------------------|-------------------------------|-------------------------------|
 |docTR (GPU) - v0.8.1                 | ~0.07s / Page                 | ~0.05s / Page                 |
 |**docTR (GPU) float16** - v0.8.1     | **~0.06s / Page**             | **~0.03s / Page**             |
-|OnnxTR (GPU) - v0.5.1                | **~0.06s / Page**             | ~0.04s / Page                 |
-|**OnnxTR (GPU) float16 - v0.5.1**    | **~0.05s / Page**             | **~0.03s / Page**             |
+|OnnxTR (GPU) - v0.6.0                | **~0.06s / Page**             | ~0.04s / Page                 |
+|**OnnxTR (GPU) float16 - v0.6.0**    | **~0.05s / Page**             | **~0.03s / Page**             |
 |EasyOCR (GPU) - v1.7.1               | ~0.31s / Page                 | ~0.19s / Page                 |
 |Surya (GPU) float16 - v0.4.4         | ~3.70s / Page                 | ~2.81s / Page                 |
 |**PaddleOCR (GPU) - no cls - v2.7.3**| ~0.08s / Page                 | **~0.03s / Page**             |

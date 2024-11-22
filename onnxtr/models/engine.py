@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 from onnxruntime import (
@@ -31,13 +31,13 @@ class EngineConfig:
 
     def __init__(
         self,
-        providers: Optional[Union[List[Tuple[str, Dict[str, Any]]], List[str]]] = None,
-        session_options: Optional[SessionOptions] = None,
+        providers: list[tuple[str, dict[str, Any]]] | list[str] | None = None,
+        session_options: SessionOptions | None = None,
     ):
         self._providers = providers or self._init_providers()
         self._session_options = session_options or self._init_sess_opts()
 
-    def _init_providers(self) -> List[Tuple[str, Dict[str, Any]]]:
+    def _init_providers(self) -> list[tuple[str, dict[str, Any]]]:
         providers: Any = [("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
         available_providers = get_available_providers()
         if "CUDAExecutionProvider" in available_providers and get_device() == "GPU":  # pragma: no cover
@@ -65,7 +65,7 @@ class EngineConfig:
         return session_options
 
     @property
-    def providers(self) -> Union[List[Tuple[str, Dict[str, Any]]], List[str]]:
+    def providers(self) -> list[tuple[str, dict[str, Any]]] | list[str]:
         return self._providers
 
     @property
@@ -85,7 +85,7 @@ class Engine:
         **kwargs: additional arguments to be passed to `download_from_url`
     """
 
-    def __init__(self, url: str, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any) -> None:
+    def __init__(self, url: str, engine_cfg: EngineConfig | None = None, **kwargs: Any) -> None:
         engine_cfg = engine_cfg if isinstance(engine_cfg, EngineConfig) else EngineConfig()
         archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
         # Store model path for each model
@@ -95,7 +95,7 @@ class Engine:
         self.runtime = InferenceSession(archive_path, providers=self.providers, sess_options=self.session_options)
         self.runtime_inputs = self.runtime.get_inputs()[0]
         self.tf_exported = int(self.runtime_inputs.shape[-1]) == 3
-        self.fixed_batch_size: Union[int, str] = self.runtime_inputs.shape[
+        self.fixed_batch_size: int | str = self.runtime_inputs.shape[
             0
         ]  # mostly possible with tensorflow exported models
         self.output_name = [output.name for output in self.runtime.get_outputs()]

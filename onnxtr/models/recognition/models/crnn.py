@@ -5,7 +5,7 @@
 
 from copy import deepcopy
 from itertools import groupby
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from scipy.special import softmax
@@ -17,7 +17,7 @@ from ..core import RecognitionPostProcessor
 
 __all__ = ["CRNN", "crnn_vgg16_bn", "crnn_mobilenet_v3_small", "crnn_mobilenet_v3_large"]
 
-default_cfgs: Dict[str, Dict[str, Any]] = {
+default_cfgs: dict[str, dict[str, Any]] = {
     "crnn_vgg16_bn": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
@@ -112,14 +112,14 @@ class CRNN(Engine):
         **kwargs: additional arguments to be passed to `Engine`
     """
 
-    _children_names: List[str] = ["postprocessor"]
+    _children_names: list[str] = ["postprocessor"]
 
     def __init__(
         self,
         model_path: str,
         vocab: str,
-        engine_cfg: Optional[EngineConfig] = None,
-        cfg: Optional[Dict[str, Any]] = None,
+        engine_cfg: EngineConfig | None = None,
+        cfg: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
@@ -133,10 +133,10 @@ class CRNN(Engine):
         self,
         x: np.ndarray,
         return_model_output: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         logits = self.run(x)
 
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
         if return_model_output:
             out["out_map"] = logits
 
@@ -150,7 +150,7 @@ def _crnn(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> CRNN:
     kwargs["vocab"] = kwargs.get("vocab", default_cfgs[arch]["vocab"])
@@ -168,7 +168,7 @@ def _crnn(
 def crnn_vgg16_bn(
     model_path: str = default_cfgs["crnn_vgg16_bn"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> CRNN:
     """CRNN with a VGG-16 backbone as described in `"An End-to-End Trainable Neural Network for Image-based
@@ -195,7 +195,7 @@ def crnn_vgg16_bn(
 def crnn_mobilenet_v3_small(
     model_path: str = default_cfgs["crnn_mobilenet_v3_small"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> CRNN:
     """CRNN with a MobileNet V3 Small backbone as described in `"An End-to-End Trainable Neural Network for Image-based
@@ -222,7 +222,7 @@ def crnn_mobilenet_v3_small(
 def crnn_mobilenet_v3_large(
     model_path: str = default_cfgs["crnn_mobilenet_v3_large"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> CRNN:
     """CRNN with a MobileNet V3 Large backbone as described in `"An End-to-End Trainable Neural Network for Image-based

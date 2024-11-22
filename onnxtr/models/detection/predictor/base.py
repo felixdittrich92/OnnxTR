@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, List, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -22,7 +22,7 @@ class DetectionPredictor(NestedObject):
         model: core detection architecture
     """
 
-    _children_names: List[str] = ["pre_processor", "model"]
+    _children_names: list[str] = ["pre_processor", "model"]
 
     def __init__(
         self,
@@ -34,10 +34,10 @@ class DetectionPredictor(NestedObject):
 
     def __call__(
         self,
-        pages: List[np.ndarray],
+        pages: list[np.ndarray],
         return_maps: bool = False,
         **kwargs: Any,
-    ) -> Union[List[np.ndarray], Tuple[List[np.ndarray], List[np.ndarray]]]:
+    ) -> list[np.ndarray] | tuple[list[np.ndarray], list[np.ndarray]]:
         # Extract parameters from the preprocessor
         preserve_aspect_ratio = self.pre_processor.resize.preserve_aspect_ratio
         symmetric_pad = self.pre_processor.resize.symmetric_pad

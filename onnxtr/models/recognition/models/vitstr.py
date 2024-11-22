@@ -4,7 +4,7 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 from copy import deepcopy
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 from scipy.special import softmax
@@ -16,7 +16,7 @@ from ..core import RecognitionPostProcessor
 
 __all__ = ["ViTSTR", "vitstr_small", "vitstr_base"]
 
-default_cfgs: Dict[str, Dict[str, Any]] = {
+default_cfgs: dict[str, dict[str, Any]] = {
     "vitstr_small": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
@@ -51,8 +51,8 @@ class ViTSTR(Engine):
         self,
         model_path: str,
         vocab: str,
-        engine_cfg: Optional[EngineConfig] = None,
-        cfg: Optional[Dict[str, Any]] = None,
+        engine_cfg: EngineConfig | None = None,
+        cfg: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
@@ -66,10 +66,10 @@ class ViTSTR(Engine):
         self,
         x: np.ndarray,
         return_model_output: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         logits = self.run(x)
 
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
         if return_model_output:
             out["out_map"] = logits
 
@@ -113,7 +113,7 @@ def _vitstr(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> ViTSTR:
     # Patch the config
@@ -132,7 +132,7 @@ def _vitstr(
 def vitstr_small(
     model_path: str = default_cfgs["vitstr_small"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> ViTSTR:
     """ViTSTR-Small as described in `"Vision Transformer for Fast and Efficient Scene Text Recognition"
@@ -159,7 +159,7 @@ def vitstr_small(
 def vitstr_base(
     model_path: str = default_cfgs["vitstr_base"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> ViTSTR:
     """ViTSTR-Base as described in `"Vision Transformer for Fast and Efficient Scene Text Recognition"

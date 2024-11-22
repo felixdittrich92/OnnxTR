@@ -4,7 +4,7 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 import math
-from typing import Any, List, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -27,21 +27,21 @@ class PreProcessor(NestedObject):
         **kwargs: additional arguments for the resizing operation
     """
 
-    _children_names: List[str] = ["resize", "normalize"]
+    _children_names: list[str] = ["resize", "normalize"]
 
     def __init__(
         self,
-        output_size: Tuple[int, int],
+        output_size: tuple[int, int],
         batch_size: int,
-        mean: Tuple[float, float, float] = (0.5, 0.5, 0.5),
-        std: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+        mean: tuple[float, float, float] = (0.5, 0.5, 0.5),
+        std: tuple[float, float, float] = (1.0, 1.0, 1.0),
         **kwargs: Any,
     ) -> None:
         self.batch_size = batch_size
         self.resize = Resize(output_size, **kwargs)
         self.normalize = Normalize(mean, std)
 
-    def batch_inputs(self, samples: List[np.ndarray]) -> List[np.ndarray]:
+    def batch_inputs(self, samples: list[np.ndarray]) -> list[np.ndarray]:
         """Gather samples into batches for inference purposes
 
         Args:
@@ -74,7 +74,7 @@ class PreProcessor(NestedObject):
 
         return x
 
-    def __call__(self, x: Union[np.ndarray, List[np.ndarray]]) -> List[np.ndarray]:
+    def __call__(self, x: np.ndarray | list[np.ndarray]) -> list[np.ndarray]:
         """Prepare document data for model forwarding
 
         Args:

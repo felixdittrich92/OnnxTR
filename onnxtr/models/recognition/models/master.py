@@ -4,7 +4,7 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from scipy.special import softmax
@@ -17,7 +17,7 @@ from ..core import RecognitionPostProcessor
 __all__ = ["MASTER", "master"]
 
 
-default_cfgs: Dict[str, Dict[str, Any]] = {
+default_cfgs: dict[str, dict[str, Any]] = {
     "master": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
@@ -44,8 +44,8 @@ class MASTER(Engine):
         self,
         model_path: str,
         vocab: str,
-        engine_cfg: Optional[EngineConfig] = None,
-        cfg: Optional[Dict[str, Any]] = None,
+        engine_cfg: EngineConfig | None = None,
+        cfg: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
@@ -59,7 +59,7 @@ class MASTER(Engine):
         self,
         x: np.ndarray,
         return_model_output: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Call function
 
         Args:
@@ -70,7 +70,7 @@ class MASTER(Engine):
             A dictionnary containing eventually logits and predictions.
         """
         logits = self.run(x)
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
 
         if return_model_output:
             out["out_map"] = logits
@@ -94,7 +94,7 @@ class MASTERPostProcessor(RecognitionPostProcessor):
         super().__init__(vocab)
         self._embedding = list(vocab) + ["<eos>"] + ["<sos>"] + ["<pad>"]
 
-    def __call__(self, logits: np.ndarray) -> List[Tuple[str, float]]:
+    def __call__(self, logits: np.ndarray) -> list[tuple[str, float]]:
         # compute pred with argmax for attention models
         out_idxs = np.argmax(logits, axis=-1)
         # N x L
@@ -113,7 +113,7 @@ def _master(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> MASTER:
     # Patch the config
@@ -131,7 +131,7 @@ def _master(
 def master(
     model_path: str = default_cfgs["master"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> MASTER:
     """MASTER as described in paper: <https://arxiv.org/pdf/1910.02562.pdf>`_.

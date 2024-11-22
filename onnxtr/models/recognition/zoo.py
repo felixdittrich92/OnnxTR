@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, List, Optional
+from typing import Any
 
 from .. import recognition
 from ..engine import EngineConfig
@@ -13,7 +13,7 @@ from .predictor import RecognitionPredictor
 __all__ = ["recognition_predictor"]
 
 
-ARCHS: List[str] = [
+ARCHS: list[str] = [
     "crnn_vgg16_bn",
     "crnn_mobilenet_v3_small",
     "crnn_mobilenet_v3_large",
@@ -26,7 +26,7 @@ ARCHS: List[str] = [
 
 
 def _predictor(
-    arch: Any, load_in_8_bit: bool = False, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any
+    arch: Any, load_in_8_bit: bool = False, engine_cfg: EngineConfig | None = None, **kwargs: Any
 ) -> RecognitionPredictor:
     if isinstance(arch, str):
         if arch not in ARCHS:
@@ -54,7 +54,7 @@ def recognition_predictor(
     symmetric_pad: bool = False,
     batch_size: int = 128,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> RecognitionPredictor:
     """Text recognition architecture.

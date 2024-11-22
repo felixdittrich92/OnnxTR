@@ -5,7 +5,6 @@
 
 # Credits: post-processing adapted from https://github.com/xuannianz/DifferentiableBinarization
 
-from typing import List, Union
 
 import cv2
 import numpy as np
@@ -99,7 +98,7 @@ class GeneralDetectionPostProcessor(DetectionPostProcessor):
             containing x, y, w, h, alpha, score for the box
         """
         height, width = bitmap.shape[:2]
-        boxes: List[Union[np.ndarray, List[float]]] = []
+        boxes: list[np.ndarray | list[float]] = []
         # get contours from connected components on the bitmap
         contours, _ = cv2.findContours(bitmap.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:

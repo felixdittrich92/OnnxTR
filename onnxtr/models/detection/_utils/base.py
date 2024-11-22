@@ -3,7 +3,6 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import List
 
 import numpy as np
 
@@ -11,12 +10,12 @@ __all__ = ["_remove_padding"]
 
 
 def _remove_padding(
-    pages: List[np.ndarray],
-    loc_preds: List[np.ndarray],
+    pages: list[np.ndarray],
+    loc_preds: list[np.ndarray],
     preserve_aspect_ratio: bool,
     symmetric_pad: bool,
     assume_straight_pages: bool,
-) -> List[np.ndarray]:
+) -> list[np.ndarray]:
     """Remove padding from the localization predictions
 
     Args:

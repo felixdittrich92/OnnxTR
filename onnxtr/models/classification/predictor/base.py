@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, List, Optional, Union
+from typing import Any
 
 import numpy as np
 from scipy.special import softmax
@@ -24,20 +24,20 @@ class OrientationPredictor(NestedObject):
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
     """
 
-    _children_names: List[str] = ["pre_processor", "model"]
+    _children_names: list[str] = ["pre_processor", "model"]
 
     def __init__(
         self,
-        pre_processor: Optional[PreProcessor],
-        model: Optional[Any],
+        pre_processor: PreProcessor | None,
+        model: Any | None,
     ) -> None:
         self.pre_processor = pre_processor if isinstance(pre_processor, PreProcessor) else None
         self.model = model
 
     def __call__(
         self,
-        inputs: List[np.ndarray],
-    ) -> List[Union[List[int], List[float]]]:
+        inputs: list[np.ndarray],
+    ) -> list[list[int] | list[float]]:
         # Dimension check
         if any(input.ndim != 3 for input in inputs):
             raise ValueError("incorrect input shape: all inputs are expected to be multi-channel 2D images.")
