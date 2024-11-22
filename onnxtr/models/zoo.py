@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, Optional
+from typing import Any
 
 from .detection.zoo import detection_predictor
 from .engine import EngineConfig
@@ -25,9 +25,9 @@ def _predictor(
     straighten_pages: bool = False,
     detect_language: bool = False,
     load_in_8_bit: bool = False,
-    det_engine_cfg: Optional[EngineConfig] = None,
-    reco_engine_cfg: Optional[EngineConfig] = None,
-    clf_engine_cfg: Optional[EngineConfig] = None,
+    det_engine_cfg: EngineConfig | None = None,
+    reco_engine_cfg: EngineConfig | None = None,
+    clf_engine_cfg: EngineConfig | None = None,
     **kwargs,
 ) -> OCRPredictor:
     # Detection
@@ -74,9 +74,9 @@ def ocr_predictor(
     straighten_pages: bool = False,
     detect_language: bool = False,
     load_in_8_bit: bool = False,
-    det_engine_cfg: Optional[EngineConfig] = None,
-    reco_engine_cfg: Optional[EngineConfig] = None,
-    clf_engine_cfg: Optional[EngineConfig] = None,
+    det_engine_cfg: EngineConfig | None = None,
+    reco_engine_cfg: EngineConfig | None = None,
+    clf_engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> OCRPredictor:
     """End-to-end OCR architecture using one model for localization, and another for text recognition.

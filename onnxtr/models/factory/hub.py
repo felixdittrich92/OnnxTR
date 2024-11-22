@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import textwrap
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from huggingface_hub import (
     HfApi,
@@ -177,7 +177,7 @@ def push_to_hf_hub(
     repo.git_push()
 
 
-def from_hub(repo_id: str, engine_cfg: Optional[EngineConfig] = None, **kwargs: Any):
+def from_hub(repo_id: str, engine_cfg: EngineConfig | None = None, **kwargs: Any):
     """Instantiate & load a pretrained model from HF hub.
 
     >>> from onnxtr.models import from_hub

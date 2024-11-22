@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -51,7 +51,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
         symmetric_pad: bool = True,
         detect_orientation: bool = False,
         detect_language: bool = False,
-        clf_engine_cfg: Optional[EngineConfig] = None,
+        clf_engine_cfg: EngineConfig | None = None,
         **kwargs: Any,
     ) -> None:
         self.det_predictor = det_predictor
@@ -71,7 +71,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
 
     def __call__(
         self,
-        pages: List[np.ndarray],
+        pages: list[np.ndarray],
         **kwargs: Any,
     ) -> Document:
         # Dimension check

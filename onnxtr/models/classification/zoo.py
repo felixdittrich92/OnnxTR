@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from typing import Any, List, Optional
+from typing import Any
 
 from onnxtr.models.engine import EngineConfig
 
@@ -13,14 +13,14 @@ from .predictor import OrientationPredictor
 
 __all__ = ["crop_orientation_predictor", "page_orientation_predictor"]
 
-ORIENTATION_ARCHS: List[str] = ["mobilenet_v3_small_crop_orientation", "mobilenet_v3_small_page_orientation"]
+ORIENTATION_ARCHS: list[str] = ["mobilenet_v3_small_crop_orientation", "mobilenet_v3_small_page_orientation"]
 
 
 def _orientation_predictor(
     arch: Any,
     model_type: str,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     disabled: bool = False,
     **kwargs: Any,
 ) -> OrientationPredictor:
@@ -53,7 +53,7 @@ def crop_orientation_predictor(
     arch: Any = "mobilenet_v3_small_crop_orientation",
     batch_size: int = 512,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> OrientationPredictor:
     """Crop orientation classification architecture.
@@ -89,7 +89,7 @@ def page_orientation_predictor(
     arch: Any = "mobilenet_v3_small_page_orientation",
     batch_size: int = 2,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> OrientationPredictor:
     """Page orientation classification architecture.

@@ -5,7 +5,6 @@
 
 from math import floor
 from statistics import median_low
-from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -31,7 +30,7 @@ def get_max_width_length_ratio(contour: np.ndarray) -> float:
 
 def estimate_orientation(
     img: np.ndarray,
-    general_page_orientation: Optional[Tuple[int, float]] = None,
+    general_page_orientation: tuple[int, float] | None = None,
     n_ct: int = 70,
     ratio_threshold_for_lines: float = 3,
     min_confidence: float = 0.2,
@@ -115,9 +114,9 @@ def estimate_orientation(
 
 
 def rectify_crops(
-    crops: List[np.ndarray],
-    orientations: List[int],
-) -> List[np.ndarray]:
+    crops: list[np.ndarray],
+    orientations: list[int],
+) -> list[np.ndarray]:
     """Rotate each crop of the list according to the predicted orientation:
     0: already straight, no rotation
     1: 90 ccw, rotate 3 times ccw
@@ -135,8 +134,8 @@ def rectify_crops(
 
 def rectify_loc_preds(
     page_loc_preds: np.ndarray,
-    orientations: List[int],
-) -> Optional[np.ndarray]:
+    orientations: list[int],
+) -> np.ndarray | None:
     """Orient the quadrangle (Polygon4P) according to the predicted orientation,
     so that the points are in this order: top L, top R, bot R, bot L if the crop is readable
     """
@@ -153,7 +152,7 @@ def rectify_loc_preds(
     )
 
 
-def get_language(text: str) -> Tuple[str, float]:
+def get_language(text: str) -> tuple[str, float]:
     """Get languages of a text using langdetect model.
     Get the language with the highest probability or no language if only a few words or a low probability
 

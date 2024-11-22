@@ -2,7 +2,6 @@ import argparse
 import os
 import time
 from enum import Enum
-from typing import Tuple
 
 import numpy as np
 import onnxruntime
@@ -23,7 +22,7 @@ class TaskShapes(Enum):
 
 
 class CalibrationDataLoader(CalibrationDataReader):
-    def __init__(self, calibration_image_folder: str, model_path: str, task_shape: Tuple[int]):
+    def __init__(self, calibration_image_folder: str, model_path: str, task_shape: tuple[int]):
         self.enum_data = None
         self.preprocessor = PreProcessor(output_size=task_shape, batch_size=1)
         self.dataset = [
@@ -48,7 +47,7 @@ class CalibrationDataLoader(CalibrationDataReader):
         self.enum_data = None
 
 
-def benchmark(calibration_image_folder: str, model_path: str, task_shape: Tuple[int]):
+def benchmark(calibration_image_folder: str, model_path: str, task_shape: tuple[int]):
     session = onnxruntime.InferenceSession(model_path)
     input_name = session.get_inputs()[0].name
     output_name = [output.name for output in session.get_outputs()]
@@ -70,7 +69,7 @@ def benchmark(calibration_image_folder: str, model_path: str, task_shape: Tuple[
 
 
 def benchmark_mean_diff(
-    calibration_image_folder: str, model_path: str, quantized_model_path: str, task_shape: Tuple[int]
+    calibration_image_folder: str, model_path: str, quantized_model_path: str, task_shape: tuple[int]
 ):
     """Check the mean difference between the original and quantized model"""
     session = onnxruntime.InferenceSession(model_path)

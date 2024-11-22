@@ -6,7 +6,7 @@
 # Greatly inspired by https://github.com/pytorch/vision/blob/master/torchvision/models/mobilenetv3.py
 
 from copy import deepcopy
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -18,7 +18,7 @@ __all__ = [
     "mobilenet_v3_small_page_orientation",
 ]
 
-default_cfgs: Dict[str, Dict[str, Any]] = {
+default_cfgs: dict[str, dict[str, Any]] = {
     "mobilenet_v3_small_crop_orientation": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
@@ -51,8 +51,8 @@ class MobileNetV3(Engine):
     def __init__(
         self,
         model_path: str,
-        engine_cfg: Optional[EngineConfig] = None,
-        cfg: Optional[Dict[str, Any]] = None,
+        engine_cfg: EngineConfig | None = None,
+        cfg: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
@@ -70,7 +70,7 @@ def _mobilenet_v3(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> MobileNetV3:
     # Patch the url
@@ -82,7 +82,7 @@ def _mobilenet_v3(
 def mobilenet_v3_small_crop_orientation(
     model_path: str = default_cfgs["mobilenet_v3_small_crop_orientation"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> MobileNetV3:
     """MobileNetV3-Small architecture as described in
@@ -110,7 +110,7 @@ def mobilenet_v3_small_crop_orientation(
 def mobilenet_v3_small_page_orientation(
     model_path: str = default_cfgs["mobilenet_v3_small_page_orientation"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> MobileNetV3:
     """MobileNetV3-Small architecture as described in

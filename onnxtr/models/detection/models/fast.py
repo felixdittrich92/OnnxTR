@@ -4,7 +4,7 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 from scipy.special import expit
@@ -15,7 +15,7 @@ from ..postprocessor.base import GeneralDetectionPostProcessor
 __all__ = ["FAST", "fast_tiny", "fast_small", "fast_base"]
 
 
-default_cfgs: Dict[str, Dict[str, Any]] = {
+default_cfgs: dict[str, dict[str, Any]] = {
     "fast_tiny": {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
@@ -53,11 +53,11 @@ class FAST(Engine):
     def __init__(
         self,
         model_path: str,
-        engine_cfg: Optional[EngineConfig] = None,
+        engine_cfg: EngineConfig | None = None,
         bin_thresh: float = 0.1,
         box_thresh: float = 0.1,
         assume_straight_pages: bool = True,
-        cfg: Optional[Dict[str, Any]] = None,
+        cfg: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
@@ -74,10 +74,10 @@ class FAST(Engine):
         x: np.ndarray,
         return_model_output: bool = False,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         logits = self.run(x)
 
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
 
         prob_map = expit(logits)
         if return_model_output:
@@ -92,7 +92,7 @@ def _fast(
     arch: str,
     model_path: str,
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> FAST:
     if load_in_8_bit:
@@ -104,7 +104,7 @@ def _fast(
 def fast_tiny(
     model_path: str = default_cfgs["fast_tiny"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"
@@ -131,7 +131,7 @@ def fast_tiny(
 def fast_small(
     model_path: str = default_cfgs["fast_small"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"
@@ -158,7 +158,7 @@ def fast_small(
 def fast_base(
     model_path: str = default_cfgs["fast_base"]["url"],
     load_in_8_bit: bool = False,
-    engine_cfg: Optional[EngineConfig] = None,
+    engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> FAST:
     """FAST as described in `"FAST: Faster Arbitrarily-Shaped Text Detector with Minimalist Kernel Representation"

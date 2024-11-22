@@ -20,7 +20,7 @@ if onnxruntime.get_device() != "GPU":
 import argparse
 import time
 from tempfile import TemporaryDirectory
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import onnx
@@ -31,7 +31,7 @@ from onnxtr.models.detection.zoo import ARCHS as DETECTION_ARCHS
 from onnxtr.models.recognition.zoo import ARCHS as RECOGNITION_ARCHS
 
 
-def _load_model(arch: str, model_path: Optional[str] = None) -> Any:
+def _load_model(arch: str, model_path: str | None = None) -> Any:
     if arch in DETECTION_ARCHS:
         model = detection.__dict__[arch]() if model_path is None else detection.__dict__[arch](model_path)
     elif args.arch in RECOGNITION_ARCHS:
@@ -43,7 +43,7 @@ def _load_model(arch: str, model_path: Optional[str] = None) -> Any:
     return model
 
 
-def _latency_check(args: Any, size: Tuple[int], model: Any, img_tensor: np.ndarray) -> None:
+def _latency_check(args: Any, size: tuple[int], model: Any, img_tensor: np.ndarray) -> None:
     # Warmup
     for _ in range(10):
         _ = model(img_tensor)
@@ -61,7 +61,7 @@ def _latency_check(args: Any, size: Tuple[int], model: Any, img_tensor: np.ndarr
     print(f"mean {1000 * _timings.mean():.2f}ms, std {1000 * _timings.std():.2f}ms")
 
 
-def _validate(fp32_in: List[np.ndarray], fp16_in: List[np.ndarray]) -> bool:
+def _validate(fp32_in: list[np.ndarray], fp16_in: list[np.ndarray]) -> bool:
     assert fp32_in[0].shape == fp16_in[0].shape, "Input shapes are not the same"
     # print mean difference between fp32 and fp16 inputs
     if np.abs(fp32_in[0] - fp16_in[0]).mean() > 1e-3:

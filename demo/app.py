@@ -1,6 +1,6 @@
 import io
 import os
-from typing import Any, List, Union
+from typing import Any
 
 # NOTE: This is a fix to run the demo on the HuggingFace Zero GPU or CPU spaces
 if os.environ.get("SPACES_ZERO_GPU") is not None:
@@ -28,7 +28,7 @@ from onnxtr.models import EngineConfig, from_hub, ocr_predictor
 from onnxtr.models.predictor import OCRPredictor
 from onnxtr.utils.visualization import visualize_page
 
-DET_ARCHS: List[str] = [
+DET_ARCHS: list[str] = [
     "fast_base",
     "fast_small",
     "fast_tiny",
@@ -39,7 +39,7 @@ DET_ARCHS: List[str] = [
     "linknet_resnet34",
     "linknet_resnet50",
 ]
-RECO_ARCHS: List[str] = [
+RECO_ARCHS: list[str] = [
     "crnn_vgg16_bn",
     "crnn_mobilenet_v3_small",
     "crnn_mobilenet_v3_large",
@@ -50,7 +50,7 @@ RECO_ARCHS: List[str] = [
     "parseq",
 ]
 
-CUSTOM_RECO_ARCHS: List[str] = [
+CUSTOM_RECO_ARCHS: list[str] = [
     "Felix92/onnxtr-parseq-multilingual-v1",
 ]
 
@@ -134,7 +134,7 @@ def forward_image(predictor: OCRPredictor, image: np.ndarray) -> np.ndarray:
     return seg_map
 
 
-def matplotlib_to_pil(fig: Union[Figure, np.ndarray]) -> Image.Image:
+def matplotlib_to_pil(fig: Figure | np.ndarray) -> Image.Image:
     """Convert a matplotlib figure to a PIL image
 
     Args:
