@@ -12,7 +12,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python: ["3.10"]
+        python: ["3.10", "3.11"]
+        backend: ["cpu-headless", "openvino-headless"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -28,15 +29,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[cpu-headless,viz,html,testing] --upgrade
+          pip install -e .[${{ matrix.backend }},viz,html,testing] --upgrade
       - name: Run unittests
         run: |
           coverage run -m pytest tests/common/ -rs
-          coverage xml -o coverage-common.xml
+          coverage xml -o coverage-common-${{ matrix.backend }}-${{ matrix.python }}.xml
       - uses: actions/upload-artifact@v4
         with:
-          name: coverage-common
-          path: ./coverage-common.xml
+          name: coverage-common-${{ matrix.backend }}-${{ matrix.python }}
+          path: ./coverage-common-${{ matrix.backend }}-${{ matrix.python }}.xml
           if-no-files-found: error
 
   codecov-upload:

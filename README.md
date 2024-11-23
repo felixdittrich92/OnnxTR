@@ -36,16 +36,22 @@ You can then install the latest release of the package using [pypi](https://pypi
 
 **NOTE:**
 
-For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started). Currently supported execution providers by default are: CPU, CUDA
+Currently supported execution providers by default are: CPU, CUDA (NVIDIA GPU), OpenVINO (Intel CPU | GPU).
+
+For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started).
 
 - **Prerequisites:** CUDA & cuDNN needs to be installed before [Version table](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 
 ```shell
+# standard cpu support
 pip install "onnxtr[cpu]"
 pip install "onnxtr[cpu-headless]"  # same as cpu but with opencv-headless
 # with gpu support
 pip install "onnxtr[gpu]"
 pip install "onnxtr[gpu-headless]"  # same as gpu but with opencv-headless
+# OpenVINO cpu | gpu support for Intel CPUs | GPUs
+pip install "onnxtr[openvino]"
+pip install "onnxtr[openvino-headless]"  # same as openvino but with opencv-headless
 # with HTML support
 pip install "onnxtr[html]"
 # with support for visualization
@@ -53,6 +59,18 @@ pip install "onnxtr[viz]"
 # with support for all dependencies
 pip install "onnxtr[html, gpu, viz]"
 ```
+
+**Recommendation:**
+
+If you have:
+
+- a NVIDIA GPU, use one of the `gpu` variants
+- an Intel CPU or GPU, use one of the `openvino` variants
+- otherwise, use one of the `cpu` variants
+
+**OpenVINO:**
+
+By default OnnxTR running with the OpenVINO execution provider backend uses the `CPU` device with `FP32` precision, to change the device or for further configuaration please refer to the [ONNX Runtime OpenVINO documentation](https://onnxruntime.ai/docs/execution-providers/OpenVINO-ExecutionProvider.html#summary-of-options).
 
 ### Reading files
 
@@ -326,15 +344,16 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 
 - CPU benchmarks:
 
-|Library                          |FUNSD (199 pages)              |CORD  (900 pages)              |
-|---------------------------------|-------------------------------|-------------------------------|
-|docTR (CPU) - v0.8.1             | ~1.29s / Page                 | ~0.60s / Page                 |
-|**OnnxTR (CPU)** - v0.6.0        | ~0.57s / Page                 | **~0.25s / Page**             |
-|**OnnxTR (CPU) 8-bit** - v0.6.0  | **~0.38s / Page**             | **~0.14s / Page**             |
-|EasyOCR (CPU) - v1.7.1           | ~1.96s / Page                 | ~1.75s / Page                 |
-|**PyTesseract (CPU)** - v0.3.10  | **~0.50s / Page**             | ~0.52s / Page                 |
-|Surya (line) (CPU) - v0.4.4      | ~48.76s / Page                | ~35.49s / Page                |
-|PaddleOCR (CPU) - no cls - v2.7.3| ~1.27s / Page                 | ~0.38s / Page                 |
+|Library                             |FUNSD (199 pages)              |CORD  (900 pages)              |
+|------------------------------------|-------------------------------|-------------------------------|
+|docTR (CPU) - v0.8.1                | ~1.29s / Page                 | ~0.60s / Page                 |
+|**OnnxTR (CPU)** - v0.6.0           | ~0.57s / Page                 | **~0.25s / Page**             |
+|**OnnxTR (CPU) 8-bit** - v0.6.0     | **~0.38s / Page**             | **~0.14s / Page**             |
+|**OnnxTR (CPU-OpenVINO)** - v0.6.0  | **~0.15s / Page**             | **~0.14s / Page**             |
+|EasyOCR (CPU) - v1.7.1              | ~1.96s / Page                 | ~1.75s / Page                 |
+|**PyTesseract (CPU)** - v0.3.10     | **~0.50s / Page**             | ~0.52s / Page                 |
+|Surya (line) (CPU) - v0.4.4         | ~48.76s / Page                | ~35.49s / Page                |
+|PaddleOCR (CPU) - no cls - v2.7.3   | ~1.27s / Page                 | ~0.38s / Page                 |
 
 - GPU benchmarks:
 

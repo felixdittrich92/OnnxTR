@@ -47,19 +47,27 @@ dependencies = [
 
 [project.optional-dependencies]
 cpu = [
-    "onnxruntime>=1.11.0",
+    "onnxruntime>=1.18.0",
     "opencv-python>=4.5.0,<5.0.0",
 ]
 gpu = [
-    "onnxruntime-gpu>=1.11.0",
+    "onnxruntime-gpu>=1.18.0",
+    "opencv-python>=4.5.0,<5.0.0",
+]
+openvino = [
+    "onnxruntime-openvino>=1.18.0",
     "opencv-python>=4.5.0,<5.0.0",
 ]
 cpu-headless = [
-    "onnxruntime>=1.11.0",
+    "onnxruntime>=1.18.0",
     "opencv-python-headless>=4.5.0,<5.0.0",
 ]
 gpu-headless = [
-    "onnxruntime-gpu>=1.11.0",
+    "onnxruntime-gpu>=1.18.0",
+    "opencv-python-headless>=4.5.0,<5.0.0",
+]
+openvino-headless = [
+    "onnxruntime-openvino>=1.18.0",
     "opencv-python-headless>=4.5.0,<5.0.0",
 ]
 html = [
@@ -81,7 +89,7 @@ quality = [
 ]
 dev = [
     # Runtime
-    "onnxruntime>=1.11.0",
+    "onnxruntime>=1.18.0",
     "opencv-python>=4.5.0,<5.0.0",
     # HTML
     "weasyprint>=55.0",
