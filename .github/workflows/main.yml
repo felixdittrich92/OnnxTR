@@ -13,7 +13,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python: ["3.10", "3.11"]
-        backend: ["cpu-headless", "cpu-openvino-headless"]
+        backend: ["cpu-headless", "openvino-headless"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python

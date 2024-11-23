@@ -46,12 +46,12 @@ For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/get
 # standard cpu support
 pip install "onnxtr[cpu]"
 pip install "onnxtr[cpu-headless]"  # same as cpu but with opencv-headless
-# OpenVINO cpu support for Intel CPUs
-pip install "onnxtr[cpu-openvino]"
-pip install "onnxtr[cpu-openvino-headless]"  # same as cpu-openvino but with opencv-headless
 # with gpu support
 pip install "onnxtr[gpu]"
 pip install "onnxtr[gpu-headless]"  # same as gpu but with opencv-headless
+# OpenVINO cpu | gpu support for Intel CPUs | GPUs
+pip install "onnxtr[openvino]"
+pip install "onnxtr[openvino-headless]"  # same as openvino but with opencv-headless
 # with HTML support
 pip install "onnxtr[html]"
 # with support for visualization
@@ -65,7 +65,7 @@ pip install "onnxtr[html, gpu, viz]"
 If you have:
 
 - a NVIDIA GPU, use one of the `gpu` variants
-- an Intel CPU or GPU, use one of the `cpu-openvino` variants
+- an Intel CPU or GPU, use one of the `openvino` variants
 - otherwise, use one of the `cpu` variants
 
 ### Reading files

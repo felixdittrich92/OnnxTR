@@ -54,7 +54,7 @@ gpu = [
     "onnxruntime-gpu>=1.18.0",
     "opencv-python>=4.5.0,<5.0.0",
 ]
-cpu-openvino = [
+openvino = [
     "onnxruntime-openvino>=1.18.0",
     "opencv-python>=4.5.0,<5.0.0",
 ]
@@ -66,7 +66,7 @@ gpu-headless = [
     "onnxruntime-gpu>=1.18.0",
     "opencv-python-headless>=4.5.0,<5.0.0",
 ]
-cpu-openvino-headless = [
+openvino-headless = [
     "onnxruntime-openvino>=1.18.0",
     "opencv-python-headless>=4.5.0,<5.0.0",
 ]

@@ -26,7 +26,7 @@ jobs:
           - "nvidia/cuda:12.6.2-base-ubuntu24.04" # Base image for GPU
         variant:
           - "cpu-headless"           # CPU variant 1
-          - "cpu-openvino-headless"  # CPU variant 2
+          - "openvino-headless"  # CPU variant 2
           - "gpu-headless"           # GPU variant
         python: [3.10.13]
 
@@ -35,7 +35,7 @@ jobs:
           - image: "nvidia/cuda:12.6.2-base-ubuntu24.04"
             variant: "cpu-headless"
           - image: "nvidia/cuda:12.6.2-base-ubuntu24.04"
-            variant: "cpu-openvino-headless"
+            variant: "openvino-headless"
           - image: "ubuntu:24.04"
             variant: "gpu-headless"
 
