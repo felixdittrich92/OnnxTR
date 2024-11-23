@@ -56,11 +56,9 @@ jobs:
 
       - name: Sanitize docker tag
         run: |
-          PREFIX_DOCKER_TAG="OnnxTR-${{ matrix.variant }}-py${{ matrix.python }}-"
-          PREFIX_DOCKER_TAG=$(echo PREFIX_DOCKER_TAG | sed 's/,/-/g')
-
           # Start with the base prefix
           PREFIX_DOCKER_TAG="OnnxTR-${{ matrix.variant }}-py${{ matrix.python }}"
+          PREFIX_DOCKER_TAG=$(echo PREFIX_DOCKER_TAG | sed 's/,/-/g')
 
           # Determine suffix based on image
           case "${{ matrix.image }}" in
