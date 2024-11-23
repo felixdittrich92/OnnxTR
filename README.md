@@ -68,6 +68,10 @@ If you have:
 - an Intel CPU or GPU, use one of the `openvino` variants
 - otherwise, use one of the `cpu` variants
 
+**OpenVINO:**
+
+By default OnnxTR running with the OpenVINO execution provider backend uses the `CPU` device with `FP32` precision, to change the device or for further configuaration please refer to the [ONNX Runtime OpenVINO documentation](https://onnxruntime.ai/docs/execution-providers/OpenVINO-ExecutionProvider.html#summary-of-options).
+
 ### Reading files
 
 Documents can be interpreted from PDF / Images / Webpages / Multiple page images using the following code snippet:
