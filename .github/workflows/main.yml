@@ -33,11 +33,11 @@ jobs:
       - name: Run unittests
         run: |
           coverage run -m pytest tests/common/ -rs
-          coverage xml -o coverage-common-${{ matrix.backend }}.xml
+          coverage xml -o coverage-common-${{ matrix.backend }}-${{ matrix.python }}.xml
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-common
-          path: ./coverage-common-${{ matrix.backend }}.xml
+          path: ./coverage-common-${{ matrix.backend }}-${{ matrix.python }}.xml
           if-no-files-found: error
 
   codecov-upload:

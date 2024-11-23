@@ -58,6 +58,14 @@ pip install "onnxtr[viz]"
 pip install "onnxtr[html, gpu, viz]"
 ```
 
+**Recommendation:**
+
+If you have:
+
+- a NVIDIA GPU, use one of the `gpu` variants
+- an Intel CPU or GPU, use one of the `cpu-openvino` variants
+- otherwise, use one of the `cpu` variants
+
 ### Reading files
 
 Documents can be interpreted from PDF / Images / Webpages / Multiple page images using the following code snippet:
