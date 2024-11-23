@@ -41,8 +41,12 @@ For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/get
 - **Prerequisites:** CUDA & cuDNN needs to be installed before [Version table](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 
 ```shell
+# standard cpu support
 pip install "onnxtr[cpu]"
 pip install "onnxtr[cpu-headless]"  # same as cpu but with opencv-headless
+# OpenVINO cpu support for Intel CPUs
+pip install "onnxtr[cpu-openvino]"
+pip install "onnxtr[cpu-openvino-headless]"  # same as cpu-openvino but with opencv-headless
 # with gpu support
 pip install "onnxtr[gpu]"
 pip install "onnxtr[gpu-headless]"  # same as gpu but with opencv-headless
@@ -326,15 +330,16 @@ The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_
 
 - CPU benchmarks:
 
-|Library                          |FUNSD (199 pages)              |CORD  (900 pages)              |
-|---------------------------------|-------------------------------|-------------------------------|
-|docTR (CPU) - v0.8.1             | ~1.29s / Page                 | ~0.60s / Page                 |
-|**OnnxTR (CPU)** - v0.6.0        | ~0.57s / Page                 | **~0.25s / Page**             |
-|**OnnxTR (CPU) 8-bit** - v0.6.0  | **~0.38s / Page**             | **~0.14s / Page**             |
-|EasyOCR (CPU) - v1.7.1           | ~1.96s / Page                 | ~1.75s / Page                 |
-|**PyTesseract (CPU)** - v0.3.10  | **~0.50s / Page**             | ~0.52s / Page                 |
-|Surya (line) (CPU) - v0.4.4      | ~48.76s / Page                | ~35.49s / Page                |
-|PaddleOCR (CPU) - no cls - v2.7.3| ~1.27s / Page                 | ~0.38s / Page                 |
+|Library                             |FUNSD (199 pages)              |CORD  (900 pages)              |
+|------------------------------------|-------------------------------|-------------------------------|
+|docTR (CPU) - v0.8.1                | ~1.29s / Page                 | ~0.60s / Page                 |
+|**OnnxTR (CPU)** - v0.6.0           | ~0.57s / Page                 | **~0.25s / Page**             |
+|**OnnxTR (CPU) 8-bit** - v0.6.0     | **~0.38s / Page**             | **~0.14s / Page**             |
+|**OnnxTR (CPU-OpenVINO)** - v0.6.0  | **~0.15s / Page**             | **~0.14s / Page**             |
+|EasyOCR (CPU) - v1.7.1              | ~1.96s / Page                 | ~1.75s / Page                 |
+|**PyTesseract (CPU)** - v0.3.10     | **~0.50s / Page**             | ~0.52s / Page                 |
+|Surya (line) (CPU) - v0.4.4         | ~48.76s / Page                | ~35.49s / Page                |
+|PaddleOCR (CPU) - no cls - v2.7.3   | ~1.27s / Page                 | ~0.38s / Page                 |
 
 - GPU benchmarks:
 

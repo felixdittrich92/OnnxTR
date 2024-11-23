@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+import logging
 from typing import Any
 
 import numpy as np
@@ -40,6 +41,7 @@ class EngineConfig:
     def _init_providers(self) -> list[tuple[str, dict[str, Any]]]:
         providers: Any = [("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
         available_providers = get_available_providers()
+        logging.info(f"Available providers: {available_providers}")
         if "CUDAExecutionProvider" in available_providers and get_device() == "GPU":  # pragma: no cover
             providers.insert(
                 0,
