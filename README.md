@@ -36,7 +36,9 @@ You can then install the latest release of the package using [pypi](https://pypi
 
 **NOTE:**
 
-For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started). Currently supported execution providers by default are: CPU, CUDA
+Currently supported execution providers by default are: CPU, CUDA (NVIDIA GPU), OpenVINO (Intel CPU | GPU).
+
+For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started).
 
 - **Prerequisites:** CUDA & cuDNN needs to be installed before [Version table](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 
