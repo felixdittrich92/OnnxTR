@@ -58,15 +58,18 @@ jobs:
         run: |
           # Start with the base prefix
           PREFIX_DOCKER_TAG="OnnxTR-${{ matrix.variant }}-py${{ matrix.python }}"
-          PREFIX_DOCKER_TAG=$(echo PREFIX_DOCKER_TAG | sed 's/,/-/g')
+
+          # Replace any commas with hyphens (if needed)
+          PREFIX_DOCKER_TAG=$(echo "$PREFIX_DOCKER_TAG" | sed 's/,/-/g')
 
           # Determine suffix based on image
-          case "${{ matrix.image }}" in
+          IMAGE="${{ matrix.image }}"
+          case "$IMAGE" in
             "nvidia/cuda:"*)
-              SUFFIX=$(echo "${{ matrix.image }}" | sed -E 's|.*/cuda:([0-9]+\.[0-9]+\.[0-9]+)-base-(ubuntu[0-9]+\.[0-9]+)|-\2-cuda\1|')
+              SUFFIX=$(echo "$IMAGE" | sed -E 's|.*/cuda:([0-9]+\.[0-9]+\.[0-9]+)-base-(ubuntu[0-9]+\.[0-9]+)|-\2-cuda\1|')
               ;;
             "ubuntu:"*)
-              SUFFIX=$(echo "${{ matrix.image }}" | sed -E 's|ubuntu:([0-9]+\.[0-9]+)|-ubuntu\1|')
+              SUFFIX=$(echo "$IMAGE" | sed -E 's|ubuntu:([0-9]+\.[0-9]+)|-ubuntu\1|')
               ;;
             *)
               SUFFIX=""
