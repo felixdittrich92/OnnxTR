@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2024, Mindee | Felix Dittrich.
+# Copyright (C) 2021-2025, Mindee | Felix Dittrich.
 
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
@@ -74,7 +74,7 @@ class DocumentBuilder(NestedObject):
         """
         lines = []
         # Sort words horizontally
-        word_idcs = [word_idcs[idx] for idx in boxes[word_idcs, 0].argsort().tolist()]
+        word_idcs = [word_idcs[idx] for idx in boxes[word_idcs, 0].argsort().tolist()]  # type: ignore[call-overload]
 
         # Eventually split line horizontally
         if len(word_idcs) < 2:

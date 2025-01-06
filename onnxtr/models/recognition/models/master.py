@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2024, Mindee | Felix Dittrich.
+# Copyright (C) 2021-2025, Mindee | Felix Dittrich.
 
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
@@ -106,7 +106,7 @@ class MASTERPostProcessor(RecognitionPostProcessor):
             "".join(self._embedding[idx] for idx in encoded_seq).split("<eos>")[0] for encoded_seq in out_idxs
         ]
 
-        return list(zip(word_values, np.clip(probs, 0, 1).astype(float).tolist()))
+        return list(zip(word_values, np.clip(probs, 0, 1).astype(float).tolist()))  # type: ignore[arg-type]
 
 
 def _master(
