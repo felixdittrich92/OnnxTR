@@ -44,6 +44,7 @@ def _predictor(
             raise ValueError(f"unknown architecture: {type(arch)}")
 
         _model = arch
+        _model.assume_straight_pages = assume_straight_pages
         _model.postprocessor.assume_straight_pages = assume_straight_pages
 
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
