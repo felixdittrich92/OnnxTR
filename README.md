@@ -10,6 +10,7 @@
 [![Pypi](https://img.shields.io/badge/pypi-v0.6.1-blue.svg)](https://pypi.org/project/OnnxTR/)
 [![Docker Images](https://img.shields.io/badge/Docker-4287f5?style=flat&logo=docker&logoColor=white)](https://github.com/felixdittrich92/OnnxTR/pkgs/container/onnxtr)
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/Felix92/OnnxTR-OCR)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/onnxtr)
 
 > :warning: Please note that this is a wrapper around the [doctr](https://github.com/mindee/doctr) library to provide a Onnx pipeline for docTR. For feature requests, which are not directly related to the Onnx pipeline, please refer to the base project.
 
