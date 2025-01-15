@@ -90,6 +90,8 @@ class Engine:
     def __init__(self, url: str, engine_cfg: EngineConfig | None = None, **kwargs: Any) -> None:
         engine_cfg = engine_cfg if isinstance(engine_cfg, EngineConfig) else EngineConfig()
         archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
+        # NOTE: older onnxruntime versions require a string path for windows
+        archive_path = rf"{archive_path}"
         # Store model path for each model
         self.model_path = archive_path
         self.session_options = engine_cfg.session_options
