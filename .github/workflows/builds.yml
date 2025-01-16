@@ -42,7 +42,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: "3.10"
-          channels: pypdfium2-team,bblanchon,defaults,conda-forge
+          channels: pypdfium2-team,bblanchon,conda-forge
           channel-priority: strict
       - name: Install dependencies
         shell: bash -el {0}
