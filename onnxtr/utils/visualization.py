@@ -277,8 +277,8 @@ def draw_boxes(boxes: np.ndarray, image: np.ndarray, color: tuple[int, int, int]
         xmin, ymin, xmax, ymax = box  # type: ignore[misc]
         image = cv2.rectangle(
             image,
-            (xmin, ymin),  # type: ignore[arg-type]
-            (xmax, ymax),  # type: ignore[arg-type]
+            (xmin, ymin),  # type: ignore[has-type]
+            (xmax, ymax),  # type: ignore[has-type]
             color=color if isinstance(color, tuple) else (0, 0, 255),
             thickness=2,
         )
