@@ -12,6 +12,7 @@
 [![Docker Images](https://img.shields.io/badge/Docker-4287f5?style=flat&logo=docker&logoColor=white)](https://github.com/felixdittrich92/OnnxTR/pkgs/container/onnxtr)
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/Felix92/OnnxTR-OCR)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/onnxtr)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ffelixdittrich92%2FOnnxTR.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Ffelixdittrich92%2FOnnxTR?ref=badge_shield)
 
 > :warning: Please note that this is a wrapper around the [doctr](https://github.com/mindee/doctr) library to provide a Onnx pipeline for docTR. For feature requests, which are not directly related to the Onnx pipeline, please refer to the base project.
 
@@ -396,3 +397,6 @@ If you wish to cite please refer to the base project citation, feel free to use 
 ## License
 
 Distributed under the Apache 2.0 License. See [`LICENSE`](https://github.com/felixdittrich92/OnnxTR?tab=Apache-2.0-1-ov-file#readme) for more information.
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ffelixdittrich92%2FOnnxTR.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Ffelixdittrich92%2FOnnxTR?ref=badge_large)
