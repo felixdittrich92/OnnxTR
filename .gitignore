@@ -136,3 +136,4 @@ wandb/
 
 # Model files
 *.onnx
+.qodo
