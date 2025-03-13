@@ -32,7 +32,7 @@ jobs:
           pip install -e .[${{ matrix.backend }},viz,html,testing] --upgrade
       - name: Run unittests
         run: |
-          coverage run -m pytest tests/common/ -rs
+          coverage run -m pytest tests/common/ -rs --memray
           coverage xml -o coverage-common-${{ matrix.backend }}-${{ matrix.python }}.xml
       - uses: actions/upload-artifact@v4
         with:
