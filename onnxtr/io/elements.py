@@ -331,7 +331,7 @@ class Page(Element):
         )
         # Create the body
         body = SubElement(page_hocr, "body")
-        SubElement(
+        page_div = SubElement(
             body,
             "div",
             attrib={
@@ -346,7 +346,7 @@ class Page(Element):
                 raise TypeError("XML export is only available for straight bounding boxes for now.")
             (xmin, ymin), (xmax, ymax) = block.geometry
             block_div = SubElement(
-                body,
+                page_div,
                 "div",
                 attrib={
                     "class": "ocr_carea",
