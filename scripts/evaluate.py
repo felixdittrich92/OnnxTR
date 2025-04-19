@@ -9,6 +9,9 @@ try:
     print(f"DocTR version: {__version__}")
 except ImportError:
     raise ImportError("Failed to import `doctr`. Please install `pip install python-doctr[torch]`.")
+
+import os
+import time
 from typing import Any
 
 import numpy as np
@@ -17,7 +20,7 @@ from doctr import transforms as T
 from doctr.utils.metrics import LocalizationConfusion, OCRMetric, TextMatch
 from tqdm import tqdm
 
-from onnxtr.models import ocr_predictor
+from onnxtr.models import EngineConfig, ocr_predictor
 from onnxtr.utils.geometry import extract_crops, extract_rcrops
 
 
@@ -28,6 +31,20 @@ def _pct(val):
 def main(args):
     if not args.rotation:
         args.eval_straight = True
+
+    if args.profiling:
+        os.environ["ONNXTR_MULTIPROCESSING_DISABLE"] = "TRUE"
+        try:
+            import memray
+            import yappi
+        except ImportError:
+            raise ImportError("Please install yappi and memray to enable profiling - `pip install yappi memray`.")
+        yappi.set_clock_type("cpu")
+        # Drop memray profile if it already exists
+        if os.path.exists("memray_profile.bin"):
+            os.remove("memray_profile.bin")
+        memray_tracker = memray.Tracker("memray_profile.bin")
+        memray_tracker.__enter__()
 
     input_shape = (args.size, args.size)
 
@@ -47,6 +64,10 @@ def main(args):
         preserve_aspect_ratio=False,  # we handle the transformation directly in the dataset so this is set to False
         symmetric_pad=False,  # we handle the transformation directly in the dataset so this is set to False
         assume_straight_pages=not args.rotation,
+        load_in_8_bit=args.load_8bit,
+        det_engine_cfg=EngineConfig(providers=["CPUExecutionProvider"]) if args.force_cpu else None,
+        reco_engine_cfg=EngineConfig(providers=["CPUExecutionProvider"]) if args.force_cpu else None,
+        clf_engine_cfg=EngineConfig(providers=["CPUExecutionProvider"]) if args.force_cpu else None,
     )
 
     # Load the dataset
@@ -72,6 +93,15 @@ def main(args):
     sample_idx = 0
     extraction_fn = extract_crops if args.eval_straight else extract_rcrops
 
+    timings = []
+
+    # Warmup
+    print("Warming up the model...")
+    dummy_img = np.zeros((args.size, args.size, 3), dtype=np.uint8)
+    for _ in range(5):
+        _ = predictor([dummy_img])
+    print("Warmup done.\n")
+
     for dataset in sets:
         for page, target in tqdm(dataset):
             if hasattr(page, "numpy"):
@@ -88,7 +118,14 @@ def main(args):
             gt_labels = target["labels"]
 
             # Forward
+            if args.profiling:
+                yappi.start()
+            start_ts = time.perf_counter()
             out = predictor(page[None, ...])
+            timings.append(time.perf_counter() - start_ts)
+            if args.profiling:
+                yappi.stop()
+
             crops = extraction_fn(page, gt_boxes, channels_last=True)
             reco_out = predictor.reco_predictor(crops)
 
@@ -172,8 +209,23 @@ def main(args):
     recall, precision, mean_iou = e2e_metric.summary()
     print(
         f"OCR - Recall: {_pct(recall['raw'])} (unicase: {_pct(recall['unicase'])}), "
-        f"Precision: {_pct(precision['raw'])} (unicase: {_pct(precision['unicase'])}), Mean IoU: {_pct(mean_iou)}"
+        f"Precision: {_pct(precision['raw'])} (unicase: {_pct(precision['unicase'])}), Mean IoU: {_pct(mean_iou)}\n"
     )
+    print(f"Number of samples: {sample_idx}")
+    print(f"Total inference time: {np.sum(timings):.2f} sec")
+    print(f"Average inference time per sample: {np.mean(timings):.6f} sec")
+
+    if args.profiling:
+        import subprocess
+
+        memray_tracker.__exit__(None, None, None)
+
+        with open("yappi_profile.stats", "w") as f:
+            yappi.get_func_stats().print_all(out=f)
+
+        print("Profiling complete. Generating memray flamegraph and stats...")
+        subprocess.run(["memray", "flamegraph", "memray_profile.bin", "-o", "memray_flamegraph.html"])
+        subprocess.run(["memray", "stats", "memray_profile.bin"])
 
 
 def parse_args():
@@ -198,6 +250,9 @@ def parse_args():
         action="store_true",
         help="evaluate on straight pages with straight bbox (to use the quick and light metric)",
     )
+    parser.add_argument("--load_8bit", action="store_true", help="load model in 8bit mode")
+    parser.add_argument("--force-cpu", action="store_true", help="force CPU execution")
+    parser.add_argument("--profiling", action="store_true", help="enable profiling")
     args = parser.parse_args()
 
     return args
