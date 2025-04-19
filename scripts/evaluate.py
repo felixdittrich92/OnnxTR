@@ -89,7 +89,6 @@ def main(args):
 
             # Forward
             out = predictor(page[None, ...])
-            # We directly crop on PyTorch tensors, which are in channels_first
             crops = extraction_fn(page, gt_boxes, channels_last=True)
             reco_out = predictor.reco_predictor(crops)
 
