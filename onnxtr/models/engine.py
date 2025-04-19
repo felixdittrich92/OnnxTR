@@ -4,6 +4,7 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 import logging
+import os
 from typing import Any
 
 import numpy as np
@@ -15,6 +16,9 @@ from onnxruntime import (
     get_available_providers,
     get_device,
 )
+from onnxruntime.capi._pybind_state import set_default_logger_severity
+
+set_default_logger_severity(int(os.getenv("ORT_LOG_SEVERITY_LEVEL", 4)))
 
 from onnxtr.utils.data import download_from_url
 from onnxtr.utils.geometry import shape_translate
