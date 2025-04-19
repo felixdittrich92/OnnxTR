@@ -40,9 +40,11 @@ def main(args):
         except ImportError:
             raise ImportError("Please install yappi and memray to enable profiling - `pip install yappi memray`.")
         yappi.set_clock_type("cpu")
-        # Drop memray profile if it already exists
+        # Drop memray profile and flamegraph if they already exist
         if os.path.exists("memray_profile.bin"):
             os.remove("memray_profile.bin")
+        if os.path.exists("memray_flamegraph.html"):
+            os.remove("memray_flamegraph.html")
         memray_tracker = memray.Tracker("memray_profile.bin")
         memray_tracker.__enter__()
 
