@@ -40,11 +40,6 @@ def main(args):
         except ImportError:
             raise ImportError("Please install yappi and memray to enable profiling - `pip install yappi memray`.")
         yappi.set_clock_type("cpu")
-        # Drop memray profile and flamegraph if they already exist
-        if os.path.exists("memray_profile.bin"):
-            os.remove("memray_profile.bin")
-        if os.path.exists("memray_flamegraph.html"):
-            os.remove("memray_flamegraph.html")
         memray_tracker = memray.Tracker("memray_profile.bin")
         memray_tracker.__enter__()
 
@@ -218,16 +213,10 @@ def main(args):
     print(f"Average inference time per sample: {np.mean(timings):.6f} sec")
 
     if args.profiling:
-        import subprocess
-
         memray_tracker.__exit__(None, None, None)
 
         with open("yappi_profile.stats", "w") as f:
             yappi.get_func_stats().print_all(out=f)
-
-        print("Profiling complete. Generating memray flamegraph and stats...")
-        subprocess.run(["memray", "flamegraph", "memray_profile.bin", "-o", "memray_flamegraph.html"])
-        subprocess.run(["memray", "stats", "memray_profile.bin"])
 
 
 def parse_args():
