@@ -9,7 +9,6 @@
 import cv2
 import numpy as np
 import pyclipper
-from shapely.geometry import Polygon
 
 from ..core import DetectionPostProcessor
 
@@ -54,9 +53,8 @@ class GeneralDetectionPostProcessor(DetectionPostProcessor):
             area = (rect[1][0] + 1) * (1 + rect[1][1])
             length = 2 * (rect[1][0] + rect[1][1]) + 2
         else:
-            poly = Polygon(points)
-            area = poly.area
-            length = poly.length
+            area = cv2.contourArea(points)
+            length = cv2.arcLength(points, closed=True)
         distance = area * self.unclip_ratio / length  # compute distance to expand polygon
         offset = pyclipper.PyclipperOffset()
         offset.AddPath(points, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
