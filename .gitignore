@@ -137,3 +137,8 @@ wandb/
 # Model files
 *.onnx
 .qodo
+
+# Profile files
+yappi_profile.stats
+memray_profile.bin
+memray_flamegraph.html
