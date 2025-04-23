@@ -74,7 +74,7 @@ class DocumentBuilder(NestedObject):
         """
         lines = []
         # Sort words horizontally
-        word_idcs = [word_idcs[idx] for idx in boxes[word_idcs, 0].argsort().tolist()]  # type: ignore[call-overload]
+        word_idcs = [word_idcs[idx] for idx in boxes[word_idcs, 0].argsort().tolist()]
 
         # Eventually split line horizontally
         if len(word_idcs) < 2:
