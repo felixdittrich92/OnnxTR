@@ -4,6 +4,8 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 
+import math
+
 import numpy as np
 from PIL import Image, ImageOps
 
@@ -37,37 +39,51 @@ class Resize:
             raise AssertionError("size should be either a tuple or an int")
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
-        img = (img * 255).astype(np.uint8) if img.dtype != np.uint8 else img
-        h, w = img.shape[:2] if img.ndim == 3 else img.shape[1:3]
+        if img.dtype != np.uint8:
+            img_pil = Image.fromarray((img * 255).clip(0, 255).astype(np.uint8))
+        else:
+            img_pil = Image.fromarray(img)
+
         sh, sw = self.size
+        w, h = img_pil.size
 
         if not self.preserve_aspect_ratio:
-            return np.array(Image.fromarray(img).resize((sw, sh), resample=self.interpolation))
+            img_resized_pil = img_pil.resize((sw, sh), resample=self.interpolation)
+            return np.array(img_resized_pil)
 
         actual_ratio = h / w
         target_ratio = sh / sw
 
-        if target_ratio == actual_ratio:
-            return np.array(Image.fromarray(img).resize((sw, sh), resample=self.interpolation))
-
         if actual_ratio > target_ratio:
-            tmp_size = (int(sh / actual_ratio), sh)
+            new_h = sh
+            new_w = max(int(sh / actual_ratio), 1)
         else:
-            tmp_size = (sw, int(sw * actual_ratio))
+            new_w = sw
+            new_h = max(int(sw * actual_ratio), 1)
 
-        img_resized = Image.fromarray(img).resize(tmp_size, resample=self.interpolation)
-        pad_left = pad_top = 0
-        pad_right = sw - img_resized.width
-        pad_bottom = sh - img_resized.height
+        img_resized_pil = img_pil.resize((new_w, new_h), resample=self.interpolation)
+
+        delta_w = sw - new_w
+        delta_h = sh - new_h
 
         if self.symmetric_pad:
-            pad_left = pad_right // 2
-            pad_right -= pad_left
-            pad_top = pad_bottom // 2
-            pad_bottom -= pad_top
+            # Symmetric padding
+            pad_left = math.ceil(delta_w / 2)
+            pad_right = math.floor(delta_w / 2)
+            pad_top = math.ceil(delta_h / 2)
+            pad_bottom = math.floor(delta_h / 2)
+        else:
+            # Asymmetric padding
+            pad_left, pad_top = 0, 0
+            pad_right, pad_bottom = delta_w, delta_h
 
-        img_resized = ImageOps.expand(img_resized, (pad_left, pad_top, pad_right, pad_bottom))
-        return np.array(img_resized)
+        img_padded_pil = ImageOps.expand(
+            img_resized_pil,
+            border=(pad_left, pad_top, pad_right, pad_bottom),
+            fill=0,
+        )
+
+        return np.array(img_padded_pil)
 
     def __repr__(self) -> str:
         interpolate_str = self.interpolation
