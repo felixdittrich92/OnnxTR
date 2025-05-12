@@ -4,22 +4,18 @@ updates:
     directory: "/"
     open-pull-requests-limit: 10
     target-branch: "main"
-    labels: ["build"]
+    labels: ["topic: build"]
     schedule:
       interval: weekly
       day: sunday
-    reviewers:
-      - "felixdittrich92"
   - package-ecosystem: "github-actions"
     directory: "/"
     open-pull-requests-limit: 10
     target-branch: "main"
-    labels: ["CI/CD"]
+    labels: ["topic: CI/CD"]
     schedule:
       interval: weekly
       day: sunday
-    reviewers:
-      - "felixdittrich92"
     groups:
       github-actions:
         patterns:
