@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+import logging
 from copy import deepcopy
 from itertools import groupby
 from typing import Any
@@ -15,24 +16,16 @@ from onnxtr.utils import VOCABS
 from ...engine import Engine, EngineConfig
 from ..core import RecognitionPostProcessor
 
-__all__ = ["VIPTR", "viptr_tiny", "viptr_base"]
+__all__ = ["VIPTR", "viptr_tiny"]
 
 default_cfgs: dict[str, dict[str, Any]] = {
     "viptr_tiny": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
-        "vocab": VOCABS["legacy_french"],
-        "url": None,
-        "url_8_bit": None,
-    },
-    "viptr_base": {
-        "mean": (0.694, 0.695, 0.693),
-        "std": (0.299, 0.296, 0.301),
-        "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": None,
-        "url_8_bit": None,
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.3/viptr_tiny-4acb8fe1.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.3/viptr_tiny-4acb8fe1.onnx",
     },
 }
 
@@ -145,6 +138,8 @@ def _viptr(
     engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> VIPTR:
+    if load_in_8_bit:
+        logging.warning("VIPTR models do not support 8-bit quantization yet. Loading full precision model...")
     kwargs["vocab"] = kwargs.get("vocab", default_cfgs[arch]["vocab"])
 
     _cfg = deepcopy(default_cfgs[arch])
@@ -182,30 +177,3 @@ def viptr_tiny(
         text recognition architecture
     """
     return _viptr("viptr_tiny", model_path, load_in_8_bit, engine_cfg, **kwargs)
-
-
-def viptr_base(
-    model_path: str = default_cfgs["viptr_base"]["url"],
-    load_in_8_bit: bool = False,
-    engine_cfg: EngineConfig | None = None,
-    **kwargs: Any,
-) -> VIPTR:
-    """VIPTR as described in `"A Vision Permutable Extractor for Fast and Efficient
-    Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
-
-    >>> import numpy as np
-    >>> from onnxtr.models import viptr_base
-    >>> model = viptr_base()
-    >>> input_tensor = np.random.rand(1, 3, 32, 128)
-    >>> out = model(input_tensor)
-
-    Args:
-        model_path: path to onnx model file, defaults to url in default_cfgs
-        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
-        engine_cfg: configuration for the inference engine
-        **kwargs: keyword arguments of the VIPTR architecture
-
-    Returns:
-        text recognition architecture
-    """
-    return _viptr("viptr_base", model_path, load_in_8_bit, engine_cfg, **kwargs)

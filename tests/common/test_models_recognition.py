@@ -144,7 +144,6 @@ def test_invalid_split_overlap_ratio(split_overlap_ratio):
         ["vitstr_base", (32, 128, 3)],
         ["parseq", (32, 128, 3)],
         ["viptr_tiny", (32, 128, 3)],
-        ["viptr_base", (32, 128, 3)],
     ],
 )
 def test_recognition_models(arch_name, input_shape, quantized):
@@ -209,7 +208,6 @@ def test_recognition_models(arch_name, input_shape, quantized):
         "vitstr_base",
         "parseq",
         "viptr_tiny",
-        "viptr_base",
     ],
 )
 def test_recognition_zoo(arch_name, input_shape, quantized):

@@ -318,8 +318,7 @@ predictor.list_archs()
             'vitstr_small',
             'vitstr_base',
             'parseq'
-            'viptr_tiny',
-            'viptr_base',
+            'viptr_tiny',  # No 8-bit support
         ]
 }
 ```
