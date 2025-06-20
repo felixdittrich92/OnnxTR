@@ -24,8 +24,8 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.3/viptr_tiny-4acb8fe1.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.3/viptr_tiny-4acb8fe1.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.3/viptr_tiny-499b8015.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.3/viptr_tiny-499b8015.onnx",
     },
 }
 
