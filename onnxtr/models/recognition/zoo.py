@@ -36,7 +36,15 @@ def _predictor(
         _model = recognition.__dict__[arch](load_in_8_bit=load_in_8_bit, engine_cfg=engine_cfg)
     else:
         if not isinstance(
-            arch, (recognition.CRNN, recognition.SAR, recognition.MASTER, recognition.ViTSTR, recognition.PARSeq)
+            arch,
+            (
+                recognition.CRNN,
+                recognition.SAR,
+                recognition.MASTER,
+                recognition.ViTSTR,
+                recognition.PARSeq,
+                recognition.VIPTR,
+            ),
         ):
             raise ValueError(f"unknown architecture: {type(arch)}")
         _model = arch
