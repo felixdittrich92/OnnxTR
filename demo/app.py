@@ -48,6 +48,7 @@ RECO_ARCHS: list[str] = [
     "vitstr_small",
     "vitstr_base",
     "parseq",
+    "viptr_tiny",
 ]
 
 CUSTOM_RECO_ARCHS: list[str] = [
