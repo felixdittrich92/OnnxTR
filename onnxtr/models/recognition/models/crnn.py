@@ -22,9 +22,9 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
-        "vocab": VOCABS["legacy_french"],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/crnn_vgg16_bn-662979cc.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/crnn_vgg16_bn_static_8_bit-bce050c7.onnx",
+        "vocab": VOCABS["french"],
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.7.1/crnn_vgg16_bn-743599aa.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.7.1/crnn_vgg16_bn_static_8_bit-df1b594d.onnx",
     },
     "crnn_mobilenet_v3_small": {
         "mean": (0.694, 0.695, 0.693),
