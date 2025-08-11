@@ -79,7 +79,7 @@ class EngineConfig:
         return self._session_options
 
     def __repr__(self) -> str:
-        return f"EngineConfig(providers={self.providers}"
+        return f"EngineConfig(providers={self.providers})"
 
 
 class Engine:

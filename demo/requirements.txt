@@ -3,4 +3,5 @@ gradio>=5.30.0,<6.0.0
 spaces>=0.37.0
 
 # Quick fix to avoid HuggingFace Spaces cudnn9.x Cuda12.x issue
-onnxruntime-gpu==1.19.0
+# NOTE: outdated
+# onnxruntime-gpu==1.19.0

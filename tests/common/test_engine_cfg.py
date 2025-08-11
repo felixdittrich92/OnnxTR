@@ -37,7 +37,7 @@ def test_engine_cfg(det_arch, reco_arch):
         session_options=session_options,
     )
 
-    assert engine_cfg.__repr__() == "EngineConfig(providers=['CPUExecutionProvider']"
+    assert engine_cfg.__repr__() == "EngineConfig(providers=['CPUExecutionProvider'])"
 
     # Model
     predictor = models.ocr_predictor(
