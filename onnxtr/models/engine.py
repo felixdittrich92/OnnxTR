@@ -5,13 +5,14 @@
 
 import logging
 import os
-from typing import Any
+from typing import Any, Callable, TypeAlias
 
 import numpy as np
 from onnxruntime import (
     ExecutionMode,
     GraphOptimizationLevel,
     InferenceSession,
+    RunOptions,
     SessionOptions,
     get_available_providers,
     get_device,
@@ -23,7 +24,9 @@ set_default_logger_severity(int(os.getenv("ORT_LOG_SEVERITY_LEVEL", 4)))
 from onnxtr.utils.data import download_from_url
 from onnxtr.utils.geometry import shape_translate
 
-__all__ = ["EngineConfig"]
+__all__ = ["EngineConfig", "RunOptionsProvider"]
+
+RunOptionsProvider: TypeAlias = Callable[[RunOptions], RunOptions]
 
 
 class EngineConfig:
@@ -38,9 +41,11 @@ class EngineConfig:
         self,
         providers: list[tuple[str, dict[str, Any]]] | list[str] | None = None,
         session_options: SessionOptions | None = None,
+        run_options_provider: RunOptionsProvider | None = None,
     ):
         self._providers = providers or self._init_providers()
         self._session_options = session_options or self._init_sess_opts()
+        self.run_options_provider = run_options_provider
 
     def _init_providers(self) -> list[tuple[str, dict[str, Any]]]:
         providers: Any = [("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
@@ -100,6 +105,7 @@ class Engine:
         self.model_path = archive_path
         self.session_options = engine_cfg.session_options
         self.providers = engine_cfg.providers
+        self.run_options_provider = engine_cfg.run_options_provider
         self.runtime = InferenceSession(archive_path, providers=self.providers, sess_options=self.session_options)
         self.runtime_inputs = self.runtime.get_inputs()[0]
         self.tf_exported = int(self.runtime_inputs.shape[-1]) == 3
@@ -109,6 +115,9 @@ class Engine:
         self.output_name = [output.name for output in self.runtime.get_outputs()]
 
     def run(self, inputs: np.ndarray) -> np.ndarray:
+        run_options = RunOptions()
+        if self.run_options_provider is not None:
+            run_options = self.run_options_provider(run_options)
         if self.tf_exported:
             inputs = shape_translate(inputs, format="BHWC")  # sanity check
         else:
@@ -117,8 +126,12 @@ class Engine:
             inputs = np.broadcast_to(inputs, (self.fixed_batch_size, *inputs.shape))
             # combine the results
             logits = np.concatenate(
-                [self.runtime.run(self.output_name, {self.runtime_inputs.name: batch})[0] for batch in inputs], axis=0
+                [
+                    self.runtime.run(self.output_name, {self.runtime_inputs.name: batch}, run_options=run_options)[0]
+                    for batch in inputs
+                ],
+                axis=0,
             )
         else:
-            logits = self.runtime.run(self.output_name, {self.runtime_inputs.name: inputs})[0]
+            logits = self.runtime.run(self.output_name, {self.runtime_inputs.name: inputs}, run_options=run_options)[0]
         return shape_translate(logits, format="BHWC")
