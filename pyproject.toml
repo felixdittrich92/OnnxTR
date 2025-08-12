@@ -81,6 +81,7 @@ testing = [
     "coverage[toml]>=4.5.4",
     "requests>=2.20.0",
     "pytest-memray>=1.7.0",
+    "psutil>=7.0.0",
 ]
 quality = [
     "ruff>=0.1.5",

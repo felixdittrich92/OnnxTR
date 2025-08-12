@@ -93,7 +93,6 @@ def test_cpu_memory_arena_shrinkage_enabled():
     providers = [("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
 
     def enable_arena_shrinkage(run_options: "RunOptions") -> "RunOptions":
-        nonlocal enable_shrinkage
         if enable_shrinkage:
             run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "cpu:0")
             assert run_options.get_run_config_entry("memory.enable_memory_arena_shrinkage") == "cpu:0"

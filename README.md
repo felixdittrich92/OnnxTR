@@ -195,6 +195,32 @@ predictor = ocr_predictor(
 )
 ```
 
+You can also dynamically configure whether the memory arena should shrink:
+
+```python
+from random import random
+from onnxruntime import RunOptions, SessionOptions
+
+from onnxtr.models import ocr_predictor, EngineConfig
+
+def arena_shrinkage_handler(run_options: RunOptions) -> RunOptions:
+  """
+  Shrink the memory arena on 10% of inference runs.
+  """
+  if random() < 0.1:
+    run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "cpu:0")
+  return run_options
+
+engine_config = EngineConfig(run_options_provider=arena_shrinkage_handler)
+engine_config.session_options.enable_mem_pattern = False
+
+predictor = ocr_predictor(
+    det_engine_cfg=engine_config,
+    reco_engine_cfg=engine_config,
+    clf_engine_cfg=engine_config
+)
+```
+
 </details>
 
 ## Loading custom exported models
