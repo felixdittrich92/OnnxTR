@@ -18,7 +18,7 @@ jobs:
         python: ["3.10", "3.11", "3.12"]
         backend: ["cpu-headless", "openvino-headless"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ pytest-common ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
