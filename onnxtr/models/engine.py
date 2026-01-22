@@ -65,6 +65,8 @@ class EngineConfig:
                     },
                 ),
             )
+        elif "CoreMLExecutionProvider" in available_providers:  # pragma: no cover
+            providers.insert(0, ("CoreMLExecutionProvider", {}))
         return providers
 
     def _init_sess_opts(self) -> SessionOptions:

@@ -38,7 +38,7 @@ You can then install the latest release of the package using [pypi](https://pypi
 
 **NOTE:**
 
-Currently supported execution providers by default are: CPU, CUDA (NVIDIA GPU), OpenVINO (Intel CPU | GPU).
+Currently supported execution providers by default are: CPU, CUDA (NVIDIA GPU), OpenVINO (Intel CPU | GPU), CoreML (Apple Silicon).
 
 For GPU support please take a look at: [ONNX Runtime](https://onnxruntime.ai/getting-started).
 
@@ -68,6 +68,7 @@ If you have:
 
 - a NVIDIA GPU, use one of the `gpu` variants
 - an Intel CPU or GPU, use one of the `openvino` variants
+- an Apple Silicon Mac, use one of the `cpu` variants (CoreML is auto-detected)
 - otherwise, use one of the `cpu` variants
 
 **OpenVINO:**
