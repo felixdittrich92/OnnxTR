@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2025, Mindee | Felix Dittrich.
+# Copyright (C) 2021-2026, Mindee | Felix Dittrich.
 
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
@@ -9,7 +9,6 @@ import hashlib
 import logging
 import os
 import re
-import urllib
 import urllib.error
 import urllib.request
 from pathlib import Path
