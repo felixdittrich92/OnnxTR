@@ -1,5 +1,5 @@
 -e "onnxtr[gpu-headless,viz] @ git+https://github.com/felixdittrich92/OnnxTR.git"
-gradio>=5.30.0,<6.0.0
+gradio>=5.30.0,<7.0.0
 spaces>=0.37.0
 
 # Quick fix to avoid HuggingFace Spaces cudnn9.x Cuda12.x issue
