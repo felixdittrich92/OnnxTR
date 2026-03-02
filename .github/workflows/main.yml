@@ -37,7 +37,7 @@ jobs:
         run: |
           coverage run -m pytest tests/common/ -rs --memray
           coverage xml -o coverage-common-${{ matrix.backend }}-${{ matrix.python }}.xml
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-common-${{ matrix.backend }}-${{ matrix.python }}
           path: ./coverage-common-${{ matrix.backend }}-${{ matrix.python }}.xml
@@ -48,7 +48,7 @@ jobs:
     needs: [ pytest-common ]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
