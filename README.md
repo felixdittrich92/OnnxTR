@@ -81,6 +81,7 @@ Documents can be interpreted from PDF / Images / Webpages / Multiple page images
 
 ```python
 from onnxtr.io import DocumentFile
+
 # PDF
 pdf_doc = DocumentFile.from_pdf("path/to/your/doc.pdf")
 # Image
@@ -100,10 +101,10 @@ from onnxtr.io import DocumentFile
 from onnxtr.models import ocr_predictor, EngineConfig
 
 model = ocr_predictor(
-    det_arch='fast_base',  # detection architecture
-    reco_arch='vitstr_base',  # recognition architecture
-    det_bs=2, # detection batch size
-    reco_bs=512, # recognition batch size
+    det_arch="fast_base",  # detection architecture
+    reco_arch="vitstr_base",  # recognition architecture
+    det_bs=2,  # detection batch size
+    reco_bs=512,  # recognition batch size
     # Document related parameters
     assume_straight_pages=True,  # set to `False` if the pages are not straight (rotation, perspective, etc.) (default: True)
     straighten_pages=False,  # set to `True` if the pages should be straightened before final processing (default: False)
@@ -113,7 +114,7 @@ model = ocr_predictor(
     symmetric_pad=True,  # set to `False` to disable symmetric padding (default: True)
     # Additional parameters - meta information
     detect_orientation=False,  # set to `True` if the orientation of the pages should be detected (default: False)
-    detect_language=False, # set to `True` if the language of the pages should be detected (default: False)
+    detect_language=False,  # set to `True` if the language of the pages should be detected (default: False)
     # Orientation specific parameters in combination with `assume_straight_pages=False` and/or `straighten_pages=True`
     disable_crop_orientation=False,  # set to `True` if the crop orientation classification should be disabled (default: False)
     disable_page_orientation=False,  # set to `True` if the general page orientation classification should be disabled (default: False)
@@ -145,7 +146,9 @@ Or even rebuild the original document from its predictions:
 import matplotlib.pyplot as plt
 
 synthetic_pages = result.synthesize()
-plt.imshow(synthetic_pages[0]); plt.axis('off'); plt.show()
+plt.imshow(synthetic_pages[0])
+plt.axis("off")
+plt.show()
 ```
 
 ![Synthesis sample](https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/synthesized_sample.png)
@@ -162,7 +165,6 @@ xml_output = result.export_as_xml()  # hocr format
 for output in xml_output:
     xml_bytes_string = output[0]
     xml_element = output[1]
-
 ```
 
 <details>
@@ -175,25 +177,22 @@ from onnxruntime import SessionOptions
 
 from onnxtr.models import ocr_predictor, EngineConfig
 
-general_options = SessionOptions()  # For configuartion options see: https://onnxruntime.ai/docs/api/python/api_summary.html#sessionoptions
+general_options = (
+    SessionOptions()
+)  # For configuartion options see: https://onnxruntime.ai/docs/api/python/api_summary.html#sessionoptions
 general_options.enable_cpu_mem_arena = False
 
 # NOTE: The following would force to run only on the GPU if no GPU is available it will raise an error
 # List of strings e.g. ["CUDAExecutionProvider", "CPUExecutionProvider"] or a list of tuples with the provider and its options e.g.
 # [("CUDAExecutionProvider", {"device_id": 0}), ("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
-providers = [("CUDAExecutionProvider", {"device_id": 0, "cudnn_conv_algo_search": "DEFAULT"})]  # For available providers see: https://onnxruntime.ai/docs/execution-providers/
+providers = [
+    ("CUDAExecutionProvider", {"device_id": 0, "cudnn_conv_algo_search": "DEFAULT"})
+]  # For available providers see: https://onnxruntime.ai/docs/execution-providers/
 
-engine_config = EngineConfig(
-    session_options=general_options,
-    providers=providers
-)
+engine_config = EngineConfig(session_options=general_options, providers=providers)
 # We use the default predictor with the custom engine configuration
 # NOTE: You can define differnt engine configurations for detection, recognition and classification depending on your needs
-predictor = ocr_predictor(
-    det_engine_cfg=engine_config,
-    reco_engine_cfg=engine_config,
-    clf_engine_cfg=engine_config
-)
+predictor = ocr_predictor(det_engine_cfg=engine_config, reco_engine_cfg=engine_config, clf_engine_cfg=engine_config)
 ```
 
 You can also dynamically configure whether the memory arena should shrink:
@@ -204,22 +203,20 @@ from onnxruntime import RunOptions, SessionOptions
 
 from onnxtr.models import ocr_predictor, EngineConfig
 
+
 def arena_shrinkage_handler(run_options: RunOptions) -> RunOptions:
-  """
-  Shrink the memory arena on 10% of inference runs.
-  """
-  if random() < 0.1:
-    run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "cpu:0")
-  return run_options
+    """
+    Shrink the memory arena on 10% of inference runs.
+    """
+    if random() < 0.1:
+        run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "cpu:0")
+    return run_options
+
 
 engine_config = EngineConfig(run_options_provider=arena_shrinkage_handler)
 engine_config.session_options.enable_mem_pattern = False
 
-predictor = ocr_predictor(
-    det_engine_cfg=engine_config,
-    reco_engine_cfg=engine_config,
-    clf_engine_cfg=engine_config
-)
+predictor = ocr_predictor(det_engine_cfg=engine_config, reco_engine_cfg=engine_config, clf_engine_cfg=engine_config)
 ```
 
 </details>
@@ -245,22 +242,16 @@ You can also load models from the HuggingFace Hub:
 from onnxtr.io import DocumentFile
 from onnxtr.models import ocr_predictor, from_hub
 
-img = DocumentFile.from_images(['<image_path>'])
+img = DocumentFile.from_images(["<image_path>"])
 # Load your model from the hub
-model = from_hub('onnxtr/my-model')
+model = from_hub("onnxtr/my-model")
 
 # Pass it to the predictor
 # If your model is a recognition model:
-predictor = ocr_predictor(
-    det_arch='db_mobilenet_v3_large',
-    reco_arch=model
-)
+predictor = ocr_predictor(det_arch="db_mobilenet_v3_large", reco_arch=model)
 
 # If your model is a detection model:
-predictor = ocr_predictor(
-    det_arch=model,
-    reco_arch='crnn_mobilenet_v3_small'
-)
+predictor = ocr_predictor(det_arch=model, reco_arch="crnn_mobilenet_v3_small")
 
 # Get your predictions
 res = predictor(img)
@@ -286,18 +277,12 @@ push_to_hf_hub(
     model_name="onnxtr-parseq-multilingual-v1",
     task="recognition",  # The task for which the model is intended [detection, recognition, classification]
     arch="parseq",  # The name of the model architecture
-    override=False  # Set to `True` if you want to override an existing model / repository
+    override=False,  # Set to `True` if you want to override an existing model / repository
 )
 
 # Detection model
 model = linknet_resnet18("~/onnxtr-linknet-resnet18.onnx")
-push_to_hf_hub(
-    model,
-    model_name="onnxtr-linknet-resnet18",
-    task="detection",
-    arch="linknet_resnet18",
-    override=True
-)
+push_to_hf_hub(model, model_name="onnxtr-linknet-resnet18", task="detection", arch="linknet_resnet18", override=True)
 ```
 
 ## Models architectures
@@ -323,30 +308,27 @@ Credits where it's due: this repository provides ONNX models for the following a
 predictor = ocr_predictor()
 predictor.list_archs()
 {
-    'detection archs':
-        [
-            'db_resnet34',
-            'db_resnet50',
-            'db_mobilenet_v3_large',
-            'linknet_resnet18',
-            'linknet_resnet34',
-            'linknet_resnet50',
-            'fast_tiny',  # No 8-bit support
-            'fast_small',  # No 8-bit support
-            'fast_base'  # No 8-bit support
-        ],
-    'recognition archs':
-        [
-            'crnn_vgg16_bn',
-            'crnn_mobilenet_v3_small',
-            'crnn_mobilenet_v3_large',
-            'sar_resnet31',
-            'master',
-            'vitstr_small',
-            'vitstr_base',
-            'parseq'
-            'viptr_tiny',  # No 8-bit support
-        ]
+    "detection archs": [
+        "db_resnet34",
+        "db_resnet50",
+        "db_mobilenet_v3_large",
+        "linknet_resnet18",
+        "linknet_resnet34",
+        "linknet_resnet50",
+        "fast_tiny",  # No 8-bit support
+        "fast_small",  # No 8-bit support
+        "fast_base",  # No 8-bit support
+    ],
+    "recognition archs": [
+        "crnn_vgg16_bn",
+        "crnn_mobilenet_v3_small",
+        "crnn_mobilenet_v3_large",
+        "sar_resnet31",
+        "master",
+        "vitstr_small",
+        "vitstr_base",
+        "parseqviptr_tiny",  # No 8-bit support
+    ],
 }
 ```
 

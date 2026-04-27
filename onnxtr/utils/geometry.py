@@ -14,6 +14,7 @@ from .common_types import BoundingBox, Polygon4P
 __all__ = [
     "bbox_to_polygon",
     "polygon_to_bbox",
+    "order_points",
     "resolve_enclosing_bbox",
     "resolve_enclosing_rbbox",
     "rotate_boxes",
@@ -52,6 +53,56 @@ def polygon_to_bbox(polygon: Polygon4P) -> BoundingBox:
     """
     x, y = zip(*polygon)
     return (min(x), min(y)), (max(x), max(y))
+
+
+def order_points(pts: np.ndarray) -> np.ndarray:
+    """Order points in the following order: top-left, top-right, bottom-right, bottom-left
+
+    Args:
+        pts: array of shape (4, 2) or (4,) with the coordinates of the points
+
+    Returns:
+        ordered points in the following order: top-left, top-right, bottom-right, bottom-left
+    """
+    pts = np.asarray(pts)
+
+    # (xmin, ymin, xmax, ymax)
+    if pts.shape == (4,):
+        xmin, ymin, xmax, ymax = pts
+        return np.array(
+            [
+                [xmin, ymin],  # top-left
+                [xmax, ymin],  # top-right
+                [xmax, ymax],  # bottom-right
+                [xmin, ymax],  # bottom-left
+            ],
+            dtype=pts.dtype,
+        )
+
+    # (4, 2) quadrangle
+    if pts.shape == (4, 2):
+        c = pts.mean(axis=0)
+
+        # compute angle of each point around centroid
+        angles = np.arctan2(pts[:, 1] - c[1], pts[:, 0] - c[0])
+
+        # sort by angle (counter-clockwise ordering)
+        pts = pts[np.argsort(angles)]
+
+        # ensure consistent starting point (top-left)
+        start_idx = np.argmin(pts.sum(axis=1))
+        pts = np.roll(pts, -start_idx, axis=0)
+
+        # ensure order is TL, TR, BR, BL (clockwise)
+        def area(poly):
+            return 0.5 * np.sum(poly[:, 0] * np.roll(poly[:, 1], -1) - poly[:, 1] * np.roll(poly[:, 0], -1))
+
+        if area(pts) < 0:
+            pts = np.roll(pts[::-1], 1, axis=0)
+
+        return pts.astype(pts.dtype)
+
+    raise ValueError(f"Unsupported shape {pts.shape}, expected (4,) or (4,2)")
 
 
 def detach_scores(boxes: list[np.ndarray]) -> tuple[list[np.ndarray], list[np.ndarray]]:
@@ -152,9 +203,8 @@ def resolve_enclosing_rbbox(rbboxes: list[np.ndarray], intermed_size: int = 1024
     """
     cloud: np.ndarray = np.concatenate(rbboxes, axis=0)
     # Convert to absolute for minAreaRect
-    cloud *= intermed_size
-    rect = cv2.minAreaRect(cloud.astype(np.int32))
-    return cv2.boxPoints(rect) / intermed_size
+    rect = cv2.minAreaRect(cloud.astype(np.float32) * intermed_size)
+    return order_points(cv2.boxPoints(rect) / intermed_size)
 
 
 def rotate_abs_points(points: np.ndarray, angle: float = 0.0) -> np.ndarray:
