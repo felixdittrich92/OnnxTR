@@ -79,7 +79,7 @@ jobs:
         shell: bash -el {0}
         run: |
           conda install -n base -y conda-build
-          conda install -y anaconda-client
+          conda install -y python-build setuptools wheel anaconda-client
       - name: Install libEGL
         run: sudo apt-get update && sudo apt-get install -y libegl1
       - name: Get release tag
@@ -92,8 +92,7 @@ jobs:
           VERSION: ${{ env.VERSION }}
         run: |
           export BUILD_VERSION="${VERSION}"
-          python -m pip install --upgrade build
-          python -m build --sdist
+          python -m build --sdist --no-isolation
           mkdir conda-dist
           conda build .conda/ --output-folder conda-dist
           anaconda upload conda-dist/linux-64/*conda
