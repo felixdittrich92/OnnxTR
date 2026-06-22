@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools wheel twine --upgrade
+          pip install --upgrade build twine
       - name: Get release tag
         id: release_tag
         run: echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
@@ -38,7 +38,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
           VERSION: ${{ env.VERSION }}
         run: |
-          BUILD_VERSION=$VERSION python setup.py sdist bdist_wheel
+          BUILD_VERSION=$VERSION python -m build
           twine check dist/*
           twine upload dist/*
 
@@ -77,7 +77,9 @@ jobs:
           channel-priority: strict
       - name: Install dependencies
         shell: bash -el {0}
-        run: conda install -y conda-build conda-verify anaconda-client
+        run: |
+          conda install -n base -y conda-build
+          conda install -y python-build setuptools wheel anaconda-client
       - name: Install libEGL
         run: sudo apt-get update && sudo apt-get install -y libegl1
       - name: Get release tag
@@ -89,11 +91,10 @@ jobs:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
           VERSION: ${{ env.VERSION }}
         run: |
-          echo "BUILD_VERSION=${VERSION}" >> $GITHUB_ENV
-          python setup.py sdist
+          export BUILD_VERSION="${VERSION}"
+          python -m build --sdist --no-isolation
           mkdir conda-dist
           conda build .conda/ --output-folder conda-dist
-          conda-verify conda-dist/linux-64/*conda --ignore=C1115
           anaconda upload conda-dist/linux-64/*conda
 
   conda-check:
