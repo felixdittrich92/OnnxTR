@@ -49,13 +49,14 @@ jobs:
           channel-priority: strict
       - name: Install dependencies
         shell: bash -el {0}
-        run: conda install -y conda-build conda-verify anaconda-client
+        run: conda install -n base -y conda-build conda-verify anaconda-client
       - name: Install libEGL
         run: sudo apt-get update && sudo apt-get install -y libegl1
       - name: Build and verify
         shell: bash -el {0}
         run: |
-          python setup.py sdist
+          python -m pip install --upgrade build
+          python -m build --sdist
           mkdir conda-dist
           conda build .conda/ --output-folder conda-dist
           conda-verify conda-dist/linux-64/*conda --ignore=C1115
