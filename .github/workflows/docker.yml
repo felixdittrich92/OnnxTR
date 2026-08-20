@@ -28,7 +28,7 @@ jobs:
           - "cpu-headless"           # CPU variant 1
           - "openvino-headless"  # CPU variant 2
           - "gpu-headless"           # GPU variant
-        python: [3.10.13]
+        python: [3.11.16]
 
         # Exclude invalid combinations
         exclude:
