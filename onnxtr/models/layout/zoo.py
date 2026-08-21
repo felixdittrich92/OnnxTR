@@ -12,7 +12,7 @@ from .predictor import LayoutPredictor
 
 __all__ = ["layout_predictor"]
 
-ARCHS: list[str] = ["lw_detr_s", "lw_detr_m"]
+ARCHS: list[str] = ["lw_detr_s"]  # , "lw_detr_m"] --- IGNORE ---
 
 
 def _predictor(
