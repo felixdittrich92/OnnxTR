@@ -95,7 +95,7 @@ class GeneralDetectionPostProcessor(DetectionPostProcessor):
 
         Returns:
             np tensor boxes for the bitmap, each box is a 6-element list
-            containing x, y, w, h, alpha, score for the box
+                containing x, y, w, h, alpha, score for the box
         """
         height, width = bitmap.shape[:2]
         boxes: list[np.ndarray | list[float]] = []
@@ -120,6 +120,9 @@ class GeneralDetectionPostProcessor(DetectionPostProcessor):
                 _box = self.polygon_to_box(points)
             else:
                 _box = self.polygon_to_box(np.squeeze(contour))
+
+            if _box is None:  # pragma: no cover
+                continue
 
             if self.assume_straight_pages:
                 # compute relative polygon to get rid of img shape

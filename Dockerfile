@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     # - Packages to build Python
     tar make gcc zlib1g-dev libffi-dev libssl-dev liblzma-dev libbz2-dev libsqlite3-dev \
-    # - Packages for docTR
+    # - Packages for OnnxTR
     libgl1-mesa-dev libsm6 libxext6 libxrender-dev libpangocairo-1.0-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \

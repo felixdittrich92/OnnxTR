@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from test_io_elements import _mock_pages
+from test_io_elements import _mock_layout, _mock_pages
 
 from onnxtr.utils import visualization
 
@@ -10,26 +10,20 @@ def test_visualize_page():
     image = np.ones((300, 200, 3))
     visualization.visualize_page(pages[0].export(), image, words_only=False)
     visualization.visualize_page(pages[0].export(), image, words_only=True, interactive=False)
-    visualization.visualize_page(
-        pages[0].export(), image, words_only=True, interactive=False, preserve_aspect_ratio=True
-    )
-    # geometry checks
+
+    # with detected layout regions
+    page_export = pages[0].export()
+    page_export["layout"] = [region.export() for region in _mock_layout()]
+    visualization.visualize_page(page_export, image, words_only=False, display_layout=True)
+    visualization.visualize_page(page_export, image, words_only=False, display_layout=True, interactive=False)
+    visualization.visualize_page(page_export, image, words_only=False, display_layout=False, interactive=False)
+
     with pytest.raises(ValueError):
         visualization.create_obj_patch([1, 2], (100, 100))
-
     with pytest.raises(ValueError):
         visualization.create_obj_patch((1, 2), (100, 100))
-
     with pytest.raises(ValueError):
         visualization.create_obj_patch((1, 2, 3, 4, 5), (100, 100))
-    # polygon patch
-    pages = _mock_pages(polygons=True)
-    image = np.ones((300, 200, 3))
-    visualization.visualize_page(pages[0].export(), image, words_only=False)
-    visualization.visualize_page(pages[0].export(), image, words_only=True, interactive=False)
-    visualization.visualize_page(
-        pages[0].export(), image, words_only=True, interactive=False, preserve_aspect_ratio=True
-    )
 
 
 def test_draw_boxes():

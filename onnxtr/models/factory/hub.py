@@ -10,7 +10,6 @@ import logging
 import shutil
 import subprocess
 import tempfile
-import textwrap
 from pathlib import Path
 from typing import Any
 
@@ -26,11 +25,15 @@ from onnxtr.models.engine import EngineConfig
 
 __all__ = ["login_to_hub", "push_to_hf_hub", "from_hub", "_save_model_and_config_for_hf_hub"]
 
+logger = logging.getLogger(__name__)
+
 
 AVAILABLE_ARCHS = {
     "classification": models.classification.zoo.ORIENTATION_ARCHS,
     "detection": models.detection.zoo.ARCHS,
     "recognition": models.recognition.zoo.ARCHS,
+    "layout": models.layout.zoo.ARCHS,
+    "table_structure": models.table_structure.zoo.ARCHS,
 }
 
 
@@ -38,7 +41,7 @@ def login_to_hub() -> None:  # pragma: no cover
     """Login to huggingface hub"""
     access_token = get_token()
     if access_token is not None:
-        logging.info("Huggingface Hub token found and valid")
+        logger.info("Huggingface Hub token found and valid")
         login(token=access_token)
     else:
         login()
@@ -99,61 +102,79 @@ def push_to_hf_hub(
 
     if run_config is None and arch is None:
         raise ValueError("run_config or arch must be specified")
-    if task not in ["classification", "detection", "recognition"]:
-        raise ValueError("task must be one of classification, detection, recognition")
+    if task not in ["classification", "detection", "recognition", "layout", "table_structure"]:
+        raise ValueError("task must be one of classification, detection, recognition, layout, table_structure")
 
     # default readme
-    readme = textwrap.dedent(
-        f"""
-    ---
-    language:
-    - en
-    - fr
-    license: apache-2.0
-    ---
+    # NOTE: the front matter must not be indented, otherwise the hub fails to parse it
+    readme = f"""---
+language:
+- en
+- fr
+license: apache-2.0
+tags:
+- ocr
+- onnx
+- onnxtr
+- {task}
+---
 
-    <p align="center">
-    <img src="https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/logo.jpg" width="40%">
-    </p>
+<p align="center">
+<img src="https://github.com/felixdittrich92/OnnxTR/raw/main/docs/images/logo.jpg" width="40%">
+</p>
 
-    **Optical Character Recognition made seamless & accessible to anyone, powered by Onnxruntime**
+**Optical Character Recognition made seamless & accessible to anyone, powered by Onnxruntime**
 
-    ## Task: {task}
+## Task: {task}
 
-    https://github.com/felixdittrich92/OnnxTR
+https://github.com/felixdittrich92/OnnxTR
 
-    ### Example usage:
+### Example usage:
 
-    ```python
-    >>> from onnxtr.io import DocumentFile
-    >>> from onnxtr.models import ocr_predictor, from_hub
+```python
+>>> from onnxtr.io import DocumentFile
+>>> from onnxtr.models import ocr_predictor, from_hub
 
-    >>> img = DocumentFile.from_images(['<image_path>'])
-    >>> # Load your model from the hub
-    >>> model = from_hub('onnxtr/my-model')
+>>> img = DocumentFile.from_images(['<image_path>'])
+>>> # Load your model from the hub
+>>> model = from_hub('onnxtr/my-model')
 
-    >>> # Pass it to the predictor
-    >>> # If your model is a recognition model:
-    >>> predictor = ocr_predictor(det_arch='db_mobilenet_v3_large',
-    >>>                           reco_arch=model)
+>>> # Pass it to the predictor
+>>> # If your model is a recognition model:
+>>> predictor = ocr_predictor(det_arch='db_mobilenet_v3_large',
+>>>                           reco_arch=model)
 
-    >>> # If your model is a detection model:
-    >>> predictor = ocr_predictor(det_arch=model,
-    >>>                           reco_arch='crnn_mobilenet_v3_small')
+>>> # If your model is a detection model:
+>>> predictor = ocr_predictor(det_arch=model,
+>>>                           reco_arch='crnn_mobilenet_v3_small')
 
-    >>> # Get your predictions
-    >>> res = predictor(img)
-    ```
-    """
-    )
+>>> # Get your predictions
+>>> res = predictor(img)
+```
+
+### Layout / table structure models
+
+```python
+>>> from onnxtr.models import from_hub, layout_predictor, table_predictor
+
+>>> model = from_hub('onnxtr/my-model')
+>>> # If your model is a layout model:
+>>> predictor = layout_predictor(arch=model)
+>>> # If your model is a table structure model:
+>>> predictor = table_predictor(arch=model)
+```
+"""
 
     # add run configuration to readme if available
     if run_config is not None:
         arch = run_config.arch
-        readme += textwrap.dedent(
-            f"""### Run Configuration
-                                  \n{json.dumps(vars(run_config), indent=2, ensure_ascii=False)}"""
-        )
+        readme += f"""
+### Run Configuration
+
+```json
+{json.dumps(vars(run_config), indent=2, ensure_ascii=False)}
+```
+"""
 
     if arch not in AVAILABLE_ARCHS[task]:
         raise ValueError(
@@ -165,7 +186,8 @@ def push_to_hf_hub(
 
     # Create repository
     api = HfApi()
-    api.create_repo(model_name, token=get_token(), exist_ok=False)
+    repo_url = api.create_repo(model_name, token=get_token(), repo_type="model", exist_ok=override)
+    full_repo_id = repo_url.repo_id
 
     # Save model files to a temporary directory
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -176,7 +198,8 @@ def push_to_hf_hub(
         # Upload all files to the hub
         api.upload_folder(
             folder_path=tmp_dir,
-            repo_id=model_name,
+            repo_id=full_repo_id,
+            repo_type="model",
             commit_message=commit_message,
             token=get_token(),
         )
@@ -214,6 +237,10 @@ def from_hub(repo_id: str, engine_cfg: EngineConfig | None = None, **kwargs: Any
         model = models.recognition.__dict__[arch](
             model_path, input_shape=cfg["input_shape"], vocab=cfg["vocab"], engine_cfg=engine_cfg
         )
+    elif task == "layout":
+        model = models.layout.__dict__[arch](model_path, class_names=cfg["class_names"], engine_cfg=engine_cfg)
+    elif task == "table_structure":
+        model = models.table_structure.__dict__[arch](model_path, engine_cfg=engine_cfg)
 
     # convert all values which are lists to tuples
     for key, value in cfg.items():

@@ -7,6 +7,7 @@
 import cv2
 import numpy as np
 
+from onnxtr.utils.multithreading import multithread_exec
 from onnxtr.utils.repr import NestedObject
 
 __all__ = ["DetectionPostProcessor"]
@@ -52,10 +53,15 @@ class DetectionPostProcessor(NestedObject):
             return pred[ymin : ymax + 1, xmin : xmax + 1].mean()
 
         else:
-            mask: np.ndarray = np.zeros((h, w), np.int32)
-            cv2.fillPoly(mask, [points.astype(np.int32)], 1.0)
-            product = pred * mask
-            return np.sum(product) / np.count_nonzero(product)
+            pts: np.ndarray = points.reshape((-1, 2)).astype(np.int32)
+            xmin = np.clip(pts[:, 0].min(), 0, w - 1)
+            xmax = np.clip(pts[:, 0].max(), 0, w - 1)
+            ymin = np.clip(pts[:, 1].min(), 0, h - 1)
+            ymax = np.clip(pts[:, 1].max(), 0, h - 1)
+            mask: np.ndarray = np.zeros((ymax - ymin + 1, xmax - xmin + 1), dtype=np.uint8)
+            cv2.fillPoly(mask, [pts - np.array([[xmin, ymin]], dtype=np.int32)], 1)
+            vals = pred[ymin : ymax + 1, xmin : xmax + 1][mask.astype(bool)]
+            return float(vals.mean()) if vals.size > 0 else 0.0
 
     def bitmap_to_boxes(
         self,
@@ -63,6 +69,28 @@ class DetectionPostProcessor(NestedObject):
         bitmap: np.ndarray,
     ) -> np.ndarray:
         raise NotImplementedError
+
+    def _process_sample(self, proba_map: np.ndarray) -> list[np.ndarray]:
+        """Performs postprocessing for a single sample
+
+        Args:
+            proba_map: probability map of shape (H, W, C)
+
+        Returns:
+            list of C class predictions, each of shape (*, 5) or (*, 6)
+        """
+        return [
+            self.bitmap_to_boxes(
+                proba_map[..., idx],
+                # Erosion + dilation on the binary map
+                cv2.morphologyEx(
+                    (proba_map[..., idx] >= self.bin_thresh).astype(np.uint8),
+                    cv2.MORPH_OPEN,
+                    self._opening_kernel,
+                ),
+            )
+            for idx in range(proba_map.shape[-1])
+        ]
 
     def __call__(
         self,
@@ -75,21 +103,8 @@ class DetectionPostProcessor(NestedObject):
 
         Returns:
             list of N class predictions (for each input sample), where each class predictions is a list of C tensors
-            of shape (*, 5) or (*, 6)
+        of shape (*, 5) or (*, 6)
         """
         if proba_map.ndim != 4:
             raise AssertionError(f"arg `proba_map` is expected to be 4-dimensional, got {proba_map.ndim}.")
-
-        # Erosion + dilation on the binary map
-        bin_map = [
-            [
-                cv2.morphologyEx(bmap[..., idx], cv2.MORPH_OPEN, self._opening_kernel)
-                for idx in range(proba_map.shape[-1])
-            ]
-            for bmap in (proba_map >= self.bin_thresh).astype(np.uint8)
-        ]
-
-        return [
-            [self.bitmap_to_boxes(pmaps[..., idx], bmaps[idx]) for idx in range(proba_map.shape[-1])]
-            for pmaps, bmaps in zip(proba_map, bin_map)
-        ]
+        return list(multithread_exec(self._process_sample, proba_map))

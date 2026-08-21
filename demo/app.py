@@ -70,7 +70,7 @@ def load_predictor(
     disable_crop_orientation: bool = False,
     disable_page_orientation: bool = False,
 ) -> OCRPredictor:
-    """Load a predictor from doctr.models
+    """Load a predictor from onnxtr.models
 
     Args:
     ----

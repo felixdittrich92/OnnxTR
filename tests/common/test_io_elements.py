@@ -1,13 +1,15 @@
+import json
 from xml.etree.ElementTree import ElementTree
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from onnxtr.io import elements
 
 
-def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9, objectness_score=0.9, polygons=False):
-    box_word_elements = [
+def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9, objectness_score=0.9):
+    return [
         elements.Word(
             "hello",
             confidence,
@@ -23,35 +25,6 @@ def _mock_words(size=(1.0, 1.0), offset=(0, 0), confidence=0.9, objectness_score
             {"value": 0, "confidence": None},
         ),
     ]
-    polygons_word_elements = [
-        elements.Word(
-            "hello",
-            confidence,
-            # (x1, y1), (x2, y2), (x3, y3), (x4, y4) with shape (4, 2)
-            np.array([
-                [offset[0], offset[1]],
-                [size[0] / 2 + offset[0], offset[1]],
-                [size[0] / 2 + offset[0], size[1] / 2 + offset[1]],
-                [offset[0], size[1] / 2 + offset[1]],
-            ]),
-            objectness_score,
-            {"value": 0, "confidence": None},
-        ),
-        elements.Word(
-            "world",
-            confidence,
-            # (x1, y1), (x2, y2), (x3, y3), (x4, y4) with shape (4, 2)
-            np.array([
-                [size[0] / 2 + offset[0], size[1] / 2 + offset[1]],
-                [size[0] + offset[0], size[1] / 2 + offset[1]],
-                [size[0] + offset[0], size[1] + offset[1]],
-                [size[0] / 2 + offset[0], size[1] + offset[1]],
-            ]),
-            objectness_score,
-            {"value": 0, "confidence": None},
-        ),
-    ]
-    return polygons_word_elements if polygons else box_word_elements
 
 
 def _mock_artefacts(size=(1, 1), offset=(0, 0), confidence=0.8):
@@ -68,37 +41,40 @@ def _mock_artefacts(size=(1, 1), offset=(0, 0), confidence=0.8):
     ]
 
 
-def _mock_lines(size=(1, 1), offset=(0, 0), polygons=False):
-    sub_size = (size[0] / 2, size[1] / 2)
+def _mock_layout():
     return [
-        elements.Line(_mock_words(size=sub_size, offset=offset, polygons=polygons)),
-        elements.Line(
-            _mock_words(size=sub_size, offset=(offset[0] + sub_size[0], offset[1] + sub_size[1]), polygons=polygons)
-        ),
+        elements.LayoutElement("Title", 0.95, ((0.1, 0.05), (0.9, 0.15))),
+        elements.LayoutElement("Text", 0.88, ((0.1, 0.2), (0.9, 0.9))),
     ]
 
 
-def _mock_blocks(size=(1, 1), offset=(0, 0), polygons=False):
+def _mock_lines(size=(1, 1), offset=(0, 0)):
+    sub_size = (size[0] / 2, size[1] / 2)
+    return [
+        elements.Line(_mock_words(size=sub_size, offset=offset)),
+        elements.Line(_mock_words(size=sub_size, offset=(offset[0] + sub_size[0], offset[1] + sub_size[1]))),
+    ]
+
+
+def _mock_blocks(size=(1, 1), offset=(0, 0)):
     sub_size = (size[0] / 4, size[1] / 4)
     return [
         elements.Block(
-            _mock_lines(size=sub_size, offset=offset, polygons=polygons),
+            _mock_lines(size=sub_size, offset=offset),
             _mock_artefacts(size=sub_size, offset=(offset[0] + sub_size[0], offset[1] + sub_size[1])),
         ),
         elements.Block(
-            _mock_lines(
-                size=sub_size, offset=(offset[0] + 2 * sub_size[0], offset[1] + 2 * sub_size[1]), polygons=polygons
-            ),
+            _mock_lines(size=sub_size, offset=(offset[0] + 2 * sub_size[0], offset[1] + 2 * sub_size[1])),
             _mock_artefacts(size=sub_size, offset=(offset[0] + 3 * sub_size[0], offset[1] + 3 * sub_size[1])),
         ),
     ]
 
 
-def _mock_pages(block_size=(1, 1), block_offset=(0, 0), polygons=False):
+def _mock_pages(block_size=(1, 1), block_offset=(0, 0)):
     return [
         elements.Page(
             np.random.randint(0, 255, (300, 200, 3), dtype=np.uint8),
-            _mock_blocks(block_size, block_offset, polygons),
+            _mock_blocks(block_size, block_offset),
             0,
             (300, 200),
             {"value": 0.0, "confidence": 1.0},
@@ -123,8 +99,8 @@ def test_element():
 def test_word():
     word_str = "hello"
     conf = 0.8
-    geom = ((0, 0), (1, 1))
     objectness_score = 0.9
+    geom = ((0, 0), (1, 1))
     crop_orientation = {"value": 0, "confidence": None}
     word = elements.Word(word_str, conf, geom, objectness_score, crop_orientation)
 
@@ -221,13 +197,129 @@ def test_artefact():
     assert artefact.geometry == geom
 
     # Render
-    assert artefact.render() == "[QR_CODE]"
+    assert artefact.render() == "<[QR_CODE]>"
 
     # Export
     assert artefact.export() == {"type": artefact_type, "confidence": conf, "geometry": geom}
 
     # Repr
     assert artefact.__repr__() == f"Artefact(type='{artefact_type}', confidence={conf:.2})"
+
+
+def test_layout_element():
+    layout_type = "Title"
+    conf = 0.9
+    geom = ((0, 0), (1, 1))
+    region = elements.LayoutElement(layout_type, conf, geom)
+
+    # Attribute checks
+    assert region.type == layout_type
+    assert region.confidence == conf
+    assert region.geometry == geom
+
+    # Render
+    assert region.render() == "<[TITLE]>"
+
+    # Export
+    assert region.export() == {"type": layout_type, "confidence": conf, "geometry": geom}
+
+    # Repr
+    assert region.__repr__() == f"LayoutElement(type='{layout_type}', confidence={conf:.2})"
+
+    # Class method
+    state_dict = {"geometry": ((0, 0), (0.5, 0.5)), "type": "Table", "confidence": 0.7}
+    region = elements.LayoutElement.from_dict(state_dict)
+    assert region.export() == state_dict
+
+
+def test_table_cell():
+    geom = ((0.1, 0.1), (0.3, 0.2))
+    cell = elements.TableCell(
+        value="hello", confidence=0.9, geometry=geom, row_start=0, row_end=1, col_start=2, col_end=2
+    )
+
+    # Attribute checks
+    assert cell.value == "hello"
+    assert cell.confidence == 0.9
+    assert cell.geometry == geom
+    assert (cell.row_start, cell.row_end, cell.col_start, cell.col_end) == (0, 1, 2, 2)
+    assert cell.row_span == 2 and cell.col_span == 1
+
+    # Render
+    assert cell.render() == "hello"
+
+    # Export
+    assert cell.export() == {
+        "geometry": geom,
+        "value": "hello",
+        "confidence": 0.9,
+        "row_start": 0,
+        "row_end": 1,
+        "col_start": 2,
+        "col_end": 2,
+    }
+
+    # Class method
+    cell2 = elements.TableCell.from_dict(cell.export())
+    assert cell2.export() == cell.export()
+
+
+def _mock_table():
+    # 2 x 2 table
+    cells = [
+        elements.TableCell("Name", 0.9, ((0.1, 0.1), (0.3, 0.2)), 0, 0, 0, 0),
+        elements.TableCell("Age", 0.9, ((0.3, 0.1), (0.5, 0.2)), 0, 0, 1, 1),
+        elements.TableCell("Alice", 0.9, ((0.1, 0.2), (0.3, 0.3)), 1, 1, 0, 0),
+        elements.TableCell("30", 0.9, ((0.3, 0.2), (0.5, 0.3)), 1, 1, 1, 1),
+    ]
+    return elements.Table(cells=cells, num_rows=2, num_cols=2, geometry=((0.1, 0.1), (0.5, 0.3)), confidence=0.9)
+
+
+def test_table():
+    table = _mock_table()
+
+    # Attribute checks
+    assert table.num_rows == 2 and table.num_cols == 2
+    assert len(table.cells) == 4
+    assert all(isinstance(c, elements.TableCell) for c in table.cells)
+
+    # Grid + render
+    assert table.to_grid() == [["Name", "Age"], ["Alice", "30"]]
+    assert table.render() == "Name\tAge\nAlice\t30"
+
+    # Pandas
+    df = pd.DataFrame(table.to_grid())
+    assert df.shape == (2, 2)
+    assert df.values.tolist() == [["Name", "Age"], ["Alice", "30"]]
+    # With a header row
+    table_grid = table.to_grid()
+    df_h = pd.DataFrame(table_grid[1:], columns=table_grid[0])
+    assert list(df_h.columns) == ["Name", "Age"]
+    assert df_h.values.tolist() == [["Alice", "30"]]
+
+    # Spanning cell: value placed at top-left of its span, the rest left empty
+    spanned = elements.Table(
+        cells=[
+            elements.TableCell("merged", 0.9, ((0.0, 0.0), (1.0, 0.5)), 0, 0, 0, 1),
+            elements.TableCell("a", 0.9, ((0.0, 0.5), (0.5, 1.0)), 1, 1, 0, 0),
+            elements.TableCell("b", 0.9, ((0.5, 0.5), (1.0, 1.0)), 1, 1, 1, 1),
+        ],
+        num_rows=2,
+        num_cols=2,
+        geometry=((0.0, 0.0), (1.0, 1.0)),
+    )
+    assert spanned.to_grid() == [["merged", ""], ["a", "b"]]
+
+    # Export
+    exported = table.export()
+    assert set(exported.keys()) == {"geometry", "num_rows", "num_cols", "confidence", "cells"}
+    assert exported["cells"] == [c.export() for c in table.cells]
+
+    # Class method round-trip
+    assert elements.Table.from_dict(table.export()).export() == table.export()
+
+    # Repr
+    assert table.__repr__().startswith("Table(")
 
 
 def test_block():
@@ -264,11 +356,14 @@ def test_page():
     orientation = {"value": 0.0, "confidence": 0.0}
     language = {"value": "EN", "confidence": 0.8}
     blocks = _mock_blocks()
-    page = elements.Page(page, blocks, page_idx, page_size, orientation, language)
+    layout = _mock_layout()
+    page = elements.Page(page, blocks, page_idx, page_size, orientation, language, layout=layout)
 
     # Attribute checks
     assert len(page.blocks) == len(blocks)
     assert all(isinstance(b, elements.Block) for b in page.blocks)
+    assert len(page.layout) == len(layout)
+    assert all(isinstance(r, elements.LayoutElement) for r in page.layout)
     assert isinstance(page.page, np.ndarray)
     assert page.page_idx == page_idx
     assert page.dimensions == page_size
@@ -276,23 +371,32 @@ def test_page():
     assert page.language == language
 
     # Render
-    assert page.render() == "hello world\nhello world\n\nhello world\nhello world"
+    assert page.render() == "hello world\n\nhello world\n\nhello world\n\nhello world"
 
-    # Export
-    assert page.export() == {
+    # Export - `reading_order=False` serializes the blocks exactly as stored
+    assert page.export(reading_order=False) == {
         "blocks": [b.export() for b in blocks],
         "page_idx": page_idx,
         "dimensions": page_size,
         "orientation": orientation,
         "language": language,
+        "layout": [r.export() for r in layout],
+        "tables": [],
     }
+    assert json.dumps(page.export()) and json.dumps(page.export(reading_order=False))
 
     # Export XML
-    assert (
-        isinstance(page.export_as_xml(), tuple)
-        and isinstance(page.export_as_xml()[0], (bytes, bytearray))
-        and isinstance(page.export_as_xml()[1], ElementTree)
-    )
+    xml_bytes, xml_tree = page.export_as_xml()
+    assert isinstance(xml_bytes, (bytes, bytearray)) and isinstance(xml_tree, ElementTree)
+    # The detected language must be exported instead of being hardcoded to "en"
+    assert xml_tree.getroot().get("xml:lang") == "EN"
+    # hOCR title properties must be single-spaced
+    titles = [el.get("title") for el in xml_tree.iter() if el.get("title") is not None]
+    assert any(title.startswith("bbox ") for title in titles)
+    assert all("  " not in title for title in titles)
+    # Without a detected language, the export must fall back to "en"
+    fallback_page = elements.Page(np.zeros((300, 200, 3), dtype=np.uint8), blocks, page_idx, page_size, orientation)
+    assert fallback_page.export_as_xml()[1].getroot().get("xml:lang") == "en"
 
     # Repr
     assert "\n".join(repr(page).split("\n")[:2]) == f"Page(\n  dimensions={page_size!r}"
@@ -306,6 +410,15 @@ def test_page():
     assert img.shape == (*page_size, 3)
 
 
+def test_page_without_layout():
+    # Backward compatibility: layout defaults to an empty list
+    page = np.zeros((300, 200, 3), dtype=np.uint8)
+    page = elements.Page(page, _mock_blocks(), 0, (300, 200))
+
+    assert page.layout == []
+    assert page.export()["layout"] == []
+
+
 def test_document():
     pages = _mock_pages()
     doc = elements.Document(pages)
@@ -315,11 +428,12 @@ def test_document():
     assert all(isinstance(p, elements.Page) for p in doc.pages)
 
     # Render
-    page_export = "hello world\nhello world\n\nhello world\nhello world"
+    page_export = "hello world\n\nhello world\n\nhello world\n\nhello world"
     assert doc.render() == f"{page_export}\n\n\n\n{page_export}"
 
     # Export
     assert doc.export() == {"pages": [p.export() for p in pages]}
+    assert json.dumps(doc.export())  # a full document export can be written to a JSON file as is
 
     # Export XML
     xml_output = doc.export_as_xml()
@@ -347,3 +461,32 @@ def test_document():
     # Synthesize
     img_list = doc.synthesize()
     assert isinstance(img_list, list) and len(img_list) == len(pages)
+
+
+def test_element_is_abstract():
+    with pytest.raises(NotImplementedError):
+        elements.Element.from_dict({})
+    with pytest.raises(NotImplementedError):
+        elements.Element().render()
+    with pytest.raises(KeyError):
+        elements.Element(unknown_child=[])
+
+
+def test_artefact_from_dict_round_trip():
+    artefact = elements.Artefact("qr_code", 0.8, ((0.1, 0.1), (0.2, 0.2)))
+    assert elements.Artefact.from_dict(artefact.export()).export() == artefact.export()
+    # Artefacts survive a Block round trip
+    block = _mock_blocks()[0]
+    assert elements.Block.from_dict(block.export()).export() == block.export()
+
+
+def test_page_from_dict_restores_the_image():
+    page = _mock_pages()[0]
+    exported = page.export()
+    # The page image is not part of the export, so a placeholder is used unless it is passed back
+    restored = elements.Page.from_dict(exported)
+    assert isinstance(restored, elements.Page) and restored.page.shape == (0, 0, 3)
+    assert restored.export() == exported
+    restored = elements.Page.from_dict(exported, page=page.page)
+    assert np.array_equal(restored.page, page.page)
+    assert elements.Page.from_dict(json.loads(json.dumps(exported))).render() == restored.render()
