@@ -1,9 +1,4 @@
 # Shared environment setup for all OnnxTR CI jobs.
-#
-# REQUIRED LOCATION IN THE REPO (the filename MUST be action.yml):
-#   .github/actions/setup-env/action.yml
-#
-# actions/checkout must run BEFORE this action in every job.
 
 name: "Setup OnnxTR environment"
 description: "Python setup with pip caching, package install and optional ONNX model cache"
