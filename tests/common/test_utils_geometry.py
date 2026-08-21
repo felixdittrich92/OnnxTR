@@ -160,6 +160,31 @@ def test_rotate_boxes():
     assert np.allclose(rotated, np.array([[[0, 1.0], [0, 0.4], [0.2, 0.4], [0.2, 1.0]]]))
 
 
+@pytest.fixture
+def sample_geoms():
+    return np.array([
+        [[10, 10], [20, 10], [20, 20], [10, 20]],
+        [
+            [
+                30,
+                30,
+            ],
+            [40, 30],
+            [40, 40],
+            [30, 40],
+        ],
+    ])
+
+
+def test_rotate_abs_geoms(sample_geoms):
+    img_shape = (100, 100)
+    angle = 45.0
+    expanded_polys = geometry.rotate_abs_geoms(sample_geoms, angle, img_shape)
+
+    # Check if the output has the correct shape
+    assert expanded_polys.shape == sample_geoms.shape
+
+
 def test_rotate_image():
     img = np.ones((32, 64, 3), dtype=np.float32)
     rotated = geometry.rotate_image(img, 30.0)
