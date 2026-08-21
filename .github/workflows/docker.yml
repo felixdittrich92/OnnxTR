@@ -11,12 +11,17 @@ on:
   schedule:
     - cron: '0 2 1 6 *'  # At 02:00 on day-of-month 1 in June (once a year actually)
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   REGISTRY: ghcr.io
 
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     strategy:
       fail-fast: false
@@ -46,6 +51,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      # Enables the GitHub Actions layer cache below. NOTE: this switches the
+      # builder to the docker-container driver, which does not populate the
+      # local image store - hence the explicit `load: true` on the build step.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to the Container registry
         uses: docker/login-action@v4
@@ -82,8 +93,14 @@ jobs:
           # Export to environment
           echo "PREFIX_DOCKER_TAG=${PREFIX_DOCKER_TAG}" >> $GITHUB_ENV
 
+          # Buildx parses cache-from/cache-to as CSV, so the scope must not
+          # contain commas; slashes and colons from the image name are stripped too.
+          CACHE_SCOPE=$(echo "${{ matrix.variant }}-py${{ matrix.python }}-${{ matrix.image }}" | sed 's|[,/:]|-|g')
+          echo "CACHE_SCOPE=${CACHE_SCOPE}" >> $GITHUB_ENV
+
           # Debugging output
           echo "Final Docker Tag: $PREFIX_DOCKER_TAG"
+          echo "Cache scope: $CACHE_SCOPE"
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -108,12 +125,16 @@ jobs:
             ONNXTR_REPO=${{ github.repository }}
             ONNXTR_VERSION=${{ github.sha }}
           push: false  # push only if `import onnxtr` works
+          load: true   # required with the docker-container driver for `docker run` below
           tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
+          cache-to: type=gha,scope=${{ env.CACHE_SCOPE }},mode=max
 
       - name: Check if `import onnxtr` works
         run: docker run ${{ steps.build.outputs.imageid }} python3 -c 'import onnxtr; print(onnxtr.__version__)'
 
       - name: Push Docker image
+        # Fully served from the GHA layer cache of the build above, so this is fast
         if: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (startsWith(github.ref, 'refs/tags') && github.event_name == 'push') }}
         uses: docker/build-push-action@v7
         with:
@@ -126,3 +147,4 @@ jobs:
             ONNXTR_VERSION=${{ github.sha }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}

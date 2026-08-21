@@ -3,7 +3,7 @@ name: Clear GitHub runner caches
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'  # Runs once a day
+    - cron: '0 0 * * 0'  # Runs once a week (Sunday midnight)
 
 jobs:
   clear:
@@ -12,4 +12,4 @@ jobs:
     steps:
     - uses: MyAlbum/purge-cache@v2
       with:
-        max-age: 172800 # Caches older than 2 days are deleted
+        max-age: 604800 # Caches older than 7 days are deleted
