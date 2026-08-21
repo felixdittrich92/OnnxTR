@@ -7,7 +7,7 @@
 import multiprocessing as mp
 import os
 from collections.abc import Callable, Iterable, Iterator
-from multiprocessing.pool import ThreadPool
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from onnxtr.file_utils import ENV_VARS_TRUE_VALUES
@@ -41,11 +41,10 @@ def multithread_exec(func: Callable[[Any], Any], seq: Iterable[Any], threads: in
     threads = min(threads, len(items))
     # Single-thread
     if threads < 2 or os.environ.get("ONNXTR_MULTIPROCESSING_DISABLE", "").upper() in ENV_VARS_TRUE_VALUES:
-        results = map(func, items)
+        results: Iterator[Any] | map[Any] = map(func, items)
     # Multi-threading
     else:
-        with ThreadPool(threads) as tp:
-            # ThreadPool's map function returns a list, but seq could be of a different type
-            # That's why wrapping result in map to return iterator
-            results = map(lambda x: x, tp.map(func, items))  # noqa: C417
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            # Materialize inside the context so all workers are joined before returning
+            results = iter(list(executor.map(func, items)))
     return results
