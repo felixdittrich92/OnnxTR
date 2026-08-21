@@ -7,7 +7,7 @@
 import multiprocessing as mp
 import os
 from collections.abc import Callable, Iterable, Iterator
-from multiprocessing.pool import ThreadPool
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from onnxtr.file_utils import ENV_VARS_TRUE_VALUES
@@ -25,24 +25,31 @@ def multithread_exec(func: Callable[[Any], Any], seq: Iterable[Any], threads: in
     Args:
         func: function to be executed on each element of the iterable
         seq: iterable
-        threads: number of workers to be used for multiprocessing
+        threads: number of worker threads to use, defaults to `min(16, cpu_count())`
 
     Returns:
-        iterator of the function's results using the iterable as inputs
+        iterator of the function's results, in the same order as the inputs
 
     Notes:
-        This function uses ThreadPool from multiprocessing package, which uses `/dev/shm` directory for shared memory.
-        If you do not have write permissions for this directory (if you run `onnxtr` on AWS Lambda for instance),
-        you might want to disable multiprocessing. To achieve that, set 'ONNXTR_MULTIPROCESSING_DISABLE' to 'TRUE'.
+        Parallelism is provided by `concurrent.futures.ThreadPoolExecutor`, so `func` only
+        benefits from it if it releases the GIL (I/O, or native code such as NumPy, OpenCV
+        or Pillow). No worker threads are spawned for sequences shorter than two items.
+
+        Results are materialized before returning, so the pool is fully shut down and every
+        worker joined by the time the iterator is handed back. To opt out of threading
+        entirely, set 'ONNXTR_MULTIPROCESSING_DISABLE' to 'TRUE' and `func` will be applied
+        lazily on the calling thread.
     """
     threads = threads if isinstance(threads, int) else min(16, mp.cpu_count())
+    items = seq if isinstance(seq, (list, tuple)) else list(seq)
+    # Never spawn more workers than items - single-item calls skip pool startup entirely
+    threads = min(threads, len(items))
     # Single-thread
     if threads < 2 or os.environ.get("ONNXTR_MULTIPROCESSING_DISABLE", "").upper() in ENV_VARS_TRUE_VALUES:
-        results = map(func, seq)
+        results: Iterator[Any] | map[Any] = map(func, items)
     # Multi-threading
     else:
-        with ThreadPool(threads) as tp:
-            # ThreadPool's map function returns a list, but seq could be of a different type
-            # That's why wrapping result in map to return iterator
-            results = map(lambda x: x, tp.map(func, seq))  # noqa: C417
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            # Materialize inside the context so all workers are joined before returning
+            results = iter(list(executor.map(func, items)))
     return results

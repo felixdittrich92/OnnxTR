@@ -16,14 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python: ["3.10", "3.11", "3.12", "3.13"]
+        python: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          # MacOS issue ref.: https://github.com/actions/setup-python/issues/855 & https://github.com/actions/setup-python/issues/865
-          python-version: ${{ matrix.os == 'macos-latest' && matrix.python == '3.10' && '3.11' || matrix.python }}
+          python-version: ${{ matrix.python }}
           architecture: x64
       - name: Cache python modules
         uses: actions/cache@v6
@@ -36,27 +35,3 @@ jobs:
           pip install -e .[cpu-headless,viz] --upgrade
       - name: Import package
         run: python -c "import onnxtr; print(onnxtr.__version__)"
-
-  conda:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: conda-incubator/setup-miniconda@v4
-        with:
-          auto-update-conda: true
-          python-version: "3.10"
-          channels: pypdfium2-team,bblanchon,defaults,conda-forge
-          channel-priority: strict
-      - name: Install dependencies
-        shell: bash -el {0}
-        run: |
-          conda install -n base -y conda-build
-          conda install -y python-build setuptools wheel
-      - name: Install libEGL
-        run: sudo apt-get update && sudo apt-get install -y libegl1
-      - name: Build
-        shell: bash -el {0}
-        run: |
-          python -m build --sdist --no-isolation
-          mkdir conda-dist
-          conda build .conda/ --output-folder conda-dist
