@@ -7,8 +7,10 @@ from typing import Any
 
 from .detection.zoo import detection_predictor
 from .engine import EngineConfig
+from .layout.zoo import layout_predictor
 from .predictor import OCRPredictor
 from .recognition.zoo import recognition_predictor
+from .table_structure.zoo import table_predictor
 
 __all__ = ["ocr_predictor"]
 
@@ -24,10 +26,16 @@ def _predictor(
     detect_orientation: bool = False,
     straighten_pages: bool = False,
     detect_language: bool = False,
+    detect_layout: bool = False,
+    layout_arch: Any = "lw_detr_s",
+    ignore_regions: list[str] | None = None,
+    detect_tables: bool = False,
     load_in_8_bit: bool = False,
     det_engine_cfg: EngineConfig | None = None,
     reco_engine_cfg: EngineConfig | None = None,
     clf_engine_cfg: EngineConfig | None = None,
+    layout_engine_cfg: EngineConfig | None = None,
+    table_engine_cfg: EngineConfig | None = None,
     **kwargs,
 ) -> OCRPredictor:
     # Detection
@@ -49,6 +57,36 @@ def _predictor(
         engine_cfg=reco_engine_cfg,
     )
 
+    # Layout - required for table detection, so build it whenever layout or tables are requested
+    layout_pred = (
+        layout_predictor(
+            layout_arch,
+            assume_straight_pages=assume_straight_pages,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            symmetric_pad=symmetric_pad,
+            batch_size=det_bs,
+            load_in_8_bit=load_in_8_bit,
+            engine_cfg=layout_engine_cfg,
+        )
+        if (detect_layout or detect_tables or ignore_regions)
+        else None
+    )
+
+    # Table structure - optional, applied on the cropped table regions found by the layout model
+    table_pred = (
+        table_predictor(
+            "tablecenternet",
+            assume_straight_pages=assume_straight_pages,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            symmetric_pad=symmetric_pad,
+            batch_size=det_bs,
+            load_in_8_bit=load_in_8_bit,
+            engine_cfg=table_engine_cfg,
+        )
+        if detect_tables
+        else None
+    )
+
     return OCRPredictor(
         det_predictor,
         reco_predictor,
@@ -58,6 +96,9 @@ def _predictor(
         detect_orientation=detect_orientation,
         straighten_pages=straighten_pages,
         detect_language=detect_language,
+        layout_predictor=layout_pred,
+        table_predictor=table_pred,
+        ignore_regions=ignore_regions,
         clf_engine_cfg=clf_engine_cfg,
         **kwargs,
     )
@@ -73,10 +114,16 @@ def ocr_predictor(
     detect_orientation: bool = False,
     straighten_pages: bool = False,
     detect_language: bool = False,
+    detect_layout: bool = False,
+    layout_arch: Any = "lw_detr_s",
+    ignore_regions: list[str] | None = None,
+    detect_tables: bool = False,
     load_in_8_bit: bool = False,
     det_engine_cfg: EngineConfig | None = None,
     reco_engine_cfg: EngineConfig | None = None,
     clf_engine_cfg: EngineConfig | None = None,
+    layout_engine_cfg: EngineConfig | None = None,
+    table_engine_cfg: EngineConfig | None = None,
     **kwargs: Any,
 ) -> OCRPredictor:
     """End-to-end OCR architecture using one model for localization, and another for text recognition.
@@ -107,10 +154,23 @@ def ocr_predictor(
             Doing so will improve performances for documents with page-uniform rotations.
         detect_language: if True, the language prediction will be added to the predictions for each
             page. Doing so will slightly deteriorate the overall latency.
+        detect_layout: if True, a layout detection model is run on each page and the detected regions are attached
+            to each page.
+            Doing so will slightly deteriorate the overall latency.
+        layout_arch: name of the layout architecture or the model itself to use.
+        ignore_regions: optional list of layout class names to ignore during detection/recognition. If provided, the
+            layout model will be used to locate the regions of the specified classes, and these regions will
+            be masked out (filled with black) before passing the pages to the detection/recognition modules.
+        detect_tables: if True, table regions found by the layout model are cropped and passed to a table
+            structure model. Words falling inside a detected table are regrouped into a structured table
+            (accessible via `page.tables`) and removed from the regular text output. This enables the layout
+            model and slightly deteriorates the overall latency.
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         det_engine_cfg: configuration of the detection engine
         reco_engine_cfg: configuration of the recognition engine
         clf_engine_cfg: configuration of the orientation classification engine
+        layout_engine_cfg: configuration of the layout detection engine
+        table_engine_cfg: configuration of the table structure recognition engine
         kwargs: keyword args of `OCRPredictor`
 
     Returns:
@@ -126,9 +186,15 @@ def ocr_predictor(
         detect_orientation=detect_orientation,
         straighten_pages=straighten_pages,
         detect_language=detect_language,
+        detect_layout=detect_layout,
+        layout_arch=layout_arch,
+        ignore_regions=ignore_regions,
+        detect_tables=detect_tables,
         load_in_8_bit=load_in_8_bit,
         det_engine_cfg=det_engine_cfg,
         reco_engine_cfg=reco_engine_cfg,
         clf_engine_cfg=clf_engine_cfg,
+        layout_engine_cfg=layout_engine_cfg,
+        table_engine_cfg=table_engine_cfg,
         **kwargs,
     )
