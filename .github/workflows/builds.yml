@@ -6,12 +6,20 @@ on:
   pull_request:
     branches: main
   schedule:
-    # Runs every 2 weeks on Monday at 03:00 UTC
+    # Runs every Monday at 03:00 UTC
     - cron: '0 3 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -19,19 +27,11 @@ jobs:
         python: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
         with:
           python-version: ${{ matrix.python }}
-          architecture: x64
-      - name: Cache python modules
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('pyproject.toml') }}
-      - name: Install package
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[cpu-headless,viz] --upgrade
+          extras: cpu-headless,viz
+          cache-models: "false"
       - name: Import package
         run: python -c "import onnxtr; print(onnxtr.__version__)"

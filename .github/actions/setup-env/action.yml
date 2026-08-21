@@ -1,0 +1,66 @@
+# Shared environment setup for all OnnxTR CI jobs.
+
+name: "Setup OnnxTR environment"
+description: "Python setup with pip caching, package install and optional ONNX model cache"
+
+inputs:
+  python-version:
+    description: "Python version to set up"
+    required: false
+    default: "3.11"
+  extras:
+    description: "Comma-separated pip extras to install with the package (e.g. cpu-headless,viz,html,testing)"
+    required: false
+    default: "cpu-headless,viz"
+  install-package:
+    description: "Install the local package itself (set to false to only install extra-requirements)"
+    required: false
+    default: "true"
+  extra-requirements:
+    description: "Optional path to an additional requirements file to install"
+    required: false
+    default: ""
+  cache-models:
+    description: "Cache downloaded ONNX models (~/.cache/onnxtr) across runs"
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    # NOTE: no `architecture: x64` - the default is the runner's native arch.
+    # Forcing x64 on the now arm64-based macos-latest runners is wrong.
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: |
+          pyproject.toml
+          demo/requirements.txt
+
+    # The test suite downloads .onnx weights on first use; caching them saves
+    # a few hundred MB of downloads per job on every run.
+    - name: Cache ONNX models
+      if: inputs.cache-models == 'true'
+      uses: actions/cache@v6
+      with:
+        path: |
+          ~/.cache/onnxtr
+          ~/.cache/huggingface
+        # Bump the -v1 suffix to invalidate if the set of models a job uses changes
+        key: onnxtr-models-${{ github.job }}-v1
+
+    - name: Install package
+      if: inputs.install-package == 'true'
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[${{ inputs.extras }}]" --upgrade
+
+    - name: Install extra requirements
+      if: inputs.extra-requirements != ''
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r "${{ inputs.extra-requirements }}" --upgrade

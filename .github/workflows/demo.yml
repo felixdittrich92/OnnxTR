@@ -16,10 +16,18 @@ on:
   # Allow manual triggering of the workflow
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
 jobs:
   # This job runs on every pull request to main
   test-demo:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -27,20 +35,20 @@ jobs:
         python: ["3.11"]
     steps:
       - uses: actions/checkout@v7
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      # demo/requirements.txt pins onnxtr[gpu-headless] from git, which pulls
+      # multi-GB onnxruntime-gpu + CUDA wheels that this runner has no GPU for,
+      # and tests main instead of the PR's own code. Here we install the local
+      # checkout with the CPU runtime and take only the remaining demo deps.
+      # demo/requirements.txt itself stays untouched - HF Spaces needs the GPU build.
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
         with:
           python-version: ${{ matrix.python }}
-          architecture: x64
-      - name: Cache python modules
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('demo/requirements.txt') }}
-      - name: Install dependencies
+          extras: cpu-headless,viz
+      - name: Install demo dependencies (without the onnxtr git pin)
         run: |
-          python -m pip install --upgrade pip
-          pip install -r demo/requirements.txt --upgrade
+          grep -v "onnxtr" demo/requirements.txt > /tmp/demo-ci-requirements.txt
+          pip install -r /tmp/demo-ci-requirements.txt --upgrade
       - name: Start Gradio demo
         run: |
           nohup python demo/app.py &
@@ -54,6 +62,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: test-demo
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:

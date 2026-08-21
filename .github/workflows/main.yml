@@ -6,36 +6,37 @@ on:
   pull_request:
     branches: main
   schedule:
-    # Runs every 2 weeks on Monday at 03:00 UTC
+    # Runs every Monday at 03:00 UTC
     - cron: '0 3 * * 1'
+
+# Cancel superseded runs when new commits are pushed to a PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   pytest-common:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         python: ["3.11", "3.12", "3.13"]
         backend: ["cpu-headless", "openvino-headless"]
     steps:
       - uses: actions/checkout@v7
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
         with:
           python-version: ${{ matrix.python }}
-          architecture: x64
-      - name: Cache python modules
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('pyproject.toml') }}-tests
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[${{ matrix.backend }},viz,html,testing] --upgrade
+          extras: ${{ matrix.backend }},viz,html,testing
       - name: Run unittests
         run: |
-          coverage run -m pytest tests/common/ -rs --memray
+          coverage run -m pytest tests/common/ -rs ${{ (matrix.python == '3.11' && matrix.backend == 'cpu-headless') && '--memray' || '' }}
           coverage xml -o coverage-common-${{ matrix.backend }}-${{ matrix.python }}.xml
       - uses: actions/upload-artifact@v7
         with:
@@ -45,6 +46,7 @@ jobs:
 
   codecov-upload:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [ pytest-common ]
     steps:
       - uses: actions/checkout@v7
