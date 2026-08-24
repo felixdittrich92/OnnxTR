@@ -41,8 +41,9 @@ def test_download_from_url_error_creating_directory(mkdir_mock, caplog):
     with caplog.at_level(logging.ERROR, logger="onnxtr.utils.data"):
         with pytest.raises(OSError):
             download_from_url("test_url")
+    assert "Failed creating cache" in caplog.text
     assert (
-        "Failed creating cache directory at /.cache/onnxtr."
+        "at /.cache/onnxtr."
         " You can change default cache directory using 'ONNXTR_CACHE_DIR' environment variable if needed."
     ) in caplog.text
 
@@ -53,6 +54,5 @@ def test_download_from_url_error_creating_directory_with_env_var(mkdir_mock, cap
     with caplog.at_level(logging.ERROR, logger="onnxtr.utils.data"):
         with pytest.raises(OSError):
             download_from_url("test_url")
-    assert (
-        "Failed creating cache directory at /test using path from 'ONNXTR_CACHE_DIR' environment variable."
-    ) in caplog.text
+    assert "Failed creating cache" in caplog.text
+    assert ("at /test using path from 'ONNXTR_CACHE_DIR' environment variable.") in caplog.text
