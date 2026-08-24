@@ -25,6 +25,7 @@ from PIL import Image
 
 from onnxtr.io import DocumentFile
 from onnxtr.models import EngineConfig, from_hub, ocr_predictor
+from onnxtr.models.layout.models.lw_detr import CLASS_NAMES as LAYOUT_CLASSES
 from onnxtr.models.predictor import OCRPredictor
 from onnxtr.utils.visualization import visualize_page
 
@@ -51,6 +52,10 @@ RECO_ARCHS: list[str] = [
     "viptr_tiny",
 ]
 
+LAYOUT_ARCHS: list[str] = [
+    "lw_detr_s",
+]
+
 CUSTOM_RECO_ARCHS: list[str] = [
     "Felix92/onnxtr-parseq-multilingual-v1",
 ]
@@ -69,6 +74,12 @@ def load_predictor(
     box_thresh: float,
     disable_crop_orientation: bool = False,
     disable_page_orientation: bool = False,
+    detect_layout: bool = False,
+    layout_arch: str = "lw_detr_s",
+    ignore_regions: list[str] | None = None,
+    detect_tables: bool = False,
+    keep_reading_order: bool = False,
+    preserve_original_coords: bool = False,
 ) -> OCRPredictor:
     """Load a predictor from onnxtr.models
 
@@ -86,6 +97,12 @@ def load_predictor(
         load_in_8_bit: whether to load the image in 8 bit mode
         bin_thresh: binarization threshold for the segmentation map
         box_thresh: minimal objectness score to consider a box
+        detect_layout: whether to attach the detected layout regions to each page
+        layout_arch: layout detection architecture
+        ignore_regions: layout classes to mask out before detection & recognition
+        detect_tables: whether to recognize the structure of detected tables
+        keep_reading_order: whether the elements should be re-ordered by reading order
+        preserve_original_coords: with straighten_pages, map the boxes back onto the original page
 
     Returns:
     -------
@@ -107,9 +124,17 @@ def load_predictor(
         detect_orientation=not assume_straight_pages,
         disable_crop_orientation=disable_crop_orientation,
         disable_page_orientation=disable_page_orientation,
+        detect_layout=detect_layout,
+        layout_arch=layout_arch,
+        ignore_regions=ignore_regions or None,
+        detect_tables=detect_tables,
+        keep_reading_order=keep_reading_order,
+        preserve_original_coords=preserve_original_coords,
         det_engine_cfg=engine_cfg,
         reco_engine_cfg=engine_cfg,
         clf_engine_cfg=engine_cfg,
+        layout_engine_cfg=engine_cfg,
+        table_engine_cfg=engine_cfg,
     )
     predictor.det_predictor.model.postprocessor.bin_thresh = bin_thresh
     predictor.det_predictor.model.postprocessor.box_thresh = box_thresh
@@ -171,6 +196,12 @@ def analyze_page(
     load_in_8_bit: bool,
     bin_thresh: float,
     box_thresh: float,
+    detect_layout: bool,
+    layout_arch: str,
+    ignore_regions: list[str],
+    detect_tables: bool,
+    keep_reading_order: bool,
+    preserve_original_coords: bool,
 ):
     """Analyze a page
 
@@ -190,13 +221,19 @@ def analyze_page(
         load_in_8_bit: whether to load the image in 8 bit mode
         bin_thresh: binarization threshold for the segmentation map
         box_thresh: minimal objectness score to consider a box
+        detect_layout: whether to attach the detected layout regions to each page
+        layout_arch: layout detection architecture
+        ignore_regions: layout classes to mask out before detection & recognition
+        detect_tables: whether to recognize the structure of detected tables
+        keep_reading_order: whether the elements should be re-ordered by reading order
+        preserve_original_coords: with straighten_pages, map the boxes back onto the original page
 
     Returns:
     -------
-        input image, segmentation heatmap, output image, OCR output, synthesized page
+        input image, segmentation heatmap, output image, OCR output, synthesized page, markdown export
     """
     if uploaded_file is None:
-        return None, "Please upload a document", None, None, None
+        return None, "Please upload a document", None, None, None, None
 
     if uploaded_file.name.endswith(".pdf"):
         doc = DocumentFile.from_pdf(uploaded_file)
@@ -222,6 +259,12 @@ def analyze_page(
         box_thresh=box_thresh,
         disable_crop_orientation=disable_crop_orientation,
         disable_page_orientation=disable_page_orientation,
+        detect_layout=detect_layout,
+        layout_arch=layout_arch,
+        ignore_regions=ignore_regions,
+        detect_tables=detect_tables,
+        keep_reading_order=keep_reading_order,
+        preserve_original_coords=preserve_original_coords,
     )
 
     seg_map = forward_image(predictor, page)
@@ -241,7 +284,9 @@ def analyze_page(
     else:
         synthesized_page = None
 
-    return img, seg_heatmap, out_img, page_export, synthesized_page
+    markdown_export = out.pages[0].export_as_markdown()
+
+    return img, seg_heatmap, out_img, page_export, synthesized_page, markdown_export
 
 
 with gr.Blocks(fill_height=True) as demo:
@@ -266,7 +311,8 @@ with gr.Blocks(fill_height=True) as demo:
         <h2>To use this interactive demo for OnnxTR:</h2>
         <h3> 1. Upload a document (PDF, JPG, or PNG)</h3>
         <h3> 2. Select the model architectures for text detection and recognition you want to use</h3>
-        <h3> 3. Press the "Analyze page" button to process the uploaded document</h3>
+        <h3> 3. Optionally enable layout detection and table structure recognition</h3>
+        <h3> 4. Press the "Analyze page" button to process the uploaded document</h3>
         """
     )
     with gr.Row():
@@ -289,6 +335,20 @@ with gr.Blocks(fill_height=True) as demo:
                 minimum=0.1, maximum=0.9, value=0.3, step=0.1, label="Binarization threshold"
             )
             box_threshold = gr.Slider(minimum=0.1, maximum=0.9, value=0.1, step=0.1, label="Box threshold")
+            with gr.Accordion("Layout & tables", open=False):
+                detect_layout = gr.Checkbox(value=False, label="Detect layout regions")
+                layout_model = gr.Dropdown(choices=LAYOUT_ARCHS, value=LAYOUT_ARCHS[0], label="Layout detection model")
+                detect_tables = gr.Checkbox(value=False, label="Recognize table structure (enables the layout model)")
+                ignore_regions = gr.Dropdown(
+                    choices=LAYOUT_CLASSES,
+                    value=[],
+                    multiselect=True,
+                    label="Ignore regions (masked out before detection, enables the layout model)",
+                )
+                keep_reading_order = gr.Checkbox(value=False, label="Sort elements by reading order")
+                preserve_original_coords = gr.Checkbox(
+                    value=False, label="Preserve original coordinates (with 'Straighten pages')"
+                )
             analyze_button = gr.Button("Analyze page")
         with gr.Column(scale=3):
             with gr.Row():
@@ -300,6 +360,8 @@ with gr.Blocks(fill_height=True) as demo:
                     ocr_output = gr.JSON(label="OCR output", render=True, scale=1, height=500)
                 with gr.Column(scale=3):
                     synthesized_page = gr.Image(label="Synthesized page", width=700, height=500)
+            with gr.Row():
+                markdown_output = gr.Markdown(label="Markdown export", height=400)
 
     analyze_button.click(
         analyze_page,
@@ -318,8 +380,21 @@ with gr.Blocks(fill_height=True) as demo:
             load_in_8_bit,
             binarization_threshold,
             box_threshold,
+            detect_layout,
+            layout_model,
+            ignore_regions,
+            detect_tables,
+            keep_reading_order,
+            preserve_original_coords,
         ],
-        outputs=[input_image, segmentation_heatmap, output_image, ocr_output, synthesized_page],
+        outputs=[
+            input_image,
+            segmentation_heatmap,
+            output_image,
+            ocr_output,
+            synthesized_page,
+            markdown_output,
+        ],
     )
 
 demo.launch(inbrowser=True, allowed_paths=["./data/logo.jpg"])

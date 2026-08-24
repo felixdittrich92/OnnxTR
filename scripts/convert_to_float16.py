@@ -32,6 +32,8 @@ from onnxtr.models.layout.zoo import ARCHS as LAYOUT_ARCHS
 from onnxtr.models.recognition.zoo import ARCHS as RECOGNITION_ARCHS
 from onnxtr.models.table_structure.zoo import ARCHS as TABLE_ARCHS
 
+ALL_ARCHS = DETECTION_ARCHS + RECOGNITION_ARCHS + ORIENTATION_ARCHS + LAYOUT_ARCHS + TABLE_ARCHS
+
 
 def _load_model(arch: str, model_path: str | None = None) -> Any:
     if arch in DETECTION_ARCHS:
@@ -49,17 +51,42 @@ def _load_model(arch: str, model_path: str | None = None) -> Any:
     return model
 
 
+def _build_input_feed(model: Any, img_tensor: np.ndarray) -> dict[str, np.ndarray]:
+    """Build the feed for every graph input
+
+    Args:
+        model: the loaded OnnxTR model
+        img_tensor: the image tensor of shape (N, C, H, W)
+
+    Returns:
+        the mapping from graph input name to array
+    """
+    feed: dict[str, np.ndarray] = {model.runtime_inputs.name: img_tensor}
+    for meta in model.runtime_input_metas[1:]:
+        # a full-True mask means "no padding": every pixel is valid image content
+        mask = np.ones((img_tensor.shape[0], *img_tensor.shape[-2:]), dtype=bool)
+        feed[meta.name] = mask if "bool" in meta.type else mask.astype(np.float32)
+    return feed
+
+
 def _latency_check(args: Any, size: tuple[int], model: Any, img_tensor: np.ndarray) -> None:
+    # layout models takes the padding mask as a second positional argument, the others do not
+    extra_args = (
+        (np.ones((img_tensor.shape[0], *img_tensor.shape[-2:]), dtype=bool),)
+        if len(model.runtime_input_metas) > 1
+        else ()
+    )
+
     # Warmup
     for _ in range(10):
-        _ = model(img_tensor)
+        _ = model(img_tensor, *extra_args)
 
     timings = []
 
     # Evaluation runs
     for _ in range(args.it):
         start_ts = time.perf_counter()
-        _ = model(img_tensor)
+        _ = model(img_tensor, *extra_args)
         timings.append(time.perf_counter() - start_ts)
 
     _timings = np.array(timings)
@@ -68,13 +95,16 @@ def _latency_check(args: Any, size: tuple[int], model: Any, img_tensor: np.ndarr
 
 
 def _validate(fp32_in: list[np.ndarray], fp16_in: list[np.ndarray]) -> bool:
-    assert fp32_in[0].shape == fp16_in[0].shape, "Input shapes are not the same"
-    # print mean difference between fp32 and fp16 inputs
-    if np.abs(fp32_in[0] - fp16_in[0]).mean() > 1e-3:
-        print(
-            f"Mean difference between fp32 and fp16 inputs: {np.abs(fp32_in[0] - fp16_in[0]).mean()} "
-            + "-> YOU MAY EXPECT DIFFERING RESULTS"
-        )
+    assert len(fp32_in) == len(fp16_in), "Number of outputs is not the same"
+    # print mean difference between fp32 and fp16 outputs
+    for idx, (fp32_out, fp16_out) in enumerate(zip(fp32_in, fp16_in)):
+        assert fp32_out.shape == fp16_out.shape, f"Output {idx} shapes are not the same"
+        mean_diff = np.abs(fp32_out - fp16_out).mean()
+        if mean_diff > 1e-3:
+            print(
+                f"Mean difference between fp32 and fp16 outputs (output {idx}): {mean_diff} "
+                + "-> YOU MAY EXPECT DIFFERING RESULTS"
+            )
     return True  # NOTE: Only warning, not error
 
 
@@ -86,7 +116,7 @@ def main(args):
 
     with TemporaryDirectory() as temp_dir:
         model_fp16_path = f"{temp_dir}/model_fp16.onnx"
-        input_feed = {model_float32.runtime_inputs.name: img_tensor}
+        input_feed = _build_input_feed(model_float32, img_tensor)
         model_float16 = auto_convert_mixed_precision(
             # NOTE: keep_io_types=True is required to keep the input/output type as float32
             onnx.load(str(model_float32.model_path)),
@@ -114,7 +144,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "arch",
         type=str,
-        choices=DETECTION_ARCHS + RECOGNITION_ARCHS + ORIENTATION_ARCHS,
+        choices=ALL_ARCHS,
         help="Architecture to convert",
     )
     parser.add_argument("--input_model", type=str, help="Path to the input model", required=False)
