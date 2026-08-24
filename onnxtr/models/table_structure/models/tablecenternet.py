@@ -19,6 +19,8 @@ from ..postprocessor.base import TableCenterNetPostProcessor
 
 __all__ = ["TableCenterNet", "tablecenternet"]
 
+logger = logging.getLogger(__name__)
+
 # The order the heads are written by docTR's ONNX export
 HEAD_NAMES = ["hm", "reg", "ct2cn", "cn2ct", "lc", "sp"]
 
@@ -236,7 +238,7 @@ def _tablecenternet(
 ) -> TableCenterNet:
     if load_in_8_bit:
         if default_cfgs[arch]["url_8_bit"] is None:
-            logging.warning(f"No 8-bit quantized export available for '{arch}'. Loading full precision model...")
+            logger.warning(f"No 8-bit quantized export available for '{arch}'. Loading full precision model...")
         elif "http" in model_path:
             model_path = default_cfgs[arch]["url_8_bit"]
     # Build the model

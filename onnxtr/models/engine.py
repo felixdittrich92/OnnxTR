@@ -27,6 +27,8 @@ from onnxtr.utils.geometry import shape_translate
 
 __all__ = ["EngineConfig", "RunOptionsProvider"]
 
+logger = logging.getLogger(__name__)
+
 RunOptionsProvider: TypeAlias = Callable[[RunOptions], RunOptions]
 
 _ORT_TO_NUMPY_DTYPE: dict[str, Any] = {
@@ -69,7 +71,7 @@ class EngineConfig:
     def _init_providers(self) -> list[tuple[str, dict[str, Any]]]:
         providers: Any = [("CPUExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})]
         available_providers = get_available_providers()
-        logging.info(f"Available providers: {available_providers}")
+        logger.info(f"Available providers: {available_providers}")
         if "CUDAExecutionProvider" in available_providers and get_device() == "GPU":  # pragma: no cover
             providers.insert(
                 0,

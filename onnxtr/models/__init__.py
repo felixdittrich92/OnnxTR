@@ -7,3 +7,4 @@ from .recognition import *
 from .zoo import *
 from .factory import *
 from .reading_order import *
+from .utils import *
