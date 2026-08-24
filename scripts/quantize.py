@@ -19,6 +19,8 @@ class TaskShapes(Enum):
     page_orientation = (512, 512)
     detection = (1024, 1024)
     recognition = (32, 128)
+    layout = (1024, 1024)
+    table_structure = (1024, 1024)
 
 
 class CalibrationDataLoader(CalibrationDataReader):
@@ -96,6 +98,10 @@ def main(args):
         task_shape = TaskShapes.page_orientation.value
     elif args.task == "detection":
         task_shape = TaskShapes.detection.value
+    elif args.task == "layout":
+        task_shape = TaskShapes.layout.value
+    elif args.task == "table_structure":
+        task_shape = TaskShapes.table_structure.value
     else:
         task_shape = TaskShapes.recognition.value
     print(f"Task: {args.task} | Task shape: {task_shape}")
@@ -168,7 +174,7 @@ if __name__ == "__main__":
         "--task",
         required=True,
         type=str,
-        choices=["crop_orientation", "page_orientation", "detection", "recognition"],
+        choices=["crop_orientation", "page_orientation", "detection", "recognition", "layout", "table_structure"],
         help="task shape",
     )
     parser.add_argument(

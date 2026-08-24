@@ -23,7 +23,9 @@ from .._utils import estimate_orientation, mask_boxes, rectify_crops, rectify_lo
 from ..classification import crop_orientation_predictor, page_orientation_predictor
 from ..classification.predictor import OrientationPredictor
 from ..detection.zoo import ARCHS as DETECTION_ARCHS
+from ..layout.zoo import ARCHS as LAYOUT_ARCHS
 from ..recognition.zoo import ARCHS as RECOGNITION_ARCHS
+from ..table_structure.zoo import ARCHS as TABLE_ARCHS
 
 __all__ = ["_OCRPredictor"]
 
@@ -325,4 +327,9 @@ class _OCRPredictor:
         self.hooks.append(hook)
 
     def list_archs(self) -> dict[str, list[str]]:
-        return {"detection_archs": DETECTION_ARCHS, "recognition_archs": RECOGNITION_ARCHS}
+        return {
+            "detection_archs": DETECTION_ARCHS,
+            "recognition_archs": RECOGNITION_ARCHS,
+            "layout_archs": LAYOUT_ARCHS,
+            "table_structure_archs": TABLE_ARCHS,
+        }

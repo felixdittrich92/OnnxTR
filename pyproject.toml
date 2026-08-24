@@ -111,6 +111,9 @@ dev = [
     "pre-commit>=2.17.0",
 ]
 
+[project.scripts]
+onnxtr-cli = "onnxtr.cli.main:main"
+
 [project.urls]
 repository = "https://github.com/felixdittrich92/OnnxTR"
 tracker = "https://github.com/felixdittrich92/OnnxTR/issues"

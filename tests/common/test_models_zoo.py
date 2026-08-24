@@ -11,6 +11,7 @@ from onnxtr.models.detection.predictor import DetectionPredictor
 from onnxtr.models.detection.zoo import ARCHS as DET_ARCHS
 from onnxtr.models.detection.zoo import detection_predictor
 from onnxtr.models.layout.predictor import LayoutPredictor
+from onnxtr.models.layout.zoo import ARCHS as LAYOUT_ARCHS
 from onnxtr.models.layout.zoo import layout_predictor
 from onnxtr.models.predictor import OCRPredictor
 from onnxtr.models.preprocessor import PreProcessor
@@ -18,6 +19,7 @@ from onnxtr.models.recognition.predictor import RecognitionPredictor
 from onnxtr.models.recognition.zoo import ARCHS as RECO_ARCHS
 from onnxtr.models.recognition.zoo import recognition_predictor
 from onnxtr.models.table_structure.predictor import TablePredictor
+from onnxtr.models.table_structure.zoo import ARCHS as TABLE_ARCHS
 from onnxtr.models.table_structure.zoo import table_predictor
 from onnxtr.models.zoo import ocr_predictor
 from onnxtr.utils.repr import NestedObject
@@ -185,6 +187,8 @@ def test_trained_ocr_predictor(mock_payslip):
     assert isinstance(archs, dict)
     assert archs["recognition_archs"] == RECO_ARCHS
     assert archs["detection_archs"] == DET_ARCHS
+    assert archs["layout_archs"] == LAYOUT_ARCHS
+    assert archs["table_structure_archs"] == TABLE_ARCHS
 
 
 def _test_predictor(predictor):

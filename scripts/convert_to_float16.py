@@ -25,19 +25,25 @@ from typing import Any
 import numpy as np
 import onnx
 
-from onnxtr.models import classification, detection, recognition
+from onnxtr.models import classification, detection, layout, recognition, table_structure
 from onnxtr.models.classification.zoo import ORIENTATION_ARCHS
 from onnxtr.models.detection.zoo import ARCHS as DETECTION_ARCHS
+from onnxtr.models.layout.zoo import ARCHS as LAYOUT_ARCHS
 from onnxtr.models.recognition.zoo import ARCHS as RECOGNITION_ARCHS
+from onnxtr.models.table_structure.zoo import ARCHS as TABLE_ARCHS
 
 
 def _load_model(arch: str, model_path: str | None = None) -> Any:
     if arch in DETECTION_ARCHS:
         model = detection.__dict__[arch]() if model_path is None else detection.__dict__[arch](model_path)
-    elif args.arch in RECOGNITION_ARCHS:
+    elif arch in RECOGNITION_ARCHS:
         model = recognition.__dict__[arch]() if model_path is None else recognition.__dict__[arch](model_path)
-    elif args.arch in ORIENTATION_ARCHS:
+    elif arch in ORIENTATION_ARCHS:
         model = classification.__dict__[arch]() if model_path is None else classification.__dict__[arch](model_path)
+    elif arch in LAYOUT_ARCHS:
+        model = layout.__dict__[arch]() if model_path is None else layout.__dict__[arch](model_path)
+    elif arch in TABLE_ARCHS:
+        model = table_structure.__dict__[arch]() if model_path is None else table_structure.__dict__[arch](model_path)
     else:
         raise ValueError(f"Unknown architecture {arch}")
     return model

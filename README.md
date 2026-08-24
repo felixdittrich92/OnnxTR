@@ -115,6 +115,11 @@ model = ocr_predictor(
     # Additional parameters - meta information
     detect_orientation=False,  # set to `True` if the orientation of the pages should be detected (default: False)
     detect_language=False,  # set to `True` if the language of the pages should be detected (default: False)
+    # Layout & table analysis
+    detect_layout=False,  # set to `True` to attach the detected layout regions to each page (default: False)
+    layout_arch="lw_detr_s",  # layout architecture to use (default: lw_detr_s)
+    ignore_regions=None,  # optional list of layout classes to mask out before detection, e.g. ["Picture"] (default: None)
+    detect_tables=False,  # set to `True` to recognize the structure of detected tables (default: False)
     # Orientation specific parameters in combination with `assume_straight_pages=False` and/or `straighten_pages=True`
     disable_crop_orientation=False,  # set to `True` if the crop orientation classification should be disabled (default: False)
     disable_page_orientation=False,  # set to `True` if the general page orientation classification should be disabled (default: False)
@@ -122,6 +127,8 @@ model = ocr_predictor(
     resolve_lines=True,  # whether words should be automatically grouped into lines (default: True)
     resolve_blocks=False,  # whether lines should be automatically grouped into blocks (default: False)
     paragraph_break=0.035,  # relative length of the minimum space separating paragraphs (default: 0.035)
+    keep_reading_order=False,  # whether the elements should be re-ordered by reading order (default: False)
+    preserve_original_coords=False,  # with `straighten_pages=True`, map the boxes back onto the original page (default: False)
     # OnnxTR specific parameters
     # NOTE: 8-Bit quantized models are not available for FAST detection models and can in general lead to poorer accuracy
     load_in_8_bit=False,  # set to `True` to load 8-bit quantized models instead of the full precision onces (default: False)
@@ -129,6 +136,8 @@ model = ocr_predictor(
     det_engine_cfg=EngineConfig(),  # detection model engine configuration (default: internal predefined configuration)
     reco_engine_cfg=EngineConfig(),  # recognition model engine configuration (default: internal predefined configuration)
     clf_engine_cfg=EngineConfig(),  # classification (orientation) model engine configuration (default: internal predefined configuration)
+    layout_engine_cfg=EngineConfig(),  # layout model engine configuration (default: internal predefined configuration)
+    table_engine_cfg=EngineConfig(),  # table structure model engine configuration (default: internal predefined configuration)
 )
 # PDF
 doc = DocumentFile.from_pdf("path/to/your/doc.pdf")
@@ -221,6 +230,87 @@ predictor = ocr_predictor(det_engine_cfg=engine_config, reco_engine_cfg=engine_c
 
 </details>
 
+### Layout analysis & table structure recognition
+
+Layout regions and table structure can be attached to every page. Table recognition builds on the
+layout model, so enabling `detect_tables` enables layout detection as well.
+
+```python
+from onnxtr.io import DocumentFile
+from onnxtr.models import ocr_predictor
+
+doc = DocumentFile.from_pdf("path/to/your/doc.pdf")
+
+model = ocr_predictor(detect_layout=True, detect_tables=True)
+result = model(doc)
+
+page = result.pages[0]
+
+# Layout regions (DocLayNet classes: Text, Title, Table, Picture, Page-header, ...)
+for region in page.layout:
+    print(region.type, region.confidence, region.geometry)
+
+# Tables - words falling inside a table are regrouped here and removed from `page.blocks`
+for table in page.tables:
+    print(f"{table.num_rows}x{table.num_cols}")
+    for cell in table.cells:
+        print(cell.row_start, cell.col_start, cell.value)
+```
+
+`ignore_regions` masks the given layout classes out of the page before detection and recognition
+run, which is useful to skip figures or stamps:
+
+```python
+model = ocr_predictor(detect_layout=True, ignore_regions=["Picture", "Formula"])
+```
+
+### Exporting the results
+
+Beyond `export()` and `render()`, a document can be exported to several document formats:
+
+```python
+result.export_as("markdown")  # or "md"
+result.export_as("asciidoc")  # or "adoc"
+result.export_as("html")
+result.export_as("xml")  # hOCR, one (bytes, ElementTree) tuple per page
+result.export_as("text")  # or "txt"
+result.export_as("json")  # or "dict"
+
+# Reading order can be resolved on export
+result.export_as("markdown", direction="auto")  # auto | ltr | rtl | ttb-rtl | ttb-ltr
+```
+
+## Command line interface
+
+OnnxTR ships an `onnxtr-cli` command for running OCR without writing any Python:
+
+```shell
+# Basic usage - the export format is inferred from the output extension
+onnxtr-cli --input_path path/to/your/doc.pdf --output results.json
+
+# Pick architectures, export as markdown
+onnxtr-cli --input_path page.png --output results.md \
+    --det_arch fast_base --reco_arch parseq
+
+# Layout regions and table structure, as hOCR (one file per page)
+onnxtr-cli --input_path doc.pdf --output results.xml \
+    --detect_layout --detect_tables
+
+# Rotated documents, mapping the boxes back onto the original page
+onnxtr-cli --input_path scan.jpg --output results.json \
+    --no-assume_straight_pages --straighten_pages --preserve_original_coords
+
+# Run on GPU with the 8-bit quantized models
+onnxtr-cli --input_path doc.pdf --output results.txt --device cuda --load_in_8_bit
+
+# Several inputs (images, PDFs and URLs) concatenated into a single document
+onnxtr-cli --input_path a.png b.pdf https://example.com --output results.html
+```
+
+`--device` accepts `auto` (the default, picking CUDA when available), `cpu`, `cuda`, or an
+explicit onnxruntime execution provider name. Run `onnxtr-cli --help` for the full option list,
+which mirrors the `ocr_predictor` arguments.
+
 ## Loading custom exported models
 
 You can also load docTR custom exported models:
@@ -304,11 +394,19 @@ Credits where it's due: this repository provides ONNX models for the following a
 - PARSeq: [Scene Text Recognition with Permuted Autoregressive Sequence Models](https://arxiv.org/pdf/2207.06966).
 - VIPTR: [A Vision Permutable Extractor for Fast and Efficient Scene Text Recognition](https://arxiv.org/abs/2401.10110).
 
+### Layout Detection
+
+- LW-DETR: [LW-DETR: A Transformer Replacement to YOLO for Real-Time Detection](https://arxiv.org/pdf/2406.03459v1).
+
+### Table Structure Recognition
+
+- TableCenterNet: [TableCenterNet: A one-stage network for table structure recognition](https://arxiv.org/abs/2504.17522).
+
 ```python
 predictor = ocr_predictor()
 predictor.list_archs()
 {
-    "detection archs": [
+    "detection_archs": [
         "db_resnet34",
         "db_resnet50",
         "db_mobilenet_v3_large",
@@ -319,7 +417,7 @@ predictor.list_archs()
         "fast_small",  # No 8-bit support
         "fast_base",  # No 8-bit support
     ],
-    "recognition archs": [
+    "recognition_archs": [
         "crnn_vgg16_bn",
         "crnn_mobilenet_v3_small",
         "crnn_mobilenet_v3_large",
@@ -329,6 +427,12 @@ predictor.list_archs()
         "vitstr_base",
         "parseq",
         "viptr_tiny",  # No 8-bit support
+    ],
+    "layout_archs": [
+        "lw_detr_s",  # No 8-bit support
+    ],
+    "table_structure_archs": [
+        "tablecenternet",  # No 8-bit support
     ],
 }
 ```
