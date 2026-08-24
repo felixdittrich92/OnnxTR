@@ -11,6 +11,8 @@ AVAILABLE_ARCHS = {
     "classification": models.classification.zoo.ORIENTATION_ARCHS,
     "detection": models.detection.zoo.ARCHS,
     "recognition": models.recognition.zoo.ARCHS,
+    "layout": models.layout.zoo.ARCHS,
+    "table_structure": models.table_structure.zoo.ARCHS,
 }
 
 
@@ -25,6 +27,12 @@ def test_push_to_hf_hub():
     with pytest.raises(ValueError):
         # arch not in available architectures for task
         push_to_hf_hub(model, model_name="test", task="detection", arch="crnn_mobilenet_v3_large")
+    with pytest.raises(ValueError):
+        # arch not in available architectures for the layout task
+        push_to_hf_hub(model, model_name="test", task="layout", arch="fast_base")
+    with pytest.raises(ValueError):
+        # arch not in available architectures for the table_structure task
+        push_to_hf_hub(model, model_name="test", task="table_structure", arch="lw_detr_s")
 
 
 def test_models_huggingface_hub(tmpdir):
@@ -43,6 +51,8 @@ def test_models_huggingface_hub(tmpdir):
                 assert arch_name == tmp_config["arch"]
                 assert task_name == tmp_config["task"]
                 assert all(key in model.cfg.keys() for key in tmp_config.keys())
+                if task_name == "layout":
+                    assert tmp_config["class_names"] == model.class_names
 
                 # test from hub
                 hub_model = from_hub(repo_id="Felix92/onnxtr-{}".format(arch_name).replace("_", "-"))

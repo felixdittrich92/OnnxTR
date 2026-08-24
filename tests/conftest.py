@@ -3,7 +3,7 @@ from io import BytesIO
 import cv2
 import pytest
 import requests
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from onnxtr.io import reader
 from onnxtr.utils import geometry
@@ -19,6 +19,15 @@ def synthesize_text_img(
 ) -> Image.Image:
     background_color = (0, 0, 0) if background_color is None else background_color
     text_color = (255, 255, 255) if text_color is None else text_color
+
+    if font_family is None:
+        for _candidate in ("FreeMono.ttf", "DejaVuSansMono.ttf", "LiberationMono-Regular.ttf"):
+            try:
+                ImageFont.truetype(_candidate, font_size)
+                font_family = _candidate
+                break
+            except OSError:
+                continue
 
     font = get_font(font_family, font_size)
     left, top, right, bottom = font.getbbox(text)

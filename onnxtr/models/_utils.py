@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+import heapq
 from math import floor
 from statistics import median_low
 
@@ -12,7 +13,7 @@ from langdetect import LangDetectException, detect_langs
 
 from onnxtr.utils.geometry import rotate_image
 
-__all__ = ["estimate_orientation", "get_language"]
+__all__ = ["estimate_orientation", "get_language", "mask_boxes"]
 
 
 def get_max_width_length_ratio(contour: np.ndarray) -> float:
@@ -57,7 +58,7 @@ def estimate_orientation(
 
     # Convert image to grayscale if necessary
     if img.shape[-1] == 3:
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         gray_img = cv2.medianBlur(gray_img, 5)
         thresh = cv2.threshold(gray_img, thresh=0, maxval=255, type=cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
     else:
@@ -82,15 +83,15 @@ def estimate_orientation(
     # extract contours
     contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Filter & Sort contours
-    contours = sorted(
-        [contour for contour in contours if cv2.contourArea(contour) > lower_area],
+    # Filter contours & keep the n_ct most elongated ones
+    contours = heapq.nlargest(
+        n_ct,
+        (contour for contour in contours if cv2.contourArea(contour) > lower_area),
         key=get_max_width_length_ratio,
-        reverse=True,
     )
 
     angles = []
-    for contour in contours[:n_ct]:
+    for contour in contours:
         _, (w, h), angle = cv2.minAreaRect(contour)
 
         # OpenCV version-proof normalization: force 'w' to be the long side
@@ -207,3 +208,43 @@ def get_language(text: str) -> tuple[str, float]:
     if len(text) <= 1 or (len(text) <= 5 and lang.prob <= 0.2):
         return "unknown", 0.0
     return lang.lang, lang.prob
+
+
+def mask_boxes(img: np.ndarray, boxes: np.ndarray, fill_value: int = 255) -> np.ndarray:
+    """Blank out regions of an image by filling the given boxes with a constant value.
+
+    Handles both box formats produced by the models: straight boxes of shape `(N, 4)` in
+    `(x_min, y_min, x_max, y_max)` form and rotated 4-point polygons of shape `(N, 4, 2)`, with
+    coordinates relative to the image size.
+
+    Args:
+        img: the image to mask, shape `(H, W)` or `(H, W, C)`
+        boxes: relative coordinates of the regions to fill, shape `(N, 4)` or `(N, 4, 2)`
+        fill_value: pixel value used to fill the masked regions
+
+    Returns:
+        a copy of the image with the boxes filled (the input is left untouched)
+    """
+    boxes = np.asarray(boxes, dtype=np.float32)
+    if boxes.size == 0:
+        return img
+
+    h, w = img.shape[:2]
+    if boxes.ndim == 2:  # straight boxes (N, 4) -> (N, 4, 2) corner polygons
+        polys = np.empty((boxes.shape[0], 4, 2), dtype=np.float32)
+        polys[:, 0] = boxes[:, [0, 1]]  # (x_min, y_min)
+        polys[:, 1] = boxes[:, [2, 1]]  # (x_max, y_min)
+        polys[:, 2] = boxes[:, [2, 3]]  # (x_max, y_max)
+        polys[:, 3] = boxes[:, [0, 3]]  # (x_min, y_max)
+    else:  # rotated polygons (N, 4, 2)
+        polys = boxes.copy()
+
+    # relative -> absolute pixel corners, clipped to the image
+    polys[..., 0] = np.clip(polys[..., 0] * w, 0, w)
+    polys[..., 1] = np.clip(polys[..., 1] * h, 0, h)
+    polys = polys.round().astype(np.int32)
+
+    img = img.copy()
+    color = (int(fill_value),) * (img.shape[2] if img.ndim == 3 else 1)
+    cv2.fillPoly(img, list(polys), color=color)
+    return img

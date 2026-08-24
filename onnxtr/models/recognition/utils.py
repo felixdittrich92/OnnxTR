@@ -21,7 +21,7 @@ def merge_strings(a: str, b: str, overlap_ratio: float) -> str:
         A merged character sequence.
 
     Example::
-        >>> from doctr.models.recognition.utils import merge_strings
+        >>> from onnxtr.models.recognition.utils import merge_strings
         >>> merge_strings('abcd', 'cdefgh', 0.5)
         'abcdefgh'
         >>> merge_strings('abcdi', 'cdefgh', 0.5)
@@ -79,7 +79,7 @@ def merge_multi_strings(seq_list: list[str], overlap_ratio: float, last_overlap_
         A merged character sequence
 
     Example::
-        >>> from doctr.models.recognition.utils import merge_multi_strings
+        >>> from onnxtr.models.recognition.utils import merge_multi_strings
         >>> merge_multi_strings(['abc', 'bcdef', 'difghi', 'aijkl'], 0.5, 0.1)
         'abcdefghijkl'
     """

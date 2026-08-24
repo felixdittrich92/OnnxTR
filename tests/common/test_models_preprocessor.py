@@ -37,3 +37,38 @@ def test_preprocessor(batch_size, output_size, input_tensor, expected_batches, e
     assert all(b.shape[1:3] == output_size for b in out)
     assert all(np.all(b == expected_value) for b in out)
     assert len(repr(processor).split("\n")) == 4
+
+
+@pytest.mark.parametrize(
+    "input_tensor, expected_batches",
+    [
+        [np.full((3, 256, 128, 3), 255, dtype=np.uint8), 1],  # pre-batched numpy
+        [[np.full((256, 128, 3), 255, dtype=np.uint8)] * 3, 2],  # list of numpy
+    ],
+)
+def test_preprocessor_padding_mask(input_tensor, expected_batches):
+    output_size = (128, 128)
+    processor = PreProcessor(output_size, 2, preserve_aspect_ratio=True, symmetric_pad=True)
+    processor.resize.return_padding_mask = True
+
+    out = processor(input_tensor)
+    # Batches come back as (images, masks) pairs
+    assert isinstance(out, list) and len(out) == expected_batches
+    assert all(isinstance(b, tuple) and len(b) == 2 for b in out)
+
+    for imgs, masks in out:
+        assert imgs.dtype == np.float32
+        assert imgs.shape[1:3] == output_size
+        assert masks.dtype == bool
+        assert masks.shape == (imgs.shape[0], *output_size)
+
+    # The samples are 256x128 -> padded left/right, so the mask must not be all True
+    imgs, masks = out[0]
+    if isinstance(input_tensor, list):
+        assert not masks.all()
+        assert masks[:, :, output_size[1] // 2].all()
+
+    # Turning the flag back off restores the plain list of arrays
+    processor.resize.return_padding_mask = False
+    plain = processor(input_tensor)
+    assert all(isinstance(b, np.ndarray) for b in plain)

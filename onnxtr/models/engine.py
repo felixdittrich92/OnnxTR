@@ -29,6 +29,24 @@ __all__ = ["EngineConfig", "RunOptionsProvider"]
 
 RunOptionsProvider: TypeAlias = Callable[[RunOptions], RunOptions]
 
+_ORT_TO_NUMPY_DTYPE: dict[str, Any] = {
+    "tensor(float)": np.float32,
+    "tensor(float16)": np.float16,
+    "tensor(double)": np.float64,
+    "tensor(bool)": np.bool_,
+    "tensor(int32)": np.int32,
+    "tensor(int64)": np.int64,
+    "tensor(uint8)": np.uint8,
+}
+
+
+def _cast_to_ort_dtype(array: np.ndarray, ort_type: str) -> np.ndarray:
+    """Cast an array to the dtype expected by the graph input (onnxruntime is strict about this)"""
+    dtype = _ORT_TO_NUMPY_DTYPE.get(ort_type)
+    if dtype is None:  # pragma: no cover
+        return array
+    return array if array.dtype == dtype else array.astype(dtype)
+
 
 class EngineConfig:
     """Implements a configuration class for the engine of a model
@@ -110,12 +128,45 @@ class Engine:
         self.providers = engine_cfg.providers
         self.run_options_provider = engine_cfg.run_options_provider
         self.runtime = InferenceSession(archive_path, providers=self.providers, sess_options=self.session_options)
-        self.runtime_inputs = self.runtime.get_inputs()[0]
+        # NOTE: `runtime_inputs` is kept for single input models, `runtime_input_metas` covers
+        # multi-input models (e.g. LW-DETR which additionally consumes a padding mask)
+        self.runtime_input_metas = self.runtime.get_inputs()
+        self.runtime_inputs = self.runtime_input_metas[0]
+        self.input_names = [inp.name for inp in self.runtime_input_metas]
         self.tf_exported = int(self.runtime_inputs.shape[-1]) == 3
         self.fixed_batch_size: int | str = self.runtime_inputs.shape[
             0
         ]  # mostly possible with tensorflow exported models
         self.output_name = [output.name for output in self.runtime.get_outputs()]
+
+    def _run_options(self) -> RunOptions:
+        run_options = RunOptions()
+        if self.run_options_provider is not None:
+            run_options = self.run_options_provider(run_options)
+        return run_options
+
+    def run_multi(self, inputs: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        """Run a model with multiple inputs and/or multiple outputs.
+
+        Contrary to `run`, no layout translation is applied: the arrays are fed and returned
+        exactly as the graph defines them. This is required for models whose outputs are not
+        spatial feature maps (e.g. LW-DETR logits / boxes) or which expose more than one output
+        (e.g. the six TableCenterNet head maps).
+
+        Args:
+            inputs: mapping from graph input name to the corresponding array
+
+        Returns:
+            mapping from graph output name to the corresponding array
+        """
+        feed_dict = {}
+        for meta in self.runtime_input_metas:
+            if meta.name not in inputs:
+                raise ValueError(f"missing input '{meta.name}' - expected inputs: {self.input_names}")
+            feed_dict[meta.name] = _cast_to_ort_dtype(inputs[meta.name], meta.type)
+
+        outputs = self.runtime.run(self.output_name, feed_dict, run_options=self._run_options())
+        return dict(zip(self.output_name, outputs))
 
     def run(self, inputs: np.ndarray) -> np.ndarray:
         run_options = RunOptions()

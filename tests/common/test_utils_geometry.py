@@ -218,6 +218,14 @@ def test_remove_image_padding():
     cropped = geometry.remove_image_padding(img)
     assert np.all(cropped == img)
 
+    # Grayscale images are supported as well
+    gray = np.pad(np.ones((16, 16), dtype=np.uint8), ((3, 4), (5, 6)))
+    assert np.all(geometry.remove_image_padding(gray) == np.ones((16, 16), dtype=np.uint8))
+
+    # Fully black image: nothing to crop, must not raise
+    black = np.zeros((32, 64, 3), dtype=np.float32)
+    assert geometry.remove_image_padding(black) is black
+
 
 @pytest.mark.parametrize(
     "abs_geoms, img_size, rel_geoms",
@@ -261,6 +269,9 @@ def test_estimate_page_angle():
     invalid_poly = np.array([[[0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]])
     angle = geometry.estimate_page_angle(invalid_poly)
     assert angle == 0.0
+    # A degenerate polygon among valid ones must be ignored, not collapse the whole estimate to 0
+    angle = geometry.estimate_page_angle(np.concatenate([rotated_polys, invalid_poly], axis=0))
+    assert np.isclose(angle, 20)
 
 
 def test_extract_crops(mock_pdf):
@@ -295,17 +306,7 @@ def test_extract_crops(mock_pdf):
         assert all(crop.ndim == 3 for crop in croped_imgs)
 
     # Identity
-    assert np.all(
-        doc_img == geometry.extract_crops(doc_img, np.array([[0, 0, 1, 1]], dtype=np.float32), channels_last=True)[0]
-    )
-    torch_img = np.transpose(doc_img, axes=(-1, 0, 1))
-    assert np.all(
-        torch_img
-        == np.transpose(
-            geometry.extract_crops(doc_img, np.array([[0, 0, 1, 1]], dtype=np.float32), channels_last=False)[0],
-            axes=(-1, 0, 1),
-        )
-    )
+    assert np.all(doc_img == geometry.extract_crops(doc_img, np.array([[0, 0, 1, 1]], dtype=np.float32))[0])
 
     # Identical boxes must yield identical crops regardless of their position in the batch
     gradient_img = np.tile(np.arange(100, dtype=np.uint8).reshape(100, 1, 1), (1, 100, 3))
@@ -352,23 +353,60 @@ def test_extract_rcrops(mock_pdf, assume_horizontal):
     assert geometry.extract_rcrops(doc_img, np.zeros((0, 4, 2)), assume_horizontal=assume_horizontal) == []
 
 
-@pytest.mark.parametrize(
-    "format,input_shape,expected_shape",
-    [
-        ("BCHW", (32, 3, 64, 64), (32, 3, 64, 64)),
-        ("BCHW", (32, 64, 64, 3), (32, 3, 64, 64)),
-        ("BHWC", (32, 64, 64, 3), (32, 64, 64, 3)),
-        ("BHWC", (32, 3, 64, 64), (32, 64, 64, 3)),
-        ("XYZ", (32, 3, 64, 64), (32, 3, 64, 64)),
-        ("CHW", (3, 64, 64), (3, 64, 64)),
-        ("CHW", (64, 64, 3), (3, 64, 64)),
-        ("HWC", (64, 64, 3), (64, 64, 3)),
-        ("HWC", (3, 64, 64), (64, 64, 3)),
-    ],
-)
-def test_shape_translate(format, input_shape, expected_shape):
-    sample_data = np.random.rand(*input_shape).astype(np.float32)
-    output_data = geometry.shape_translate(sample_data, format)
+@pytest.mark.parametrize("angle", [5, 12, -5, -12, 90 + 13, 180 + 13, 270 + 13])
+@pytest.mark.parametrize("shape", [(800, 600), (600, 800), (700, 700)])
+def test_straighten_page_inverse(angle, shape):
+    # Sub-degree angles excluded: interpolation blends every pixel at small rotations
+    h, w = shape
+    page = np.ones((h, w, 3), dtype=np.uint8) * 255
+    page[99:102, 99:102] = (255, 0, 0)
+    page[99:102, 499:502] = (0, 255, 0)
+    page[699:702, 99:102] = (0, 0, 255)
+    page[699:702, 499:502] = (255, 255, 0)
+    page[399:402, 299:302] = (255, 0, 255)
+    dots = [(100, 100), (500, 100), (100, 700), (500, 700), (300, 400)]
+    colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255)]
 
-    # Assert that the output data has the expected shape
-    assert output_data.shape == expected_shape
+    straightened, m_inv = geometry.straighten_page(page, angle)
+
+    errors = []
+    for (dx, dy), colour in zip(dots, colours):
+        mask = np.all(straightened == colour, axis=-1)
+        found = np.argwhere(mask)
+        if len(found) == 0:
+            continue
+        fy, fx = found.mean(axis=0)
+        recovered = (np.array([float(fx), float(fy), 1.0]) @ m_inv.T)[:2]
+        errors.append(np.linalg.norm(recovered - np.array([float(dx), float(dy)])))
+
+    if len(errors) == 0:
+        return
+    assert max(errors) < 0.6, f"Max remap error {max(errors):.4f}px exceeds 0.6px threshold"
+
+
+def test_straighten_page_projected_corner_clamp():
+    # Regression: fp error can project a content corner to cx=-1; negative slice collapsed the crop to a 1px strip
+    h, w = 2291, 2025
+    angle = 30
+    page = np.ones((h, w, 3), dtype=np.uint8) * 255
+    # 9x9 dots at interior positions (>= 200px from any edge)
+    dots = [(200, 200), (500, 500), (w // 2, h // 2), (w - 300, h - 300), (w - 300, 300), (300, h - 300)]
+    colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255)]
+    for (dx, dy), colour in zip(dots, colours):
+        page[dy - 9 : dy + 10, dx - 9 : dx + 10] = colour
+
+    straightened, m_inv = geometry.straighten_page(page, angle)
+    assert straightened.shape[1] > 1, "Crop must not produce a 1-pixel-wide strip"
+
+    errors = []
+    for (dx, dy), colour in zip(dots, colours):
+        mask = np.all(straightened == colour, axis=-1)
+        found = np.argwhere(mask)
+        if len(found) == 0:
+            continue
+        fy, fx = found.mean(axis=0)
+        recovered = (np.array([float(fx), float(fy), 1.0]) @ m_inv.T)[:2]
+        errors.append(np.linalg.norm(recovered - np.array([float(dx), float(dy)])))
+
+    assert len(errors) > 0, "No fiducial dots survived interpolation"
+    assert max(errors) < 0.6, f"Max remap error {max(errors):.4f}px exceeds 0.6px threshold"

@@ -82,6 +82,7 @@ testing = [
     "requests>=2.20.0",
     "pytest-memray>=1.7.0",
     "psutil>=7.0.0",
+    "pandas>=2.0.0",
 ]
 quality = [
     "ruff>=0.1.5",
@@ -103,11 +104,15 @@ dev = [
     "requests>=2.20.0",
     "pytest-memray>=1.7.0",
     "psutil>=7.0.0",
+    "pandas>=2.0.0",
     # Quality
     "ruff>=0.1.5",
     "mypy>=0.812",
     "pre-commit>=2.17.0",
 ]
+
+[project.scripts]
+onnxtr-cli = "onnxtr.cli.main:main"
 
 [project.urls]
 repository = "https://github.com/felixdittrich92/OnnxTR"

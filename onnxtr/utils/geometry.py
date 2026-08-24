@@ -20,6 +20,7 @@ __all__ = [
     "rotate_boxes",
     "compute_expanded_shape",
     "rotate_image",
+    "straighten_page",
     "estimate_page_angle",
     "convert_to_relative_coords",
     "rotate_abs_geoms",
@@ -427,13 +428,76 @@ def remove_image_padding(image: np.ndarray) -> np.ndarray:
     Returns:
         Image with padding removed
     """
-    # Find the bounding box of the non-black region
-    rows = np.any(image, axis=1)
-    cols = np.any(image, axis=0)
-    rmin, rmax = np.where(rows)[0][[0, -1]]
-    cmin, cmax = np.where(cols)[0][[0, -1]]
+    # Find the bounding box of the non-black region (reduce over every axis but the one of interest)
+    rows = np.any(image, axis=tuple(ax for ax in range(image.ndim) if ax != 0))
+    cols = np.any(image, axis=tuple(ax for ax in range(image.ndim) if ax != 1))
+    if not rows.any():  # fully black image: nothing to crop
+        return image
+    rmin, rmax = int(np.argmax(rows)), image.shape[0] - 1 - int(np.argmax(rows[::-1]))
+    cmin, cmax = int(np.argmax(cols)), image.shape[1] - 1 - int(np.argmax(cols[::-1]))
 
     return image[rmin : rmax + 1, cmin : cmax + 1]
+
+
+def straighten_page(
+    page: np.ndarray,
+    angle: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Straighten a page by rotating it and cropping to content, returning the straightened image
+    and the inverse affine matrix that maps straightened-page coordinates back to the original page.
+
+    Args:
+        page: the original page image (H, W, C)
+        angle: rotation angle in degrees (between -90 and +90)
+
+    Returns:
+        a tuple (straightened, M_inv) where straightened is the page rotated and cropped to the
+        non-padded region, and M_inv is a (3, 3) array mapping points in the straightened image's
+        pixel space (x, y, 1) back to the original page's pixel space.
+    """
+    h, w = page.shape[:2]
+
+    # Padding to preserve content after rotation
+    exp = compute_expanded_shape((h, w), angle)
+    h_pad = int(max(0, np.ceil(exp[0] - h)))
+    w_pad = int(max(0, np.ceil(exp[1] - w)))
+
+    pt, pb = h_pad // 2, h_pad - h_pad // 2
+    pl, pr = w_pad // 2, w_pad - w_pad // 2
+
+    exp_img = np.pad(page, ((pt, pb), (pl, pr), (0, 0)))
+    ph_pad, pw_pad = exp_img.shape[:2]
+
+    # Rotate around the padded image center
+    rot_mat = cv2.getRotationMatrix2D((pw_pad / 2, ph_pad / 2), angle, 1.0)
+    rotated = cv2.warpAffine(exp_img, rot_mat, (pw_pad, ph_pad))
+
+    # Aspect-ratio padding (applied only on right/bottom so analytic crop stays simple)
+    if h_pad > 0 or w_pad > 0:
+        if (rotated.shape[0] / rotated.shape[1]) > (h / w):
+            w_pad2 = int(rotated.shape[0] * w / h - rotated.shape[1])
+            rotated = np.pad(rotated, ((0, 0), (0, w_pad2), (0, 0)))
+        else:
+            h_pad2 = int(rotated.shape[1] * h / w - rotated.shape[0])
+            rotated = np.pad(rotated, ((0, h_pad2), (0, 0), (0, 0)))
+
+    # Analytic crop: project the four content corners through the rotation matrix
+    corners = np.array(
+        [[pl, pt, 1], [pl + w, pt, 1], [pl + w, pt + h, 1], [pl, pt + h, 1]],
+        dtype=np.float64,
+    ).T
+    rc = rot_mat @ corners
+    cx, cy = max(0, int(np.floor(rc[0].min()))), max(0, int(np.floor(rc[1].min())))
+    cropped = rotated[cy:, cx:]
+
+    # Composite forward matrix: crop o rotate o pad
+    # cv2.warpAffine treats the rotation matrix as src->dst
+    c3 = np.array([[1, 0, -cx], [0, 1, -cy], [0, 0, 1]], dtype=np.float64)
+    r3 = np.vstack([rot_mat, [0, 0, 1]])
+    p3 = np.array([[1, 0, pl], [0, 1, pt], [0, 0, 1]], dtype=np.float64)
+    m_inv = np.linalg.inv(c3 @ r3 @ p3)
+
+    return cropped, m_inv
 
 
 def estimate_page_angle(polys: np.ndarray) -> float:
@@ -445,13 +509,12 @@ def estimate_page_angle(polys: np.ndarray) -> float:
     yleft = polys[:, 0, 1] + polys[:, 3, 1]
     xright = polys[:, 1, 0] + polys[:, 2, 0]
     yright = polys[:, 1, 1] + polys[:, 2, 1]
-    with np.errstate(divide="raise", invalid="raise"):
-        try:
-            return float(
-                np.median(np.arctan((yleft - yright) / (xright - xleft)) * 180 / np.pi)  # Y axis from top to bottom!
-            )
-        except FloatingPointError:
-            return 0.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        angles = np.arctan((yleft - yright) / (xright - xleft)) * 180 / np.pi  # Y axis from top to bottom!
+    # Degenerate polygons (0/0) yield NaN: ignore them instead of discarding the whole page estimate,
+    # while vertical polygons (x/0 -> +/-inf) legitimately contribute +/-90 degrees through arctan
+    angles = angles[np.isfinite(angles)]
+    return float(np.median(angles)) if angles.size > 0 else 0.0
 
 
 def convert_to_relative_coords(geoms: np.ndarray, img_shape: tuple[int, int]) -> np.ndarray:
