@@ -54,7 +54,7 @@ def test_ocrpredictor(
         recognition.crnn_vgg16_bn(),
     )
 
-    doc = DocumentFile.from_pdf(mock_pdf)[:1]
+    doc = DocumentFile.from_pdf(mock_pdf)
 
     predictor = OCRPredictor(
         det_predictor,
@@ -240,7 +240,7 @@ def test_ocrpredictor_layout(mock_pdf, mock_payslip):
     )
     layout_pred = layout_predictor("lw_detr_s")
 
-    doc = DocumentFile.from_pdf(mock_pdf)[:1]
+    doc = DocumentFile.from_pdf(mock_pdf)
 
     # Without a layout predictor -> pages carry an empty layout
     predictor = OCRPredictor(det_predictor, reco_predictor, ignore_regions=["Picture", "Formula"])
@@ -338,7 +338,7 @@ def test_ocrpredictor_tables(mock_pdf):
     with pytest.raises(ValueError):
         OCRPredictor(det_predictor, reco_predictor, table_predictor=table_pred)
 
-    doc = DocumentFile.from_pdf(mock_pdf)[:1]
+    doc = DocumentFile.from_pdf(mock_pdf)
 
     # Without a table predictor -> pages carry an empty list of tables
     predictor = OCRPredictor(det_predictor, reco_predictor)

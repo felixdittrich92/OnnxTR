@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+import heapq
 from math import floor
 from statistics import median_low
 
@@ -57,7 +58,7 @@ def estimate_orientation(
 
     # Convert image to grayscale if necessary
     if img.shape[-1] == 3:
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         gray_img = cv2.medianBlur(gray_img, 5)
         thresh = cv2.threshold(gray_img, thresh=0, maxval=255, type=cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
     else:
@@ -82,15 +83,15 @@ def estimate_orientation(
     # extract contours
     contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Filter & Sort contours
-    contours = sorted(
-        [contour for contour in contours if cv2.contourArea(contour) > lower_area],
+    # Filter contours & keep the n_ct most elongated ones
+    contours = heapq.nlargest(
+        n_ct,
+        (contour for contour in contours if cv2.contourArea(contour) > lower_area),
         key=get_max_width_length_ratio,
-        reverse=True,
     )
 
     angles = []
-    for contour in contours[:n_ct]:
+    for contour in contours:
         _, (w, h), angle = cv2.minAreaRect(contour)
 
         # OpenCV version-proof normalization: force 'w' to be the long side
