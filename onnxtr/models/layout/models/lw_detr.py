@@ -15,6 +15,7 @@ from ..postprocessor.base import LWDETRPostProcessor
 
 __all__ = ["LWDETR", "lw_detr_s"]  # , "lw_detr_m"] --- IGNORE ---
 
+logger = logging.getLogger(__name__)
 
 CLASS_NAMES = [
     "Caption",
@@ -145,7 +146,7 @@ def _lw_detr(
         raise ValueError(f"no pretrained ONNX export is available for '{arch}' yet")
     if load_in_8_bit:
         if default_cfgs[arch]["url_8_bit"] is None:
-            logging.warning(f"No 8-bit quantized export available for '{arch}'. Loading full precision model...")
+            logger.warning(f"No 8-bit quantized export available for '{arch}'. Loading full precision model...")
         elif "http" in model_path:
             model_path = default_cfgs[arch]["url_8_bit"]
     # Build the model

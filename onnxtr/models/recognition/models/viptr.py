@@ -18,6 +18,8 @@ from ..core import RecognitionPostProcessor
 
 __all__ = ["VIPTR", "viptr_tiny"]
 
+logger = logging.getLogger(__name__)
+
 default_cfgs: dict[str, dict[str, Any]] = {
     "viptr_tiny": {
         "mean": (0.694, 0.695, 0.693),
@@ -139,7 +141,7 @@ def _viptr(
     **kwargs: Any,
 ) -> VIPTR:
     if load_in_8_bit:
-        logging.warning("VIPTR models do not support 8-bit quantization yet. Loading full precision model...")
+        logger.warning("VIPTR models do not support 8-bit quantization yet. Loading full precision model...")
     kwargs["vocab"] = kwargs.get("vocab", default_cfgs[arch]["vocab"])
 
     _cfg = deepcopy(default_cfgs[arch])

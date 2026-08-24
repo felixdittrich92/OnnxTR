@@ -82,6 +82,7 @@ testing = [
     "requests>=2.20.0",
     "pytest-memray>=1.7.0",
     "psutil>=7.0.0",
+    "onnx>=1.18.0",
     "pandas>=2.0.0",
 ]
 quality = [
@@ -104,6 +105,7 @@ dev = [
     "requests>=2.20.0",
     "pytest-memray>=1.7.0",
     "psutil>=7.0.0",
+    "onnx>=1.18.0",
     "pandas>=2.0.0",
     # Quality
     "ruff>=0.1.5",

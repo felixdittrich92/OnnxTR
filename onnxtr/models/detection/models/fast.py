@@ -14,6 +14,8 @@ from ..postprocessor.base import GeneralDetectionPostProcessor
 
 __all__ = ["FAST", "fast_tiny", "fast_small", "fast_base"]
 
+logger = logging.getLogger(__name__)
+
 
 default_cfgs: dict[str, dict[str, Any]] = {
     "fast_tiny": {
@@ -96,7 +98,7 @@ def _fast(
     **kwargs: Any,
 ) -> FAST:
     if load_in_8_bit:
-        logging.warning("FAST models do not support 8-bit quantization yet. Loading full precision model...")
+        logger.warning("FAST models do not support 8-bit quantization yet. Loading full precision model...")
     # Build the model
     return FAST(model_path, cfg=default_cfgs[arch], engine_cfg=engine_cfg, **kwargs)
 
