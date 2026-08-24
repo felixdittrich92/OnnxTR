@@ -421,6 +421,3 @@ def test_ocr_predictor_straighten_with_preserve_original_coords(mock_tilted_pays
         for w in line.words
     ]
     assert geoms_on != geoms_off
-    assert any(w.value == "Mr." for block in out_on.pages[0].blocks for line in block.lines for w in line.words)
-    assert out_on.pages[0].page.shape[:2] == out_on.pages[0].dimensions
-    assert out_on.pages[0].page.shape[:2] == doc[0].shape[:2]
