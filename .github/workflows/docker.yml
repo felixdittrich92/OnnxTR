@@ -1,5 +1,5 @@
 # https://docs.github.com/en/actions/publishing-packages/publishing-docker-images#publishing-images-to-github-packages
-#
+
 name: Docker image on ghcr.io
 
 on:
@@ -20,29 +20,45 @@ env:
 
 jobs:
   build-and-push-image:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
 
     strategy:
       fail-fast: false
       matrix:
-        image:
-          - "ubuntu:24.04"          # Base image for CPU variants
-          - "nvidia/cuda:12.6.2-base-ubuntu24.04" # Base image for GPU
-        variant:
-          - "cpu-headless"           # CPU variant 1
-          - "openvino-headless"  # CPU variant 2
-          - "gpu-headless"           # GPU variant
-        python: [3.11.16]
+        # only cpu-headless has aarch64 wheels available for all its dependencies
+        include:
+          - variant: "cpu-headless"
+            image: "ubuntu:24.04"
+            python: "3.11.16"
+            platform: "linux/amd64"
+            arch: "amd64"
+            runner: "ubuntu-latest"
 
-        # Exclude invalid combinations
-        exclude:
-          - image: "nvidia/cuda:12.6.2-base-ubuntu24.04"
-            variant: "cpu-headless"
-          - image: "nvidia/cuda:12.6.2-base-ubuntu24.04"
-            variant: "openvino-headless"
-          - image: "ubuntu:24.04"
-            variant: "gpu-headless"
+          - variant: "cpu-headless"
+            image: "ubuntu:24.04"
+            python: "3.11.16"
+            platform: "linux/arm64"   # >= Raspberry Pi 4 (64-bit OS)
+            arch: "arm64"
+            runner: "ubuntu-24.04-arm"
+
+          # openvino-headless: `onnxruntime-openvino` is published for x86_64
+          # Linux / Windows only - no aarch64 build exists.
+          - variant: "openvino-headless"
+            image: "ubuntu:24.04"
+            python: "3.11.16"
+            platform: "linux/amd64"
+            arch: "amd64"
+            runner: "ubuntu-latest"
+
+          # gpu-headless: `onnxruntime-gpu` has no aarch64 wheel on PyPI
+          # Jetson boards need NVIDIA's JetPack-specific builds instead
+          - variant: "gpu-headless"
+            image: "nvidia/cuda:12.6.2-base-ubuntu24.04"
+            python: "3.11.16"
+            platform: "linux/amd64"
+            arch: "amd64"
+            runner: "ubuntu-latest"
 
     permissions:
       contents: read
@@ -65,8 +81,125 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare build environment
+        run: |
+          # ghcr.io rejects uppercase in the repository path, and `push-by-digest`
+          # needs the name spelled out (metadata-action would normally lowercase
+          # it for us, but that now runs in the merge job).
+          echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+          # Buildx parses cache-from/cache-to as CSV, so the scope must not
+          # contain commas; slashes and colons from the image name are stripped too.
+          CACHE_SCOPE=$(echo "${{ matrix.variant }}-py${{ matrix.python }}-${{ matrix.image }}-${{ matrix.arch }}" | sed 's|[,/:]|-|g')
+          echo "CACHE_SCOPE=${CACHE_SCOPE}" >> $GITHUB_ENV
+
+          echo "Cache scope: $CACHE_SCOPE"
+
+      - name: Build Docker image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          # No `platforms:` here - the runner already IS the target
+          # architecture, so this is a native single-platform build and
+          # `load: true` is legal.
+          build-args: |
+            BASE_IMAGE=${{ matrix.image }}
+            SYSTEM=${{ matrix.variant }}
+            PYTHON_VERSION=${{ matrix.python }}
+            ONNXTR_REPO=${{ github.repository }}
+            ONNXTR_VERSION=${{ github.sha }}
+          push: false  # push only if `import onnxtr` works
+          load: true   # required with the docker-container driver for `docker run` below
+          tags: onnxtr-smoketest:${{ matrix.variant }}-${{ matrix.arch }}
+          cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
+          cache-to: type=gha,scope=${{ env.CACHE_SCOPE }},mode=max
+
+      - name: Check if `import onnxtr` works
+        run: docker run --rm ${{ steps.build.outputs.imageid }} python3 -c 'import onnxtr; print(onnxtr.__version__)'
+
+      - name: Push Docker image by digest
+        id: push
+        # Fully served from the GHA layer cache of the build above
+        if: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (startsWith(github.ref, 'refs/tags') && github.event_name == 'push') }}
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            BASE_IMAGE=${{ matrix.image }}
+            SYSTEM=${{ matrix.variant }}
+            PYTHON_VERSION=${{ matrix.python }}
+            ONNXTR_REPO=${{ github.repository }}
+            ONNXTR_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
+          # Push the content without a tag - the merge job below collects the
+          # per-arch digests into a single tagged manifest list.
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        if: ${{ steps.push.outcome == 'success' }}
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.push.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: ${{ steps.push.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.variant }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-and-tag:
+    runs-on: ubuntu-latest
+    needs: build-and-push-image
+    if: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (startsWith(github.ref, 'refs/tags') && github.event_name == 'push') }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # One entry per published tag, i.e. per (variant, image) pair. The arch
+        # dimension is what gets collapsed into the manifest list here
+        include:
+          - variant: "cpu-headless"
+            image: "ubuntu:24.04"
+            python: "3.11.16"
+          - variant: "openvino-headless"
+            image: "ubuntu:24.04"
+            python: "3.11.16"
+          - variant: "gpu-headless"
+            image: "nvidia/cuda:12.6.2-base-ubuntu24.04"
+            python: "3.11.16"
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.variant }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Sanitize docker tag
         run: |
+          echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
           # Start with the base prefix
           PREFIX_DOCKER_TAG="OnnxTR-${{ matrix.variant }}-py${{ matrix.python }}"
 
@@ -93,14 +226,8 @@ jobs:
           # Export to environment
           echo "PREFIX_DOCKER_TAG=${PREFIX_DOCKER_TAG}" >> $GITHUB_ENV
 
-          # Buildx parses cache-from/cache-to as CSV, so the scope must not
-          # contain commas; slashes and colons from the image name are stripped too.
-          CACHE_SCOPE=$(echo "${{ matrix.variant }}-py${{ matrix.python }}-${{ matrix.image }}" | sed 's|[,/:]|-|g')
-          echo "CACHE_SCOPE=${CACHE_SCOPE}" >> $GITHUB_ENV
-
           # Debugging output
           echo "Final Docker Tag: $PREFIX_DOCKER_TAG"
-          echo "Cache scope: $CACHE_SCOPE"
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -113,38 +240,21 @@ jobs:
             # used only if a tag following semver is published
             type=semver,pattern={{raw}},prefix=${{ env.PREFIX_DOCKER_TAG }}
 
-      - name: Build Docker image
-        id: build
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          build-args: |
-            BASE_IMAGE=${{ matrix.image }}
-            SYSTEM=${{ matrix.variant }}
-            PYTHON_VERSION=${{ matrix.python }}
-            ONNXTR_REPO=${{ github.repository }}
-            ONNXTR_VERSION=${{ github.sha }}
-          push: false  # push only if `import onnxtr` works
-          load: true   # required with the docker-container driver for `docker run` below
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
-          cache-to: type=gha,scope=${{ env.CACHE_SCOPE }},mode=max
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          # metadata-action emits nothing for event types not listed above -
+          # fail loudly rather than calling imagetools with no -t.
+          TAG_ARGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          if [ -z "$TAG_ARGS" ]; then
+            echo "::error::No tags produced for event '${{ github.event_name }}'"
+            exit 1
+          fi
 
-      - name: Check if `import onnxtr` works
-        run: docker run ${{ steps.build.outputs.imageid }} python3 -c 'import onnxtr; print(onnxtr.__version__)'
+          docker buildx imagetools create $TAG_ARGS \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
 
-      - name: Push Docker image
-        # Fully served from the GHA layer cache of the build above, so this is fast
-        if: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (startsWith(github.ref, 'refs/tags') && github.event_name == 'push') }}
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          build-args: |
-            BASE_IMAGE=${{ matrix.image }}
-            SYSTEM=${{ matrix.variant }}
-            PYTHON_VERSION=${{ matrix.python }}
-            ONNXTR_REPO=${{ github.repository }}
-            ONNXTR_VERSION=${{ github.sha }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
+      - name: Inspect the image
+        run: |
+          docker buildx imagetools inspect \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}

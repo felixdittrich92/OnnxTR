@@ -24,21 +24,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # - Packages for OnnxTR
     libgl1-mesa-dev libsm6 libxext6 libxrender-dev libpangocairo-1.0-0 \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-fi
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python
-
 RUN wget http://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz && \
     tar -zxf Python-$PYTHON_VERSION.tgz && \
     cd Python-$PYTHON_VERSION && \
-    mkdir /opt/python/ && \
     ./configure --prefix=/opt/python && \
-    make && \
+    make -j"$(nproc)" && \
     make install && \
     cd .. && \
-    rm Python-$PYTHON_VERSION.tgz && \
-    rm -r Python-$PYTHON_VERSION
+    rm -rf Python-$PYTHON_VERSION.tgz Python-$PYTHON_VERSION
 
 ENV PATH=/opt/python/bin:$PATH
 
