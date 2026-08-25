@@ -1,3 +1,3 @@
 -e "onnxtr[gpu-headless,viz] @ git+https://github.com/felixdittrich92/OnnxTR.git"
-gradio>=5.30.0,<7.0.0
-spaces>=0.37.0
+gradio>=6.0.0,<7.0.0
+spaces>=0.50.0,<1.0.0
