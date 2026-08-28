@@ -570,6 +570,22 @@ def _hocr_bbox(geometry: BoundingBox, width: int, height: int) -> str:
     )
 
 
+def _hocr_text_size(geometry: BoundingBox, height: int, dpi: int = 72) -> tuple[int, int]:
+    """Estimate the hOCR `x_size` and `x_fsize` properties from the height of a relative bounding box.
+
+    Args:
+        geometry: the relative bounding box ((xmin, ymin), (xmax, ymax))
+        height: the page height in pixels
+        dpi: the page resolution in dots per inch, used to convert the text height to font points
+
+    Returns:
+        a tuple of the text height in pixels (`x_size`), and the estimated font size in points (`x_fsize`)
+    """
+    (_, ymin), (_, ymax) = geometry
+    x_size = int(round((ymax - ymin) * height))
+    return x_size, int(round(x_size * 72 / dpi))
+
+
 class XMLExporter:
     """hOCR (XML) exporter for pages and documents.
     See the hOCR 1.2 specification for the XML convention: https://github.com/kba/hocr-spec/blob/master/1.2/spec.md
@@ -594,7 +610,9 @@ class XMLExporter:
         SubElement(head, "meta", attrib={"name": "ocr-capabilities", "content": self.ocr_capabilities})
         return root, SubElement(root, "body")
 
-    def _add_table(self, page_div: ETElement, table: "Table", width: int, height: int, table_count: int) -> int:
+    def _add_table(
+        self, page_div: ETElement, table: "Table", width: int, height: int, table_count: int, dpi: int = 72
+    ) -> int:
         """Serialize a recognized table as an hOCR text area, with one `ocr_line` per row.
 
         Args:
@@ -603,6 +621,7 @@ class XMLExporter:
             width: the page width in pixels
             height: the page height in pixels
             table_count: the 1-based index of the table on the page
+            dpi: the page resolution in dots per inch, used to estimate font sizes
 
         Returns:
             the index of the next table
@@ -623,14 +642,19 @@ class XMLExporter:
             cells = sorted(rows[row_idx], key=lambda cell: cell.col_start)
             xs = [coord for cell in cells for coord in (cell.geometry[0][0], cell.geometry[1][0])]
             ys = [coord for cell in cells for coord in (cell.geometry[0][1], cell.geometry[1][1])]
-            row_bbox = _hocr_bbox(((min(xs), min(ys)), (max(xs), max(ys))), width, height)
+            row_geometry = ((min(xs), min(ys)), (max(xs), max(ys)))
+            row_bbox = _hocr_bbox(row_geometry, width, height)
+            row_x_size, row_x_fsize = _hocr_text_size(row_geometry, height, dpi)
             line_span = SubElement(
                 paragraph,
                 "span",
                 attrib={
                     "class": "ocr_line",
                     "id": f"table_{table_count}_row_{row_idx + 1}",
-                    "title": f"{row_bbox}; baseline 0 0; x_size 0; x_descenders 0; x_ascenders 0",
+                    "title": (
+                        f"{row_bbox}; baseline 0 0; x_size {row_x_size}; x_fsize {row_x_fsize}; "
+                        "x_descenders 0; x_ascenders 0"
+                    ),
                 },
             )
             for col_idx, cell in enumerate(cells):
@@ -654,6 +678,7 @@ class XMLExporter:
         file_title: str = "OnnxTR - XML export (hOCR)",
         direction: str = "auto",
         reading_order: bool = True,
+        dpi: int = 72,
     ) -> tuple[bytes, ET.ElementTree]:
         """Export a page as hOCR XML, with its content sorted in reading order.
 
@@ -663,6 +688,7 @@ class XMLExporter:
             direction: reading direction, one of 'auto', 'ltr', 'rtl', 'ttb-rtl' or 'ttb-ltr'
             reading_order: whether the content should be linearized in reading order. Pass False to serialize
                 `page.blocks` then `page.tables` in their raw order.
+            dpi: the page resolution in dots per inch, used to estimate font sizes (`x_size`, `x_fsize`)
 
         Returns:
             a tuple of the XML byte string, and its ElementTree
@@ -692,7 +718,7 @@ class XMLExporter:
         # iterate over the blocks / lines / words and create the XML elements line by line with the attributes
         for item in items:
             if isinstance(item, Table):
-                table_count = self._add_table(page_div, item, width, height, table_count)
+                table_count = self._add_table(page_div, item, width, height, table_count, dpi=dpi)
                 continue
             block = item
             if len(block.geometry) != 2:
@@ -710,7 +736,9 @@ class XMLExporter:
             )
             block_count += 1
             for line in block.lines:
-                # NOTE: baseline, x_size, x_descenders, x_ascenders is currently initalized to 0
+                # NOTE: baseline, x_descenders, x_ascenders are currently initialized to 0,
+                # while x_size and x_fsize are estimated from the line box height
+                x_size, x_fsize = _hocr_text_size(line.geometry, height, dpi)
                 line_span = SubElement(
                     paragraph,
                     "span",
@@ -719,7 +747,7 @@ class XMLExporter:
                         "id": f"line_{line_count}",
                         "title": (
                             f"{_hocr_bbox(line.geometry, width, height)}; "
-                            "baseline 0 0; x_size 0; x_descenders 0; x_ascenders 0"
+                            f"baseline 0 0; x_size {x_size}; x_fsize {x_fsize}; x_descenders 0; x_ascenders 0"
                         ),
                     },
                 )
@@ -806,6 +834,7 @@ class PageExportsMixin:
         file_title: str = "OnnxTR - XML export (hOCR)",
         direction: str = "auto",
         reading_order: bool = True,
+        dpi: int = 72,
     ) -> tuple[bytes, ET.ElementTree]:
         """Export the page as XML (hOCR-format), with its content sorted in reading order
         convention: https://github.com/kba/hocr-spec/blob/master/1.2/spec.md
@@ -814,12 +843,13 @@ class PageExportsMixin:
             file_title: the title of the XML file
             direction: reading direction, one of 'auto', 'ltr', 'rtl', 'ttb-rtl' or 'ttb-ltr'
             reading_order: whether the content should be linearized in reading order
+            dpi: the page resolution in dots per inch, used to estimate font sizes (`x_size`, `x_fsize`)
 
         Returns:
             a tuple of the XML byte string, and its ElementTree
         """
         return XMLExporter().export_page(
-            cast("Page", self), file_title=file_title, direction=direction, reading_order=reading_order
+            cast("Page", self), file_title=file_title, direction=direction, reading_order=reading_order, dpi=dpi
         )
 
     def items_in_reading_order(self, direction: str = "auto") -> list["Block | Table"]:
