@@ -146,7 +146,7 @@ jobs:
 
       - name: Upload digest
         if: ${{ steps.push.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: digests-${{ matrix.variant }}-${{ matrix.arch }}
           path: /tmp/digests/*
@@ -180,7 +180,7 @@ jobs:
 
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-${{ matrix.variant }}-*
