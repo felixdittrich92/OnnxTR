@@ -75,6 +75,7 @@ def test_crop_orientation_model(mock_text_box, quantized):
     # 270 degrees is equivalent to -90 degrees
     assert classifier([text_box_0, text_box_270, text_box_180, text_box_90])[1] == [0, -90, 180, 90]
     assert all(isinstance(pred, float) for pred in classifier([text_box_0, text_box_270, text_box_180, text_box_90])[2])
+    assert classifier([]) == [[], [], []]
 
     # Test custom model loading
     classifier = classification.crop_orientation_predictor(
@@ -92,6 +93,7 @@ def test_crop_orientation_model(mock_text_box, quantized):
         [0, 0, 0, 0],
         [1.0, 1.0, 1.0, 1.0],
     ]
+    assert classifier([]) == [[], [], []]
 
 
 @pytest.mark.parametrize("quantized", [False, True])
@@ -108,6 +110,7 @@ def test_page_orientation_model(mock_payslip, quantized):
     # 270 degrees is equivalent to -90 degrees
     assert classifier([text_box_0, text_box_270, text_box_180, text_box_90])[1] == [0, -90, 180, 90]
     assert all(isinstance(pred, float) for pred in classifier([text_box_0, text_box_270, text_box_180, text_box_90])[2])
+    assert classifier([]) == [[], [], []]
 
     # Test custom model loading
     classifier = classification.page_orientation_predictor(
@@ -125,3 +128,4 @@ def test_page_orientation_model(mock_payslip, quantized):
         [0, 0, 0, 0],
         [1.0, 1.0, 1.0, 1.0],
     ]
+    assert classifier([]) == [[], [], []]
