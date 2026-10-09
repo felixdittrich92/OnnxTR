@@ -109,6 +109,8 @@ model = ocr_predictor(
     assume_straight_pages=True,  # set to `False` if the pages are not straight (rotation, perspective, etc.) (default: True)
     straighten_pages=False,  # set to `True` if the pages should be straightened before final processing (default: False)
     export_as_straight_boxes=False,  # set to `True` if the boxes should be exported as if the pages were straight (default: False)
+    # Recognition related parameters
+    confidence_aggregation="mean",  # set to "mean", "min", "max", "median", "geometric_mean", "harmonic_mean" or a Python callable taking the 1D array of probabilities and returning a float (default: None) - it aggregates the character probabilities of the recognition model into the word confidence
     # Preprocessing related parameters
     preserve_aspect_ratio=True,  # set to `False` if the aspect ratio should not be preserved (default: True)
     symmetric_pad=True,  # set to `False` to disable symmetric padding (default: True)
