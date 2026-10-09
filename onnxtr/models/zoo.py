@@ -5,6 +5,7 @@
 
 from typing import Any
 
+from ._utils import ConfidenceAggregation, _resolve_confidence_aggregation
 from .detection.zoo import detection_predictor
 from .engine import EngineConfig
 from .layout.zoo import layout_predictor
@@ -36,8 +37,13 @@ def _predictor(
     clf_engine_cfg: EngineConfig | None = None,
     layout_engine_cfg: EngineConfig | None = None,
     table_engine_cfg: EngineConfig | None = None,
+    confidence_aggregation: ConfidenceAggregation | None = None,
     **kwargs,
 ) -> OCRPredictor:
+    if confidence_aggregation is not None:
+        # Fail before building the models
+        _resolve_confidence_aggregation(confidence_aggregation)
+
     # Detection
     det_predictor = detection_predictor(
         det_arch,
@@ -55,6 +61,7 @@ def _predictor(
         batch_size=reco_bs,
         load_in_8_bit=load_in_8_bit,
         engine_cfg=reco_engine_cfg,
+        confidence_aggregation=confidence_aggregation,
     )
 
     # Layout - required for table detection, so build it whenever layout or tables are requested
@@ -124,6 +131,7 @@ def ocr_predictor(
     clf_engine_cfg: EngineConfig | None = None,
     layout_engine_cfg: EngineConfig | None = None,
     table_engine_cfg: EngineConfig | None = None,
+    confidence_aggregation: ConfidenceAggregation | None = None,
     **kwargs: Any,
 ) -> OCRPredictor:
     """End-to-end OCR architecture using one model for localization, and another for text recognition.
@@ -171,6 +179,11 @@ def ocr_predictor(
         clf_engine_cfg: configuration of the orientation classification engine
         layout_engine_cfg: configuration of the layout detection engine
         table_engine_cfg: configuration of the table structure recognition engine
+        confidence_aggregation: aggregation method of the character probabilities of the recognition model into the
+            word confidence: "mean", "min", "max", "median", "geometric_mean", "harmonic_mean" or a Python callable
+            taking the 1D array of probabilities and returning a float. If None (default), the method of the
+            recognition model is kept ("min" for CRNN, VIPTR, SAR and MASTER, "mean" for ViTSTR and PARSeq).
+            A recognition model instance passed as `reco_arch` is modified.
         kwargs: keyword args of `OCRPredictor`
 
     Returns:
@@ -196,5 +209,6 @@ def ocr_predictor(
         clf_engine_cfg=clf_engine_cfg,
         layout_engine_cfg=layout_engine_cfg,
         table_engine_cfg=table_engine_cfg,
+        confidence_aggregation=confidence_aggregation,
         **kwargs,
     )

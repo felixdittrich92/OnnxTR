@@ -4,7 +4,6 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 from copy import deepcopy
-from itertools import groupby
 from typing import Any
 
 import numpy as np
@@ -12,6 +11,7 @@ from scipy.special import softmax
 
 from onnxtr.utils import VOCABS
 
+from ..._utils import ConfidenceAggregation, aggregate_confidence
 from ...engine import Engine, EngineConfig
 from ..core import RecognitionPostProcessor
 
@@ -50,10 +50,15 @@ class CRNNPostProcessor(RecognitionPostProcessor):
 
     Args:
         vocab: string containing the ordered sequence of supported characters
+        confidence_aggregation: aggregation method of the character probabilities into the word confidence
     """
 
-    def __init__(self, vocab):
-        self.vocab = vocab
+    def __init__(
+        self,
+        vocab: str,
+        confidence_aggregation: ConfidenceAggregation = "min",
+    ) -> None:
+        super().__init__(vocab, confidence_aggregation)
 
     def decode_sequence(self, sequence, vocab):
         return "".join([vocab[int(char)] for char in sequence])
@@ -63,6 +68,7 @@ class CRNNPostProcessor(RecognitionPostProcessor):
         logits,
         vocab,
         blank=0,
+        confidence_aggregation: ConfidenceAggregation = "min",
     ):
         """Implements best path decoding as shown by Graves (Dissertation, p63), highly inspired from
         <https://github.com/githubharald/CTCDecoder>`_.
@@ -71,20 +77,27 @@ class CRNNPostProcessor(RecognitionPostProcessor):
             logits: model output, shape: N x T x C
             vocab: vocabulary to use
             blank: index of blank label
+            confidence_aggregation: aggregation method of the character probabilities into the word confidence
 
         Returns:
             A list of tuples: (word, confidence)
         """
-        # Gather the most confident characters, and assign the smallest conf among those to the sequence prob
-        probs = softmax(logits, axis=-1).max(axis=-1).min(axis=1)
+        best_paths = np.argmax(logits, axis=-1)
+        probs = softmax(logits, axis=-1).max(axis=-1)
 
-        # collapse best path (using itertools.groupby), map to chars, join char list to string
-        words = [
-            self.decode_sequence([k for k, _ in groupby(seq.tolist()) if k != blank], vocab)
-            for seq in np.argmax(logits, axis=-1)
-        ]
+        results = []
+        for path, path_probs in zip(best_paths, probs):
+            # Collapse the repeated labels: the probability of a character is the highest one within its run
+            run_starts = np.flatnonzero(np.r_[True, path[1:] != path[:-1]])
+            labels, label_probs = path[run_starts], np.maximum.reduceat(path_probs, run_starts)
+            # Remove the blanks
+            is_char = labels != blank
+            results.append((
+                self.decode_sequence(labels[is_char].tolist(), vocab),
+                aggregate_confidence(label_probs[is_char], confidence_aggregation),
+            ))
 
-        return list(zip(words, probs.astype(float).tolist()))
+        return results
 
     def __call__(self, logits):
         """Performs decoding of raw output with CTC and decoding of CTC predictions
@@ -98,7 +111,12 @@ class CRNNPostProcessor(RecognitionPostProcessor):
 
         """
         # Decode CTC
-        return self.ctc_best_path(logits=logits, vocab=self.vocab, blank=len(self.vocab))
+        return self.ctc_best_path(
+            logits=logits,
+            vocab=self.vocab,
+            blank=len(self.vocab),
+            confidence_aggregation=self.confidence_aggregation,
+        )
 
 
 class CRNN(Engine):
@@ -109,6 +127,7 @@ class CRNN(Engine):
         vocab: vocabulary used for encoding
         engine_cfg: configuration for the inference engine
         cfg: configuration dictionary
+        confidence_aggregation: aggregation method of the character probabilities into the word confidence
         **kwargs: additional arguments to be passed to `Engine`
     """
 
@@ -120,6 +139,7 @@ class CRNN(Engine):
         vocab: str,
         engine_cfg: EngineConfig | None = None,
         cfg: dict[str, Any] | None = None,
+        confidence_aggregation: ConfidenceAggregation = "min",
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
@@ -127,7 +147,7 @@ class CRNN(Engine):
         self.vocab = vocab
         self.cfg = cfg
 
-        self.postprocessor = CRNNPostProcessor(self.vocab)
+        self.postprocessor = CRNNPostProcessor(self.vocab, confidence_aggregation=confidence_aggregation)
 
     def __call__(
         self,

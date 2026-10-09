@@ -4,6 +4,7 @@ import pytest
 from onnxtr.models import ocr_predictor, recognition
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.models.recognition.predictor import RecognitionPredictor
+from onnxtr.models.recognition.zoo import recognition_predictor
 from onnxtr.models.utils import (
     WhitelistHandle,
     _anyascii_nearest_map,
@@ -204,3 +205,26 @@ def test_add_whitelist_accepts_multiple_vocabs():
         assert keep[vocab.index(char)]
     assert not keep[vocab.index("z")]
     handle.remove()
+
+
+def test_add_whitelist_keeps_confidence_aggregation_configurable():
+    # The whitelist wraps the post-processor: the confidence aggregation set on it has to reach the wrapped one
+    predictor, model = _predictor("crnn_mobilenet_v3_small")
+    postprocessor = model.postprocessor
+    assert postprocessor.confidence_aggregation == "min"
+
+    with add_whitelist(predictor, "0123456789"):
+        assert model.postprocessor is not postprocessor
+        assert model.postprocessor.confidence_aggregation == "min"
+        model.postprocessor.confidence_aggregation = "mean"
+        assert postprocessor.confidence_aggregation == "mean"
+        # the predictor factory reaches the wrapped post-processor as well
+        recognition_predictor(model, confidence_aggregation="max")
+        assert postprocessor.confidence_aggregation == "max"
+        # ... and the wrapper still decodes
+        out = predictor([np.random.rand(32, 128, 3).astype(np.float32)])
+        assert all(isinstance(word, str) and isinstance(conf, float) and 0 <= conf <= 1 for word, conf in out)
+
+    # removing the whitelist keeps the aggregation method
+    assert model.postprocessor is postprocessor
+    assert postprocessor.confidence_aggregation == "max"

@@ -234,6 +234,59 @@ def test_zoo_models(det_arch, reco_arch, quantized):
         models.ocr_predictor(reco_arch=det_model)
 
 
+def test_ocrpredictor_keeps_objectness_scores_aligned():
+    # The middle box lies on the right border of the page: its crop is empty, so it is dropped before recognition
+    boxes = np.array(
+        [[0.1, 0.1, 0.3, 0.2, 0.9], [1.0, 0.5, 1.0, 0.6, 0.1], [0.5, 0.1, 0.7, 0.2, 0.8]],
+        dtype=np.float32,
+    )
+
+    class _FixedDetPredictor(NestedObject):
+        def __call__(self, pages, **kwargs):
+            return [boxes.copy() for _ in pages]
+
+    class _DummyRecoPredictor(NestedObject):
+        def __call__(self, crops, **kwargs):
+            return [(f"word{idx}", 1.0) for idx in range(len(crops))]
+
+    predictor = OCRPredictor(_FixedDetPredictor(), _DummyRecoPredictor(), assume_straight_pages=True)
+    page = predictor([np.full((100, 200, 3), 255, dtype=np.uint8)]).pages[0]
+    words = [word for block in page.blocks for line in block.lines for word in line.words]
+
+    # Each remaining word keeps the objectness score of its own box
+    assert [word.geometry[0][0] for word in words] == pytest.approx([0.1, 0.5])
+    assert [word.objectness_score for word in words] == pytest.approx([0.9, 0.8])
+
+
+def test_ocrpredictor_hooks_run_on_kept_boxes():
+    # The hooks are applied after the empty crops are dropped: they receive the boxes sent to the recognition
+    boxes = np.array(
+        [[0.1, 0.1, 0.3, 0.2, 0.9], [1.0, 0.5, 1.0, 0.6, 0.1], [0.5, 0.1, 0.7, 0.2, 0.8]],
+        dtype=np.float32,
+    )
+
+    class _FixedDetPredictor(NestedObject):
+        def __call__(self, pages, **kwargs):
+            return [boxes.copy() for _ in pages]
+
+    class _DummyRecoPredictor(NestedObject):
+        def __call__(self, crops, **kwargs):
+            return [(f"word{idx}", 1.0) for idx in range(len(crops))]
+
+    seen = []
+
+    def _hook(loc_preds):
+        seen.append([page_boxes.copy() for page_boxes in loc_preds])
+        return loc_preds
+
+    predictor = OCRPredictor(_FixedDetPredictor(), _DummyRecoPredictor(), assume_straight_pages=True)
+    predictor.add_hook(_hook)
+    predictor([np.full((100, 200, 3), 255, dtype=np.uint8)])
+
+    assert len(seen) == 1 and len(seen[0]) == 1
+    assert seen[0][0] == pytest.approx(boxes[[0, 2], :4])
+
+
 def test_ocrpredictor_layout(mock_pdf, mock_payslip):
     det_predictor = DetectionPredictor(
         PreProcessor(output_size=(1024, 1024), batch_size=2),
@@ -375,6 +428,70 @@ def test_ocrpredictor_tables_factory():
     # No tables by default
     predictor = ocr_predictor("db_mobilenet_v3_large", "crnn_vgg16_bn")
     assert predictor.table_predictor is None
+
+
+def _custom_aggregation(scores):
+    return float(np.percentile(scores, 25))
+
+
+@pytest.mark.parametrize(
+    "confidence_aggregation, expected",
+    [
+        # Default method of the recognition model
+        [None, "min"],
+        ["mean", "mean"],
+        ["geometric_mean", "geometric_mean"],
+        [_custom_aggregation, _custom_aggregation],
+    ],
+)
+def test_ocr_predictor_confidence_aggregation(confidence_aggregation, expected):
+    predictor = models.ocr_predictor(
+        "db_mobilenet_v3_large",
+        "crnn_mobilenet_v3_small",
+        confidence_aggregation=confidence_aggregation,
+    )
+    assert predictor.reco_predictor.model.postprocessor.confidence_aggregation == expected
+    # The split crops keep their own aggregation
+    assert predictor.reco_predictor.split_confidence_aggregation == "min"
+
+
+def test_ocr_predictor_confidence_aggregation_model_instances(mock_payslip):
+    reco_model = recognition.parseq()
+    predictor = models.ocr_predictor(detection.db_mobilenet_v3_large(), reco_model, confidence_aggregation="min")
+    assert reco_model.postprocessor.confidence_aggregation == "min"
+    # None keeps the method of the model
+    assert models.ocr_predictor("db_mobilenet_v3_large", reco_model).reco_predictor.model is reco_model
+    assert reco_model.postprocessor.confidence_aggregation == "min"
+
+    # End-to-end: the word confidences follow the aggregation method set on the recognition model
+    doc = DocumentFile.from_images(mock_payslip)
+
+    def word_confidences(method):
+        reco_model.postprocessor.confidence_aggregation = method
+        out = predictor(doc)
+        return np.array([w.confidence for b in out.pages[0].blocks for line in b.lines for w in line.words])
+
+    min_confs, max_confs = word_confidences("min"), word_confidences("max")
+    mean_confs = word_confidences("mean")
+    assert min_confs.size > 0
+    assert np.all((min_confs >= 0) & (max_confs <= 1))
+    assert np.all(min_confs <= mean_confs + 1e-6) and np.all(mean_confs <= max_confs + 1e-6)
+    # The method is applied: at least one word has an uncertain character
+    assert np.any(min_confs < max_confs - 1e-3)
+
+
+def test_recognition_predictor_confidence_aggregation():
+    # Architecture names
+    reco_predictor = recognition_predictor("parseq", confidence_aggregation="min")
+    assert reco_predictor.model.postprocessor.confidence_aggregation == "min"
+    # Model instances are modified
+    reco_model = recognition.crnn_mobilenet_v3_small()
+    assert recognition_predictor(reco_model, confidence_aggregation=np.median).model is reco_model
+    assert reco_model.postprocessor.confidence_aggregation is np.median
+    # None keeps the method of the model
+    assert recognition_predictor(reco_model).model.postprocessor.confidence_aggregation is np.median
+    with pytest.raises(ValueError, match="Unknown confidence aggregation"):
+        recognition_predictor("crnn_mobilenet_v3_small", confidence_aggregation="average")
 
 
 @pytest.mark.parametrize(

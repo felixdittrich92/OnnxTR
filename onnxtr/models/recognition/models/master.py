@@ -11,6 +11,7 @@ from scipy.special import softmax
 
 from onnxtr.utils import VOCABS
 
+from ..._utils import ConfidenceAggregation, aggregate_confidence
 from ...engine import Engine, EngineConfig
 from ..core import RecognitionPostProcessor
 
@@ -37,6 +38,7 @@ class MASTER(Engine):
         vocab: vocabulary, (without EOS, SOS, PAD)
         engine_cfg: configuration for the inference engine
         cfg: dictionary containing information about the model
+        confidence_aggregation: aggregation method of the character probabilities into the word confidence
         **kwargs: additional arguments to be passed to `Engine`
     """
 
@@ -46,6 +48,7 @@ class MASTER(Engine):
         vocab: str,
         engine_cfg: EngineConfig | None = None,
         cfg: dict[str, Any] | None = None,
+        confidence_aggregation: ConfidenceAggregation = "min",
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
@@ -53,7 +56,7 @@ class MASTER(Engine):
         self.vocab = vocab
         self.cfg = cfg
 
-        self.postprocessor = MASTERPostProcessor(vocab=self.vocab)
+        self.postprocessor = MASTERPostProcessor(vocab=self.vocab, confidence_aggregation=confidence_aggregation)
 
     def __call__(
         self,
@@ -85,28 +88,36 @@ class MASTERPostProcessor(RecognitionPostProcessor):
 
     Args:
         vocab: string containing the ordered sequence of supported characters
+        confidence_aggregation: aggregation method of the character probabilities into the word confidence
     """
 
     def __init__(
         self,
         vocab: str,
+        confidence_aggregation: ConfidenceAggregation = "min",
     ) -> None:
-        super().__init__(vocab)
+        super().__init__(vocab, confidence_aggregation)
         self._embedding = list(vocab) + ["<eos>"] + ["<sos>"] + ["<pad>"]
 
     def __call__(self, logits: np.ndarray) -> list[tuple[str, float]]:
         # compute pred with argmax for attention models
         out_idxs = np.argmax(logits, axis=-1)
         # N x L
-        probs = np.take_along_axis(softmax(logits, axis=-1), out_idxs[..., None], axis=-1).squeeze(-1)
-        # Take the minimum confidence of the sequence
-        probs = np.min(probs, axis=1)
+        preds_prob = softmax(logits, axis=-1).max(axis=-1)
 
         word_values = [
             "".join(self._embedding[idx] for idx in encoded_seq).split("<eos>")[0] for encoded_seq in out_idxs
         ]
+        # aggregate the character probabilities of each word up to the EOS token: the number of predicted tokens is
+        # used since the <sos> and <pad> tokens are decoded as several characters
+        is_eos = out_idxs == len(self.vocab)
+        seq_lens = np.where(is_eos.any(axis=-1), is_eos.argmax(axis=-1), out_idxs.shape[-1])
+        probs = [
+            aggregate_confidence(preds_prob[i, :seq_len], self.confidence_aggregation)
+            for i, seq_len in enumerate(seq_lens)
+        ]
 
-        return list(zip(word_values, np.clip(probs, 0, 1).astype(float).tolist()))
+        return list(zip(word_values, probs))
 
 
 def _master(

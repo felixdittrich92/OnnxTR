@@ -6,6 +6,7 @@
 from typing import Any
 
 from .. import recognition
+from .._utils import ConfidenceAggregation, _resolve_confidence_aggregation
 from ..engine import EngineConfig
 from ..preprocessor import PreProcessor
 from .predictor import RecognitionPredictor
@@ -27,8 +28,15 @@ ARCHS: list[str] = [
 
 
 def _predictor(
-    arch: Any, load_in_8_bit: bool = False, engine_cfg: EngineConfig | None = None, **kwargs: Any
+    arch: Any,
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig | None = None,
+    confidence_aggregation: ConfidenceAggregation | None = None,
+    **kwargs: Any,
 ) -> RecognitionPredictor:
+    if confidence_aggregation is not None:
+        _resolve_confidence_aggregation(confidence_aggregation)
+
     if isinstance(arch, str):
         if arch not in ARCHS:
             raise ValueError(f"unknown architecture '{arch}'")
@@ -49,6 +57,9 @@ def _predictor(
             raise ValueError(f"unknown architecture: {type(arch)}")
         _model = arch
 
+    if confidence_aggregation is not None:
+        _model.postprocessor.confidence_aggregation = confidence_aggregation
+
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
     kwargs["batch_size"] = kwargs.get("batch_size", 1024)
@@ -64,6 +75,7 @@ def recognition_predictor(
     batch_size: int = 128,
     load_in_8_bit: bool = False,
     engine_cfg: EngineConfig | None = None,
+    confidence_aggregation: ConfidenceAggregation | None = None,
     **kwargs: Any,
 ) -> RecognitionPredictor:
     """Text recognition architecture.
@@ -81,6 +93,9 @@ def recognition_predictor(
         batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration of inference engine
+        confidence_aggregation: aggregation method of the character probabilities into the word confidence:
+            "mean", "min", "max", "median", "geometric_mean", "harmonic_mean" or a callable. If None, the one of
+            the model is kept ("min" for CRNN, VIPTR, SAR and MASTER, "mean" for ViTSTR and PARSeq by default)
         **kwargs: optional parameters to be passed to the architecture
 
     Returns:
@@ -92,5 +107,6 @@ def recognition_predictor(
         batch_size=batch_size,
         load_in_8_bit=load_in_8_bit,
         engine_cfg=engine_cfg,
+        confidence_aggregation=confidence_aggregation,
         **kwargs,
     )

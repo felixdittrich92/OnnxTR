@@ -77,6 +77,14 @@ class _ConstrainedPostProcessor:
         # stay transparent for callers reaching for e.g. `postprocessor.vocab`
         return getattr(self.__dict__["postprocessor"], name)
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        # ... and for callers setting e.g. `postprocessor.confidence_aggregation`: the wrapped post-processor is the
+        # one decoding the logits, so everything but the wrapper's own state is set on it
+        if name in ("postprocessor", "keep", "src", "dst"):
+            object.__setattr__(self, name, value)
+        else:
+            setattr(self.__dict__["postprocessor"], name, value)
+
 
 def _recognition_models(model: Any) -> list[Any]:
     """Collect the recognition model(s) a whitelist should be applied to

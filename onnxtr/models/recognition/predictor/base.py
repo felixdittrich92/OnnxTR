@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 
+from onnxtr.models._utils import ConfidenceAggregation, _resolve_confidence_aggregation
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.utils.repr import NestedObject
 
@@ -38,6 +39,7 @@ class RecognitionPredictor(NestedObject):
         self.critical_ar = 8  # Critical aspect ratio
         self.overlap_ratio = 0.5  # Ratio of overlap between neighboring crops
         self.target_ar = 6  # Target aspect ratio
+        self.split_confidence_aggregation: ConfidenceAggregation = "min"  # Confidence aggregation for split crops
 
     def __call__(
         self,
@@ -46,6 +48,7 @@ class RecognitionPredictor(NestedObject):
     ) -> list[tuple[str, float]]:
         if len(crops) == 0:
             return []
+        _resolve_confidence_aggregation(self.split_confidence_aggregation)
         # Dimension check
         if any(crop.ndim != 3 for crop in crops):
             raise ValueError("incorrect input shape: all crops are expected to be multi-channel 2D images.")
@@ -74,6 +77,6 @@ class RecognitionPredictor(NestedObject):
 
         # Remap crops
         if self.split_wide_crops and remapped:
-            out = remap_preds(out, crop_map, self.overlap_ratio)
+            out = remap_preds(out, crop_map, self.overlap_ratio, self.split_confidence_aggregation)
 
         return out
