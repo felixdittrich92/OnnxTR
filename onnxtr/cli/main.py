@@ -17,6 +17,7 @@ import onnxruntime as ort
 from onnxtr.io import DocumentFile
 from onnxtr.io.figures import IMAGE_FORMATS, IMAGE_MODES, FigureEncoder
 from onnxtr.models import ocr_predictor
+from onnxtr.models._utils import _CONFIDENCE_AGGREGATIONS
 from onnxtr.models.engine import EngineConfig
 from onnxtr.version import __version__
 
@@ -220,6 +221,7 @@ def _build_predictor(args: argparse.Namespace) -> Any:
         "ignore_regions": args.ignore_regions or None,
         "det_bs": args.det_bs,
         "reco_bs": args.reco_bs,
+        "confidence_aggregation": args.confidence_aggregation,
         # `_OCRPredictor` keyword args
         "disable_page_orientation": args.disable_page_orientation,
         "disable_crop_orientation": args.disable_crop_orientation,
@@ -459,6 +461,14 @@ def _parse_args(argv=None):
         type=float,
         default=None,
         help="minimal objectness score to consider a detected box (defaults to the architecture value)",
+    )
+    parser.add_argument(
+        "--confidence_aggregation",
+        type=str,
+        default=None,
+        choices=list(_CONFIDENCE_AGGREGATIONS),
+        help="aggregation method of the character probabilities into the word confidence (defaults to the method of "
+        "the recognition architecture)",
     )
     parser.add_argument("--det_bs", type=int, default=2, help="batch size for detection")
     parser.add_argument("--reco_bs", type=int, default=128, help="batch size for recognition")

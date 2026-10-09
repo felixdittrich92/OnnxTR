@@ -11,6 +11,7 @@ from scipy.special import softmax
 
 from onnxtr.utils import VOCABS
 
+from ..._utils import ConfidenceAggregation, aggregate_confidence
 from ...engine import Engine, EngineConfig
 from ..core import RecognitionPostProcessor
 
@@ -36,6 +37,7 @@ class PARSeq(Engine):
         vocab: vocabulary used for encoding
         engine_cfg: configuration for the inference engine
         cfg: dictionary containing information about the model
+        confidence_aggregation: aggregation method of the character probabilities into the word confidence
         **kwargs: additional arguments to be passed to `Engine`
     """
 
@@ -45,6 +47,7 @@ class PARSeq(Engine):
         vocab: str,
         engine_cfg: EngineConfig | None = None,
         cfg: dict[str, Any] | None = None,
+        confidence_aggregation: ConfidenceAggregation = "mean",
         **kwargs: Any,
     ) -> None:
         super().__init__(url=model_path, engine_cfg=engine_cfg, **kwargs)
@@ -52,7 +55,7 @@ class PARSeq(Engine):
         self.vocab = vocab
         self.cfg = cfg
 
-        self.postprocessor = PARSeqPostProcessor(vocab=self.vocab)
+        self.postprocessor = PARSeqPostProcessor(vocab=self.vocab, confidence_aggregation=confidence_aggregation)
 
     def __call__(
         self,
@@ -74,13 +77,15 @@ class PARSeqPostProcessor(RecognitionPostProcessor):
 
     Args:
         vocab: string containing the ordered sequence of supported characters
+        confidence_aggregation: aggregation method of the character probabilities into the word confidence
     """
 
     def __init__(
         self,
         vocab: str,
+        confidence_aggregation: ConfidenceAggregation = "mean",
     ) -> None:
-        super().__init__(vocab)
+        super().__init__(vocab, confidence_aggregation)
         self._embedding = list(vocab) + ["<eos>", "<sos>", "<pad>"]
 
     def __call__(self, logits):
@@ -91,9 +96,9 @@ class PARSeqPostProcessor(RecognitionPostProcessor):
         word_values = [
             "".join(self._embedding[idx] for idx in encoded_seq).split("<eos>")[0] for encoded_seq in out_idxs
         ]
-        # compute probabilties for each word up to the EOS token
+        # aggregate the character probabilities of each word up to the EOS token
         probs = [
-            preds_prob[i, : len(word)].clip(0, 1).mean().astype(float) if word else 0.0
+            aggregate_confidence(preds_prob[i, : len(word)], self.confidence_aggregation)
             for i, word in enumerate(word_values)
         ]
 
