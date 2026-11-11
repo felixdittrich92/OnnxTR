@@ -63,6 +63,36 @@ def test_postprocessor():
     assert isinstance(r_out, np.ndarray) and r_out.shape == (4, 2)
 
 
+@pytest.mark.parametrize("dtype", [np.int32, np.int64, np.uint16])
+def test_box_score_integer_corners(dtype):
+    rng = np.random.default_rng(0)
+    pred = rng.random((60, 90), dtype=np.float32)
+    low = 0 if np.issubdtype(dtype, np.unsignedinteger) else -10
+    for _ in range(1000):
+        # Boxes inside the map, across its edges and beyond them
+        x, y = rng.integers(low, 100, 2)
+        w, h = rng.integers(0, 40, 2)
+        points = np.array([[x, y], [x, y + h], [x + w, y + h], [x + w, y]], dtype=dtype)
+
+        score = GeneralDetectionPostProcessor.box_score(pred, points)
+        # The same corners as floats, rounded and clipped by numpy
+        expected = GeneralDetectionPostProcessor.box_score(pred, points.astype(np.float64))
+
+        assert type(score) is type(expected)
+        assert score.tobytes() == expected.tobytes()
+
+
+def test_box_score_corners_beyond_int32():
+    pred = np.random.default_rng(0).random((60, 90), dtype=np.float32)
+    points = np.array([[-(2**32) + 5, 3], [40, 20]], dtype=np.int64)
+    # Whatever numpy's int32 cast makes of such a corner, the score keeps it
+    xmin = np.clip(np.floor(points[:, 0].min()).astype(np.int32), 0, 89)
+
+    score = GeneralDetectionPostProcessor.box_score(pred, points)
+
+    assert score.tobytes() == pred[3:21, xmin:41].mean().tobytes()
+
+
 @pytest.mark.parametrize("quantized", [False, True])
 @pytest.mark.parametrize(
     "arch_name, input_shape, output_size, out_prob",
