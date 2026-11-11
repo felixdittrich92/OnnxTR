@@ -46,6 +46,16 @@ class DetectionPostProcessor(NestedObject):
         h, w = pred.shape[:2]
 
         if assume_straight_pages:
+            if type(points) is np.ndarray and points.ndim == 2 and points.dtype.kind in "iu":
+                # Whole-pixel corners, as cv2.boundingRect gives them, need no rounding. Clamped as Python ints,
+                # they skip numpy's per-scalar overhead, which costs more than the mean itself on a small box
+                xs, ys = points[:, 0].tolist(), points[:, 1].tolist()
+                left, right, top, bottom = min(xs), max(xs), min(ys), max(ys)
+                # Corners beyond int32 keep the int32 cast below, which doesn't clamp them
+                if -(2**31) <= min(left, top) and max(right, bottom) < 2**31:
+                    left, right = min(max(left, 0), w - 1), min(max(right, 0), w - 1)
+                    top, bottom = min(max(top, 0), h - 1), min(max(bottom, 0), h - 1)
+                    return pred[top : bottom + 1, left : right + 1].mean()
             xmin = np.clip(np.floor(points[:, 0].min()).astype(np.int32), 0, w - 1)
             xmax = np.clip(np.ceil(points[:, 0].max()).astype(np.int32), 0, w - 1)
             ymin = np.clip(np.floor(points[:, 1].min()).astype(np.int32), 0, h - 1)
