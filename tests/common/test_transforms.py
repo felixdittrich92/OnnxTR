@@ -182,3 +182,68 @@ def test_normalize(input_shape):
 
     with pytest.raises(AssertionError):
         Normalize(std="32")
+
+
+def _broadcast_normalize(img, mean, std):
+    # Normalize's arithmetic as a plain broadcast, the reference for its row-wise path
+    return (img - np.array(mean).astype(img.dtype)) / np.array(std).astype(img.dtype)
+
+
+@pytest.mark.parametrize("dtype", [np.float16, np.float32, np.float64])
+@pytest.mark.parametrize(
+    "input_shape, mean, std",
+    [
+        [(8, 32, 128, 3), (0.694, 0.695, 0.693), (0.299, 0.296, 0.301)],
+        [(2, 96, 80, 3), (0.798, 0.785, 0.772), (0.264, 0.2749, 0.287)],
+        [(32, 128, 3), (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)],
+        [(32, 3), [0.5, 0.4, 0.3], [0.2, 0.3, 0.4]],
+        [(5, 4, 1), (0.5,), (0.2,)],
+        [(4, 32, 3), 0.5, 0.25],
+        [(4, 32, 3), (0.5, 0.4, 0.3), 0.25],
+        [(4, 32, 3), (0.5,), (0.25,)],
+        [(2, 0, 32, 3), (0.5, 0.5, 0.5), (0.2, 0.2, 0.2)],
+        [(2, 32, 0, 3), (0.5, 0.5, 0.5), (0.2, 0.2, 0.2)],
+    ],
+)
+def test_normalize_values(input_shape, mean, std, dtype):
+    input_t = np.random.default_rng(0).random(input_shape).astype(dtype)
+    before = input_t.copy()
+    expected = _broadcast_normalize(input_t, mean, std)
+
+    out = Normalize(mean, std)(input_t)
+
+    assert out.dtype == expected.dtype and out.shape == expected.shape and out.strides == expected.strides
+    assert out.tobytes() == expected.tobytes()
+    assert input_t.tobytes() == before.tobytes()
+
+
+_IMAGE = np.random.default_rng(0).random((4, 8, 6), dtype=np.float32)
+
+
+@pytest.mark.parametrize(
+    "input_t, mean, std",
+    [
+        # Strided view
+        [_IMAGE[..., ::2], (0.5, 0.4, 0.3), (0.2, 0.2, 0.2)],
+        # Fortran order
+        [np.asfortranarray(_IMAGE[..., :3]), (0.5, 0.4, 0.3), (0.2, 0.3, 0.4)],
+        # Channels first, moved last
+        [_IMAGE[..., :3].transpose(2, 0, 1).copy().transpose(1, 2, 0), (0.5, 0.4, 0.3), (0.2, 0.3, 0.4)],
+        # One mean for every channel, a std per channel
+        [_IMAGE[..., :3].copy(), 0.5, (0.2, 0.3, 0.4)],
+        # Integer image
+        [(_IMAGE[..., :3] * 255).astype(np.uint8), (1, 2, 3), (2, 3, 4)],
+        # 1D image
+        [_IMAGE[0, 0, :3].copy(), (0.5, 0.4, 0.3), (0.2, 0.3, 0.4)],
+        # Masked array
+        [np.ma.masked_array(_IMAGE[..., :3].copy(), mask=_IMAGE[..., :3] > 0.9), (0.5, 0.4, 0.3), (0.2, 0.3, 0.4)],
+    ],
+)
+def test_normalize_values_other_inputs(input_t, mean, std):
+    expected = _broadcast_normalize(input_t, mean, std)
+
+    out = Normalize(mean, std)(input_t)
+
+    assert type(out) is type(expected)
+    assert out.dtype == expected.dtype and out.shape == expected.shape and out.strides == expected.strides
+    assert np.asarray(out).tobytes() == np.asarray(expected).tobytes()
