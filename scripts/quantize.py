@@ -65,6 +65,14 @@ TASKS: dict[str, TaskConfig] = {
         preserve_aspect_ratio=True,
         symmetric_pad=True,
     ),
+    # Same resizing as the formula predictor: aspect ratio preserved, padded at the bottom-right
+    "formula": TaskConfig(
+        shape=(256, 768),
+        mean=(0.7931, 0.7931, 0.7931),
+        std=(0.1738, 0.1738, 0.1738),
+        preserve_aspect_ratio=True,
+        symmetric_pad=False,
+    ),
 }
 
 
@@ -258,7 +266,7 @@ if __name__ == "__main__":
         "--calibrate_dataset",
         type=str,
         required=True,
-        help="calibration data set (word crop images for recognition, crop_orientation else page images for detection, page_orientation, layout, table_structure)",  # noqa
+        help="calibration data set (word crop images for recognition, crop_orientation, formula images for formula, else page images for detection, page_orientation, layout, table_structure)",  # noqa
     )
     parser.add_argument(
         "--quant_format",

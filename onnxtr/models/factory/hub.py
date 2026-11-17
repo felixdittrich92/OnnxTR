@@ -153,16 +153,18 @@ https://github.com/felixdittrich92/OnnxTR
 >>> res = predictor(img)
 ```
 
-### Layout / table structure models
+### Layout / table structure / formula models
 
 ```python
->>> from onnxtr.models import from_hub, layout_predictor, table_predictor
+>>> from onnxtr.models import formula_predictor, from_hub, layout_predictor, table_predictor
 
 >>> model = from_hub('onnxtr/my-model')
 >>> # If your model is a layout model:
 >>> predictor = layout_predictor(arch=model)
 >>> # If your model is a table structure model:
 >>> predictor = table_predictor(arch=model)
+>>> # If your model is a formula recognition model:
+>>> predictor = formula_predictor(arch=model)
 ```
 """
 
