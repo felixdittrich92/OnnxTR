@@ -13,7 +13,7 @@ from onnxtr.utils.geometry import shape_translate
 from ...engine import Engine, EngineConfig
 from ..postprocessor.base import LWDETRPostProcessor
 
-__all__ = ["LWDETR", "lw_detr_s"]  # , "lw_detr_m"] --- IGNORE ---
+__all__ = ["LWDETR", "lw_detr_s", "lw_detr_m"]
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
         "class_names": CLASS_NAMES,
-        "url": None,
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/lw_detr_m-62df52cb.onnx",
         "url_8_bit": None,
     },
 }
@@ -181,32 +181,29 @@ def lw_detr_s(
     return _lw_detr("lw_detr_s", model_path, load_in_8_bit, engine_cfg, **kwargs)
 
 
-# NOTE: Model is not yet available, so the function is commented out to avoid confusion.
-# Uncomment and implement when the model is released.
+def lw_detr_m(
+    model_path: str = default_cfgs["lw_detr_m"]["url"],
+    load_in_8_bit: bool = False,
+    engine_cfg: EngineConfig | None = None,
+    **kwargs: Any,
+) -> LWDETR:
+    """LW-DETR as described in `"LW-DETR: A Transformer Replacement to YOLO for Real-Time Detection"
+    <https://arxiv.org/pdf/2406.03459v1>`_, using a medium ViT-Det backbone.
 
-# def lw_detr_m(
-#    model_path: str = default_cfgs["lw_detr_m"]["url"],
-#    load_in_8_bit: bool = False,
-#    engine_cfg: EngineConfig | None = None,
-#    **kwargs: Any,
-# ) -> LWDETR:
-#    """LW-DETR as described in `"LW-DETR: A Transformer Replacement to YOLO for Real-Time Detection"
-#    <https://arxiv.org/pdf/2406.03459v1>`_, using a medium ViT-Det backbone.
+    >>> import numpy as np
+    >>> from onnxtr.models import lw_detr_m
+    >>> model = lw_detr_m()
+    >>> input_tensor = np.random.rand(1, 3, 1024, 1024)
+    >>> mask = np.ones((1, 1024, 1024), dtype=bool)
+    >>> out = model(input_tensor, mask)
 
-#    >>> import numpy as np
-#    >>> from onnxtr.models import lw_detr_m
-#    >>> model = lw_detr_m()
-#    >>> input_tensor = np.random.rand(1, 3, 1024, 1024)
-#    >>> mask = np.ones((1, 1024, 1024), dtype=bool)
-#    >>> out = model(input_tensor, mask)
+    Args:
+        model_path: path to onnx model file, defaults to url in default_cfgs
+        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        engine_cfg: configuration for the inference engine
+        **kwargs: keyword arguments of the LWDETR architecture
 
-#    Args:
-#        model_path: path to onnx model file, defaults to url in default_cfgs
-#        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
-#        engine_cfg: configuration for the inference engine
-#        **kwargs: keyword arguments of the LWDETR architecture
-
-#    Returns:
-#        layout detection architecture
-#    """
-#    return _lw_detr("lw_detr_m", model_path, load_in_8_bit, engine_cfg, **kwargs)
+    Returns:
+        layout detection architecture
+    """
+    return _lw_detr("lw_detr_m", model_path, load_in_8_bit, engine_cfg, **kwargs)

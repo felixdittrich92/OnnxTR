@@ -69,16 +69,15 @@ def picture_regions(page: "Page") -> list["LayoutElement"]:
     Returns:
         the figure regions, in detection order
     """
-    from onnxtr.models.reading_order.base import _to_boxes
+    from onnxtr.models.reading_order.base import _box_areas, _pairwise_overlaps, _to_boxes
 
     regions = [region for region in (getattr(page, "layout", None) or []) if is_picture_region(region)]
     if len(regions) < 2:
         return regions
     boxes = _to_boxes([region.geometry for region in regions])
-    inter_w = np.minimum(boxes[:, None, 2], boxes[None, :, 2]) - np.maximum(boxes[:, None, 0], boxes[None, :, 0])
-    inter_h = np.minimum(boxes[:, None, 3], boxes[None, :, 3]) - np.maximum(boxes[:, None, 1], boxes[None, :, 1])
-    areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-    inside = np.clip(inter_w, 0, None) * np.clip(inter_h, 0, None) >= 0.5 * areas[:, None]
+    inter_w, inter_h = _pairwise_overlaps(boxes, boxes)
+    areas = _box_areas(boxes)
+    inside = inter_w * inter_h >= 0.5 * areas[:, None]
     # A region is nested when half of it lies in a larger region (or in an earlier one of the same area)
     rank = np.empty(len(regions), dtype=int)
     rank[np.argsort(-areas, kind="stable")] = np.arange(len(regions))
@@ -150,7 +149,7 @@ def encode_crop(crop: np.ndarray, image_format: str = "png", quality: int = 95) 
     """Encode an RGB(A) crop into an image file format
 
     Args:
-        crop: the crop to encode
+        crop: the crop to encode, in np.uint8 or as floats in [0, 1]
         image_format: one of 'png', 'jpg', 'jpeg' or 'webp'
         quality: quality of the lossy formats, between 0 and 100
 
@@ -167,11 +166,14 @@ def encode_crop(crop: np.ndarray, image_format: str = "png", quality: int = 95) 
     elif extension == ".webp":
         params = [int(cv2.IMWRITE_WEBP_QUALITY), int(quality)]
     array = crop
+    if np.issubdtype(array.dtype, np.floating):
+        # Float pages hold values in [0, 1] (like the predictors expect), the image formats need 8-bit values
+        array = (array * 255).round().clip(0, 255).astype(np.uint8)
     # OnnxTR pages are RGB, OpenCV expects BGR
-    if crop.ndim == 3 and crop.shape[2] == 3:
-        array = cv2.cvtColor(crop, cv2.COLOR_RGB2BGR)
-    elif crop.ndim == 3 and crop.shape[2] == 4:
-        array = cv2.cvtColor(crop, cv2.COLOR_RGBA2BGRA)
+    if array.ndim == 3 and array.shape[2] == 3:
+        array = cv2.cvtColor(array, cv2.COLOR_RGB2BGR)
+    elif array.ndim == 3 and array.shape[2] == 4:
+        array = cv2.cvtColor(array, cv2.COLOR_RGBA2BGRA)
     success, buffer = cv2.imencode(extension, array, params)
     if not success:  # pragma: no cover
         raise RuntimeError(f"failed to encode a figure crop as '{image_format}'")

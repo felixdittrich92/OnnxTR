@@ -42,9 +42,11 @@ def _predictor(
     kwargs["batch_size"] = kwargs.get("batch_size", 2)
     kwargs.setdefault("preserve_aspect_ratio", True)
     kwargs.setdefault("symmetric_pad", True)
+    chunk_size = kwargs.pop("chunk_size", 32)
     predictor = TablePredictor(
         PreProcessor(_model.cfg["input_shape"][1:], **kwargs),
         _model,
+        chunk_size=chunk_size,
     )
     return predictor
 
@@ -76,6 +78,8 @@ def table_predictor(
         batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
+        chunk_size: maximum number of table images decoded and processed at once (32 by default): longer inputs and
+            lazy page sources (cf. `DocumentFile.from_images(..., lazy=True)`) are processed chunk by chunk
         **kwargs: optional keyword arguments passed to the architecture
 
     Returns:

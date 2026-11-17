@@ -3,15 +3,16 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+from collections.abc import Iterable, Sequence
 from typing import Any
 
-import cv2
 import numpy as np
 
 from onnxtr.io.elements import Document
 from onnxtr.models._utils import get_language
 from onnxtr.models.detection.predictor import DetectionPredictor
 from onnxtr.models.engine import EngineConfig
+from onnxtr.models.formula.predictor import FormulaPredictor
 from onnxtr.models.layout.predictor import LayoutPredictor
 from onnxtr.models.recognition.predictor import RecognitionPredictor
 from onnxtr.models.table_structure.predictor import TablePredictor
@@ -45,6 +46,11 @@ class OCRPredictor(NestedObject, _OCRPredictor):
         table_predictor: optional table structure recognition module. Requires `layout_predictor`: table
             regions are located by the layout model, cropped, and passed to this module. Words falling inside a
             detected table are regrouped into a structured table and removed from the regular text output.
+        formula_predictor: optional formula recognition module. Requires `layout_predictor`: formula regions are
+            located by the layout model, masked out of the text detection, cropped, and read as LaTeX by this module.
+        page_chunk_size: the maximum number of pages processed at once (32 by default) for lazy page sources
+            (cf. `DocumentFile.from_pdf(..., lazy=True)`), iterators and :meth:`stream`, with a memory footprint that
+            does not grow with the number of pages. Lists and tuples of pages are processed in a single pass.
         **kwargs: keyword args of `DocumentBuilder`
     """
 
@@ -64,6 +70,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
         preserve_original_coords: bool = False,
         layout_predictor: LayoutPredictor | None = None,
         table_predictor: TablePredictor | None = None,
+        formula_predictor: FormulaPredictor | None = None,
         **kwargs: Any,
     ) -> None:
         self.det_predictor = det_predictor
@@ -90,12 +97,42 @@ class OCRPredictor(NestedObject, _OCRPredictor):
                 "`table_predictor` requires a `layout_predictor`: tables are located with the layout model, "
                 "cropped, and then passed to the table model."
             )
+        self.formula_predictor = formula_predictor
+        # Layout class label whose regions are read by the formula model (and masked out of the text detection)
+        self.formula_class_name = "Formula"
+        if self.formula_predictor is not None and self.layout_predictor is None:
+            raise ValueError(
+                "`formula_predictor` requires a `layout_predictor`: formulas are located with the layout model, "
+                "cropped, and then passed to the formula model."
+            )
 
     def __call__(
+        self,
+        pages: Sequence[np.ndarray] | Iterable[np.ndarray],
+        **kwargs: Any,
+    ) -> Document:
+        """Predict on a document
+
+        Args:
+            pages: a list of pages (numpy arrays of shape H x W x C), processed in a single pass, or a lazy page
+                source (cf. `DocumentFile.from_pdf(..., lazy=True)`) or any iterable of pages, processed chunk by
+                chunk (`page_chunk_size` pages at a time) with a bounded memory footprint
+            **kwargs: keyword arguments forwarded to the sub-predictors, and `on_error` for lazy page sources
+                (cf. :meth:`stream`): "skip" leaves out the pages that cannot be read instead of raising an error
+
+        Returns:
+            the predicted document
+        """
+        return self._run(pages, **kwargs)
+
+    def _predict_pages(
         self,
         pages: list[np.ndarray],
         **kwargs: Any,
     ) -> Document:
+        if len(pages) == 0:
+            return Document(pages=[])
+
         # Dimension check
         if any(page.ndim != 3 for page in pages):
             raise ValueError("incorrect input shape: all pages are expected to be multi-channel 2D images.")
@@ -143,11 +180,14 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             regions = self.layout_predictor(pages, **kwargs) if self.layout_predictor is not None else None
             det_pages = self._mask_regions(pages, regions)
 
-            # forward again to get predictions on straight pages
-            loc_preds = self.det_predictor(det_pages, **kwargs)  # type: ignore[assignment]
+            # Forward again to get predictions on straight pages
+            loc_preds = self._detect_straightened(loc_preds, _orig_pages, pages, det_pages, **kwargs)  # type: ignore[arg-type]
 
         # Detach objectness scores from loc_preds
         loc_preds, objectness_scores = detach_scores(loc_preds)  # type: ignore[arg-type]
+
+        # Apply hooks to loc_preds if any, before the crops are extracted so that the hooked boxes are read
+        loc_preds, objectness_scores = self._apply_hooks(loc_preds, objectness_scores)
 
         # Crop images
         crops, loc_preds, objectness_scores = self._prepare_crops(
@@ -158,10 +198,6 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             assume_straight_pages=self.assume_straight_pages,
             assume_horizontal=self._page_orientation_disabled,
         )
-
-        # Apply hooks to loc_preds if any
-        for hook in self.hooks:
-            loc_preds = hook(loc_preds)
 
         # Rectify crop orientation and get crop orientation predictions
         crop_orientations: Any = []
@@ -186,8 +222,14 @@ class OCRPredictor(NestedObject, _OCRPredictor):
 
         # Recognize table structure: locate tables with the layout model, crop each one and run the table model
         tables = (
-            self._tables_from_regions(pages, regions, **kwargs)
+            self.table_predictor.predict_regions(pages, regions, boxes, self.table_class_name, **kwargs)
             if self.table_predictor is not None and regions is not None
+            else None
+        )
+        # Recognize formulas: read the formula regions of the layout model as LaTeX
+        formulas = (
+            self.formula_predictor.predict_regions(pages, regions, self.formula_class_name, **kwargs)
+            if self.formula_predictor is not None and regions is not None
             else None
         )
 
@@ -202,99 +244,9 @@ class OCRPredictor(NestedObject, _OCRPredictor):
             languages_dict,
             regions,
             tables,
+            formulas,
         )
 
         if self.straighten_pages and self.preserve_original_coords:
             out = self._remap_to_original_coords(out, _orig_shapes, _straight_shapes, m_invs, _orig_pages)
         return out
-
-    def _tables_from_regions(
-        self,
-        pages: list[np.ndarray],
-        regions: list[dict[str, Any]],
-        **kwargs: Any,
-    ) -> list[list[dict[str, Any]]]:
-        """Crop the table regions found by the layout model and run the table model on each crop.
-
-        Each `Table` region is rectified to an upright crop with a perspective transform (so straight boxes and
-        rotated polygons are both handled), the table model is applied per crop, and the predicted cell polygons
-        are mapped back to page-relative coordinates through the inverse transform. A page therefore yields one
-        structured table per detected `Table` region.
-
-        Args:
-            pages: the (possibly straightened) page images
-            regions: the per-page layout predictions `{"class_names", "boxes", "scores"}`
-            **kwargs: keyword arguments forwarded to the table predictor
-
-        Returns:
-            a per-page list of table grids `{"cells": [...], "num_rows": int, "num_cols": int}` in page-relative
-            coordinates
-        """
-        crops: list[np.ndarray] = []
-        # (page index, inverse transform, crop width, crop height, page width, page height)
-        crop_meta: list[tuple[int, np.ndarray, int, int, int, int]] = []
-        for p_idx, (page, region) in enumerate(zip(pages, regions)):
-            if region is None:
-                continue
-            h, w = page.shape[:2]
-            for cls_name, box in zip(region["class_names"], region["boxes"]):
-                if cls_name != self.table_class_name:
-                    continue
-                pts = np.asarray(box, dtype=np.float32).reshape(-1, 2)
-                if pts.shape[0] == 2:  # straight box (x_min, y_min, x_max, y_max) -> corners
-                    (bx0, by0), (bx1, by1) = pts
-                    src = np.array([[bx0, by0], [bx1, by0], [bx1, by1], [bx0, by1]], dtype=np.float32)
-                else:  # rotated 4-point polygon, already ordered (top-left, top-right, bottom-right, bottom-left)
-                    src = pts.copy()
-                # Relative -> absolute pixel corners
-                src[:, 0] *= w
-                src[:, 1] *= h
-                # Upright crop size from the region side lengths
-                crop_w = int(round(max(np.linalg.norm(src[1] - src[0]), np.linalg.norm(src[2] - src[3]))))
-                crop_h = int(round(max(np.linalg.norm(src[3] - src[0]), np.linalg.norm(src[2] - src[1]))))
-                if crop_w < 2 or crop_h < 2:
-                    continue
-                # Map the region onto an inset rectangle so the warp samples `pad` extra pixels of page
-                # context on each side. Crop-relative [0, 1] still maps exactly to [0, out_w] / [0, out_h].
-                pad = max(20, round(0.01 * max(crop_w, crop_h)))
-                out_w, out_h = crop_w + 2 * pad, crop_h + 2 * pad
-                dst = np.array(
-                    [[pad, pad], [pad + crop_w, pad], [pad + crop_w, pad + crop_h], [pad, pad + crop_h]],
-                    dtype=np.float32,
-                )
-                transform = cv2.getPerspectiveTransform(src, dst)
-                inverse = cv2.getPerspectiveTransform(dst, src)
-                crops.append(cv2.warpPerspective(page, transform, (out_w, out_h), borderMode=cv2.BORDER_REPLICATE))
-                crop_meta.append((p_idx, inverse, out_w, out_h, w, h))
-
-        tables_per_page: list[list[dict[str, Any]]] = [[] for _ in pages]
-        if len(crops) == 0:
-            return tables_per_page
-
-        grids = self.table_predictor(crops, **kwargs)  # type: ignore[misc]
-        for (p_idx, inverse, crop_w, crop_h, w, h), grid in zip(crop_meta, grids):
-            remapped_cells: list[dict[str, Any]] = []
-            for cell in grid["cells"]:
-                # Cell polygon is crop-relative -> crop pixels -> page pixels (inverse transform) -> page-relative
-                raw = np.asarray(cell["geometry"], dtype=np.float32)
-                if raw.ndim == 1 and raw.size == 4:  # straight box (xmin, ymin, xmax, ymax)
-                    x0, y0, x1, y1 = raw
-                    poly = np.array([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], dtype=np.float32)
-                else:
-                    poly = raw.reshape(-1, 2)
-                poly[:, 0] *= crop_w
-                poly[:, 1] *= crop_h
-                poly = cv2.perspectiveTransform(poly[None, :, :], inverse)[0]
-                poly[:, 0] /= w
-                poly[:, 1] /= h
-                new_cell = dict(cell)
-                new_cell["geometry"] = poly.tolist()
-                remapped_cells.append(new_cell)
-            if not remapped_cells:
-                continue
-            tables_per_page[p_idx].append({
-                "cells": remapped_cells,
-                "num_rows": grid["num_rows"],
-                "num_cols": grid["num_cols"],
-            })
-        return tables_per_page

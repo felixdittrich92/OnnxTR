@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import pytest
 
@@ -391,3 +393,11 @@ def test_recognition_zoo(arch_name, input_shape, quantized):
 
     with pytest.raises(ValueError):
         _ = recognition.zoo.recognition_predictor(arch="wrong_model")
+
+
+def test_master_8_bit_falls_back_to_full_precision(caplog):
+    # No 8-bit export of MASTER: the full precision model is loaded with a warning
+    with caplog.at_level(logging.WARNING):
+        model = recognition.master(load_in_8_bit=True)
+    assert "No 8-bit quantized export available for 'master'" in caplog.text
+    assert model.model_path.endswith(recognition.master.__defaults__[0].split("/")[-1])

@@ -34,6 +34,7 @@ AVAILABLE_ARCHS = {
     "recognition": models.recognition.zoo.ARCHS,
     "layout": models.layout.zoo.ARCHS,
     "table_structure": models.table_structure.zoo.ARCHS,
+    "formula": models.formula.zoo.ARCHS,
 }
 
 
@@ -102,8 +103,8 @@ def push_to_hf_hub(
 
     if run_config is None and arch is None:
         raise ValueError("run_config or arch must be specified")
-    if task not in ["classification", "detection", "recognition", "layout", "table_structure"]:
-        raise ValueError("task must be one of classification, detection, recognition, layout, table_structure")
+    if task not in ["classification", "detection", "recognition", "layout", "table_structure", "formula"]:
+        raise ValueError("task must be one of classification, detection, recognition, layout, table_structure, formula")
 
     # default readme
     # NOTE: the front matter must not be indented, otherwise the hub fails to parse it
@@ -241,6 +242,10 @@ def from_hub(repo_id: str, engine_cfg: EngineConfig | None = None, **kwargs: Any
         model = models.layout.__dict__[arch](model_path, class_names=cfg["class_names"], engine_cfg=engine_cfg)
     elif task == "table_structure":
         model = models.table_structure.__dict__[arch](model_path, engine_cfg=engine_cfg)
+    elif task == "formula":
+        model = models.formula.__dict__[arch](
+            model_path, input_shape=cfg["input_shape"], vocab=cfg["vocab"], engine_cfg=engine_cfg
+        )
 
     # convert all values which are lists to tuples
     for key, value in cfg.items():

@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pytest
 from test_io_elements import _mock_layout, _mock_pages
@@ -24,6 +26,41 @@ def test_visualize_page():
         visualization.create_obj_patch((1, 2), (100, 100))
     with pytest.raises(ValueError):
         visualization.create_obj_patch((1, 2, 3, 4, 5), (100, 100))
+
+
+def test_visualize_json_exports():
+    # A page export read back from a JSON file stores the geometries as lists instead of tuples
+    image = np.ones((300, 200, 3))
+    page_export = _mock_pages()[0].export()
+    page_export["layout"] = [region.export() for region in _mock_layout()]
+    page_export["blocks"][0]["lines"][0]["words"][0]["geometry"] = ((0.1, 0.1), (0.4, 0.1), (0.4, 0.2), (0.1, 0.2))
+    json_export = json.loads(json.dumps(page_export))
+    for interactive in (True, False):
+        visualization.visualize_page(json_export, image, words_only=False, interactive=interactive)
+        fig = visualization.visualize_page(page_export, image, words_only=False, interactive=interactive)
+        json_fig = visualization.visualize_page(json_export, image, words_only=False, interactive=interactive)
+        assert len(json_fig.axes[0].patches) == len(fig.axes[0].patches)
+        assert [text.get_text() for text in json_fig.axes[0].texts] == [text.get_text() for text in fig.axes[0].texts]
+
+    with pytest.raises(ValueError):
+        visualization.create_obj_patch([[0.1, 0.1], [0.2]], (100, 100))
+
+
+def test_polygon_patch_keeps_geometry():
+    geometry = np.array([[0.1, 0.1], [0.4, 0.1], [0.4, 0.2], [0.1, 0.2]])
+    patch = visualization.create_obj_patch(geometry, (100, 200))
+    np.testing.assert_allclose(patch.get_xy()[:4], [[20, 10], [80, 10], [80, 20], [20, 20]])
+    # The relative geometry passed in is not scaled in place
+    np.testing.assert_allclose(geometry, [[0.1, 0.1], [0.4, 0.1], [0.4, 0.2], [0.1, 0.2]])
+    patch = visualization.polygon_patch(geometry, (100, 200), preserve_aspect_ratio=True)
+    np.testing.assert_allclose(patch.get_xy()[:4], [[20, 20], [80, 20], [80, 40], [20, 40]])
+
+
+@pytest.mark.parametrize("num_colors", [0, 1, 3, 161, 175])
+def test_get_colors(num_colors):
+    colors = visualization.get_colors(num_colors)
+    assert len(colors) == num_colors
+    assert all(len(color) == 3 and all(0 <= c <= 1 for c in color) for color in colors)
 
 
 def test_draw_boxes():

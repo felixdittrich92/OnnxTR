@@ -50,9 +50,11 @@ def _predictor(
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
     kwargs["batch_size"] = kwargs.get("batch_size", 2)
+    chunk_size = kwargs.pop("chunk_size", 32)
     predictor = DetectionPredictor(
         PreProcessor(_model.cfg["input_shape"][1:], **kwargs),
         _model,
+        chunk_size=chunk_size,
     )
     return predictor
 
@@ -84,6 +86,8 @@ def detection_predictor(
         batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
+        chunk_size: maximum number of pages decoded and processed at once (32 by default): longer inputs and
+            lazy page sources (cf. `DocumentFile.from_images(..., lazy=True)`) are processed chunk by chunk
         **kwargs: optional keyword arguments passed to the architecture
 
     Returns:

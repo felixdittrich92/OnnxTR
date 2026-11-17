@@ -11,6 +11,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 from tqdm.auto import tqdm
@@ -20,19 +21,29 @@ __all__ = ["download_from_url"]
 logger = logging.getLogger(__name__)
 
 # matches bfd8deac from resnet18-bfd8deac.ckpt
-HASH_REGEX = re.compile(r"-([a-f0-9]*)\.")
+# Hash prefix at the end of a file name (e.g. "db_resnet50-79bd7d70.onnx"), shorter runs like "-10." are not hashes
+HASH_REGEX = re.compile(r"-([a-f0-9]{8,})\.")
 USER_AGENT = "felixdittrich92/OnnxTR"
 
 
 def _urlretrieve(url: str, filename: Path | str, chunk_size: int = 1024) -> None:
-    with open(filename, "wb") as fh:
-        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": USER_AGENT})) as response:
-            with tqdm(total=response.length) as pbar:
-                for chunk in iter(lambda: response.read(chunk_size), ""):
-                    if not chunk:
-                        break
-                    pbar.update(chunk_size)
-                    fh.write(chunk)
+    # Download to a temporary file first: an interrupted download must not leave a truncated file
+    # behind, which would then be reused as is by the next call when there is no hash to check.
+    # The name is unique to each call, so that concurrent downloads of the same file do not share it
+    tmp_path = Path(f"{filename}.{uuid.uuid4().hex}.part")
+    try:
+        with open(tmp_path, "wb") as fh:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": USER_AGENT})) as response:
+                with tqdm(total=response.length) as pbar:
+                    for chunk in iter(lambda: response.read(chunk_size), ""):
+                        if not chunk:
+                            break
+                        pbar.update(chunk_size)
+                        fh.write(chunk)
+        os.replace(tmp_path, filename)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def _check_integrity(file_path: str | Path, hash_prefix: str) -> bool:
@@ -92,7 +103,7 @@ def download_from_url(
         # Create folder hierarchy
         folder_path.mkdir(parents=True, exist_ok=True)
     except OSError:
-        error_message = f"Failed creating cache direcotry at {folder_path}"
+        error_message = f"Failed creating cache directory at {folder_path}"
         if os.environ.get("ONNXTR_CACHE_DIR", ""):
             error_message += " using path from 'ONNXTR_CACHE_DIR' environment variable."
         else:

@@ -3,11 +3,13 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+from collections.abc import Iterable, Sequence
 from typing import Any
 
 import numpy as np
 from scipy.special import softmax
 
+from onnxtr.models._utils import merge_columns, predict_by_chunks
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.utils.repr import NestedObject
 
@@ -21,7 +23,10 @@ class OrientationPredictor(NestedObject):
     Args:
         pre_processor: transform inputs for easier batched model inference
         model: core classification architecture (backbone + classification head)
-        load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
+        chunk_size: the maximum number of images decoded and processed at once (32 by default). Longer
+            inputs, lazy page sources (cf. `DocumentFile.from_images(..., lazy=True)`) and iterators are processed
+            chunk by chunk, with a memory footprint that does not grow with the number of images. It is rounded
+            up to a multiple of the batch size, so that the predictions are the same as in a single pass.
     """
 
     _children_names: list[str] = ["pre_processor", "model"]
@@ -30,11 +35,31 @@ class OrientationPredictor(NestedObject):
         self,
         pre_processor: PreProcessor | None,
         model: Any | None,
+        chunk_size: int = 32,
     ) -> None:
+        if chunk_size < 1:
+            raise ValueError("`chunk_size` must be a positive integer")
+        self.chunk_size = chunk_size
         self.pre_processor = pre_processor if isinstance(pre_processor, PreProcessor) else None
         self.model = model
 
     def __call__(
+        self,
+        inputs: Sequence[np.ndarray] | Iterable[np.ndarray],
+    ) -> list[list[int] | list[float]]:
+        """Classify the orientation of pages or crops
+
+        Args:
+            inputs: a list of images (numpy arrays of shape H x W x C), a lazy page source
+                (cf. `DocumentFile.from_pdf(..., lazy=True)`) or any iterable of images
+
+        Returns:
+            the lists of class indices, orientation angles and confidences, aligned with the inputs
+        """
+        batch_size = self.pre_processor.batch_size if self.pre_processor is not None else 1
+        return predict_by_chunks(self._predict, inputs, self.chunk_size, batch_size, merge=merge_columns)
+
+    def _predict(
         self,
         inputs: list[np.ndarray],
     ) -> list[list[int] | list[float]]:
