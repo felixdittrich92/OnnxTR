@@ -1,6 +1,7 @@
 from copy import deepcopy
 from math import hypot
 
+import cv2
 import numpy as np
 import pytest
 
@@ -9,11 +10,13 @@ from onnxtr.utils import geometry
 
 
 def test_bbox_to_polygon():
-    assert geometry.bbox_to_polygon(((0, 0), (1, 1))) == ((0, 0), (1, 0), (0, 1), (1, 1))
+    assert geometry.bbox_to_polygon(((0, 0), (1, 1))) == ((0, 0), (1, 0), (1, 1), (0, 1))
+    # the corners go around the box, so the polygon is not self-intersecting
+    assert cv2.contourArea(np.array(geometry.bbox_to_polygon(((0, 0), (10, 10))), dtype=np.float32)) == 100
 
 
 def test_polygon_to_bbox():
-    assert geometry.polygon_to_bbox(((0, 0), (1, 0), (0, 1), (1, 1))) == ((0, 0), (1, 1))
+    assert geometry.polygon_to_bbox(((0, 0), (1, 0), (1, 1), (0, 1))) == ((0, 0), (1, 1))
 
 
 def test_order_points():
@@ -76,6 +79,11 @@ def test_detach_scores():
     ])
     target2 = np.array([0.9, 0.8])
     assert np.all(pred[0] == target1) and np.all(pred[1] == target2)
+    # no pages
+    assert geometry.detach_scores([]) == ([], [])
+    # a page without any box
+    loc_preds, obj_scores = geometry.detach_scores([np.zeros((0, 5))])
+    assert loc_preds[0].shape == (0, 4) and obj_scores[0].shape == (0,)
 
 
 def test_resolve_enclosing_bbox():
@@ -105,6 +113,11 @@ def test_remap_boxes():
         np.asarray([[[0.25, 0.25], [0.25, 0.75], [0.75, 0.25], [0.75, 0.75]]]), (10, 10), (20, 10)
     )
     target = np.asarray([[[0.25, 0.375], [0.25, 0.625], [0.75, 0.375], [0.75, 0.625]]])
+    assert np.all(pred == target)
+
+    # Integer boxes are remapped like float ones, instead of being truncated to 0
+    pred = geometry.remap_boxes(np.asarray([[[0, 0], [1, 0], [1, 1], [0, 1]]]), (10, 10), (20, 20))
+    target = np.asarray([[[0.25, 0.25], [0.75, 0.25], [0.75, 0.75], [0.25, 0.75]]])
     assert np.all(pred == target)
 
     with pytest.raises(ValueError):
@@ -159,6 +172,21 @@ def test_rotate_boxes():
     rotated = geometry.rotate_boxes(boxes, angle=+90, orig_shape=(1, 1), min_angle=0)
     assert np.allclose(rotated, np.array([[[0, 1.0], [0, 0.4], [0.2, 0.4], [0.2, 1.0]]]))
 
+    # Integer boxes are rotated like float ones
+    boxes = np.array([[0, 0, 1, 1]])
+    rotated = geometry.rotate_boxes(boxes, angle=30, orig_shape=(1, 1))
+    assert np.allclose(rotated, geometry.rotate_boxes(boxes.astype(np.float32), angle=30, orig_shape=(1, 1)))
+
+
+def test_rotate_abs_points():
+    points = np.array([[10.0, 0.0], [0.0, 10.0]])
+    rotated = geometry.rotate_abs_points(points, 90.0)
+    assert np.allclose(rotated, np.array([[0.0, 10.0], [-10.0, 0.0]]))
+    # Integer points are rotated like float ones, instead of being collapsed to the origin
+    rotated = geometry.rotate_abs_points(points.astype(int), 30.0)
+    assert np.allclose(rotated, geometry.rotate_abs_points(points, 30.0))
+    assert np.allclose(rotated[0], [10 * np.cos(np.pi / 6), 5.0])
+
 
 @pytest.fixture
 def sample_geoms():
@@ -206,6 +234,25 @@ def test_rotate_image():
     rotated = geometry.rotate_image(img, 90.0, expand=True)
     assert rotated.shape[:-1] == (64, 128)
     assert rotated[0, :, 0].sum() <= 1
+
+    # Grayscale images (H, W) and (H, W, 1) are rotated like each channel of a color one
+    img = np.random.default_rng(0).random((32, 64, 3), dtype=np.float32)
+    for kwargs, shape in [
+        ({}, (32, 64)),
+        ({"expand": True}, (60, 120)),
+        ({"expand": True, "preserve_origin_shape": True}, (32, 64)),
+    ]:
+        color = geometry.rotate_image(img, 30.0, **kwargs)
+        rotated = geometry.rotate_image(img[..., 0], 30.0, **kwargs)
+        assert rotated.shape == shape
+        np.testing.assert_allclose(rotated, color[..., 0], rtol=0, atol=1e-6)
+        # The trailing channel axis is kept
+        rotated = geometry.rotate_image(img[..., :1], 30.0, **kwargs)
+        assert rotated.shape == (*shape, 1)
+        np.testing.assert_allclose(rotated, color[..., :1], rtol=0, atol=1e-6)
+    rotated = geometry.rotate_image(img[..., :1], 90.0, expand=True)
+    assert rotated.shape == (64, 128, 1)
+    assert np.array_equal(rotated, geometry.rotate_image(img, 90.0, expand=True)[..., :1])
 
 
 def test_remove_image_padding():
@@ -314,6 +361,16 @@ def test_extract_crops(mock_pdf):
     identical_crops = geometry.extract_crops(gradient_img, np.array([same_box, same_box, same_box], dtype=np.float32))
     assert all(np.array_equal(crop, identical_crops[0]) for crop in identical_crops)
 
+    # A box starting before the image is cropped to its visible part, instead of an empty crop
+    for box, expected in (
+        ([-0.2, -0.1, 0.3, 0.4], gradient_img[:41, :31]),  # relative, the last index is included
+        ([-20, -10, 30, 40], gradient_img[:40, :30]),  # absolute
+    ):
+        assert np.array_equal(geometry.extract_crops(gradient_img, np.array([box]))[0], expected)
+    # A box entirely before the image gives an empty crop
+    for box in ([-0.5, -0.5, -0.2, -0.2], [-50, -50, -20, -20]):
+        assert geometry.extract_crops(gradient_img, np.array([box]))[0].size == 0
+
     # No box
     assert geometry.extract_crops(doc_img, np.zeros((0, 4))) == []
 
@@ -348,6 +405,18 @@ def test_extract_rcrops(mock_pdf, assume_horizontal):
         # Data type and shape
         assert all(isinstance(crop, np.ndarray) for crop in croped_imgs)
         assert all(crop.ndim == 3 for crop in croped_imgs)
+
+    # Zero-width boxes yield an empty crop, without shifting the other crops
+    collapsed_boxes = np.array(
+        [[[x, 0.25], [x, 0.25], [x, 0.75], [x, 0.75]] for x in (0.0, 0.5, 1.0)] + [[[0.5, 0.5]] * 4],
+        dtype=np.float32,
+    )
+    croped_imgs = geometry.extract_rcrops(
+        doc_img, np.concatenate([rel_boxes, collapsed_boxes]), assume_horizontal=assume_horizontal
+    )
+    assert len(croped_imgs) == num_crops + len(collapsed_boxes)
+    assert all(crop.size > 0 for crop in croped_imgs[:num_crops])
+    assert all(crop.shape == (0, 0, 3) and crop.dtype == doc_img.dtype for crop in croped_imgs[num_crops:])
 
     # No box
     assert geometry.extract_rcrops(doc_img, np.zeros((0, 4, 2)), assume_horizontal=assume_horizontal) == []
@@ -410,3 +479,18 @@ def test_straighten_page_projected_corner_clamp():
 
     assert len(errors) > 0, "No fiducial dots survived interpolation"
     assert max(errors) < 0.6, f"Max remap error {max(errors):.4f}px exceeds 0.6px threshold"
+
+
+@pytest.mark.parametrize("angle", [0, 10, -30])
+def test_straighten_page_grayscale(angle):
+    page = np.random.default_rng(0).integers(0, 256, (120, 200, 3), dtype=np.uint8)
+    straightened, m_inv = geometry.straighten_page(page, angle)
+    # A grayscale page is straightened like each channel of a color one
+    gray_straightened, gray_m_inv = geometry.straighten_page(np.ascontiguousarray(page[..., 0]), angle)
+    assert np.array_equal(gray_straightened, straightened[..., 0])
+    assert np.array_equal(gray_m_inv, m_inv)
+    # A (H, W, 1) page keeps its channel axis
+    gray_straightened, gray_m_inv = geometry.straighten_page(page[..., :1], angle)
+    assert gray_straightened.shape == (*straightened.shape[:2], 1)
+    assert np.array_equal(gray_straightened, straightened[..., :1])
+    assert np.array_equal(gray_m_inv, m_inv)

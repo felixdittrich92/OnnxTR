@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+import logging
 from copy import deepcopy
 from typing import Any
 
@@ -17,6 +18,8 @@ from ..core import RecognitionPostProcessor
 
 __all__ = ["MASTER", "master"]
 
+logger = logging.getLogger(__name__)
+
 
 default_cfgs: dict[str, dict[str, Any]] = {
     "master": {
@@ -24,8 +27,8 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/master-b1287fcd.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/master_dynamic_8_bit-d8bd8206.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/master-33e2354b.onnx",
+        "url_8_bit": None,
     },
 }
 
@@ -134,7 +137,11 @@ def _master(
 
     kwargs["vocab"] = _cfg["vocab"]
     # Patch the url
-    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
+    if load_in_8_bit:
+        if default_cfgs[arch]["url_8_bit"] is None:
+            logger.warning(f"No 8-bit quantized export available for '{arch}'. Loading full precision model...")
+        elif "http" in model_path:
+            model_path = default_cfgs[arch]["url_8_bit"]
 
     return MASTER(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)
 

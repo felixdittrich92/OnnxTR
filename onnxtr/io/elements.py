@@ -3,6 +3,8 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+from collections.abc import Callable
+from functools import cmp_to_key
 from typing import Any
 
 import numpy as np
@@ -30,12 +32,57 @@ __all__ = [
     "LayoutElement",
     "TableCell",
     "Table",
+    "Formula",
 ]
 
 
 def _empty_page_image(page: np.ndarray | None) -> np.ndarray:
     """Return the given page image, or an empty placeholder when the page was restored from an export."""
     return page if page is not None else np.zeros((0, 0, 3), dtype=np.uint8)
+
+
+# A page image, or a zero-argument callable decoding it on demand. Predictions made on a lazy page source
+# (cf. `onnxtr.io.PageSource`) only keep a reference to their page, so that their memory footprint does not grow
+# with the image of every page of a long document.
+PageImage = np.ndarray | Callable[[], np.ndarray]
+
+
+def _get_page_image(self: Any) -> np.ndarray:
+    state = self.__dict__
+    if "_page" in state:
+        image = state["_page"]
+    elif "page" in state:
+        # Pages pickled by a previous release store their image under `page` (a plain instance attribute back then)
+        image = state["page"]
+    else:
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute 'page'")
+    return image() if callable(image) else image
+
+
+def _set_page_image(self: Any, image: PageImage) -> None:
+    # Drop the legacy entry of a page unpickled from a previous release, so that it cannot shadow the new image
+    self.__dict__.pop("page", None)
+    self._page = image
+
+
+_page_image_property = property(
+    _get_page_image,
+    _set_page_image,
+    doc="the page image as a numpy array (decoded on access when the page was predicted from a lazy page source)",
+)
+
+
+def _reading_order(a: "TableCell", b: "TableCell") -> int:
+    """Compare 2 table cells in reading order: cells overlapping by half their height are on the same line and read
+    left to right, the other ones top to bottom."""
+    (ax0, ay0), (ax1, ay1) = (pts := np.asarray(a.geometry).reshape(-1, 2)).min(axis=0), pts.max(axis=0)
+    (bx0, by0), (bx1, by1) = (pts := np.asarray(b.geometry).reshape(-1, 2)).min(axis=0), pts.max(axis=0)
+    overlap = min(ay1, by1) - max(ay0, by0)
+    if overlap >= 0.5 * min(ay1 - ay0, by1 - by0):
+        delta = (ax0 + ax1) - (bx0 + bx1)
+    else:
+        delta = (ay0 + ay1) - (by0 + by1)
+    return int(np.sign(delta))
 
 
 class Element(NestedObject):
@@ -288,16 +335,18 @@ class Table(Element):
         """Return the table content as a dense `num_rows` x `num_cols` grid of strings.
 
         Cells spanning several rows/columns have their value placed at their top-left position; the
-        remaining positions they span are left empty. The result is directly loadable into pandas via
+        remaining positions they span are left empty. Cells sharing the same top-left position have their
+        values joined in reading order, so no text is lost. The result is directly loadable into pandas via
         `pd.DataFrame(table.to_grid())`.
 
         Returns:
             a list of `num_rows` lists, each of length `num_cols`
         """
         grid = [["" for _ in range(self.num_cols)] for _ in range(self.num_rows)]
-        for cell in self.cells:
-            if 0 <= cell.row_start < self.num_rows and 0 <= cell.col_start < self.num_cols:
-                grid[cell.row_start][cell.col_start] = cell.value
+        for cell in sorted(self.cells, key=cmp_to_key(_reading_order)):
+            if 0 <= cell.row_start < self.num_rows and 0 <= cell.col_start < self.num_cols and cell.value:
+                current = grid[cell.row_start][cell.col_start]
+                grid[cell.row_start][cell.col_start] = f"{current} {cell.value}" if current else cell.value
         return grid
 
     def render(self, row_break: str = "\n", col_break: str = "\t") -> str:
@@ -312,6 +361,50 @@ class Table(Element):
         kwargs = {k: save_dict[k] for k in cls._exported_keys}
         kwargs["cells"] = [TableCell.from_dict(cell) for cell in save_dict["cells"]]
         return cls(**kwargs)
+
+
+class Formula(Element):
+    r"""Implements a mathematical formula recognized on a page as LaTeX
+
+    The formula regions are located by the layout model and kept out of the regular text recognition, so the
+    formula is not duplicated in the `blocks` of the page.
+
+    Args:
+        value: the LaTeX source of the formula (tokens separated by spaces, e.g. `\frac { a } { b }`), without
+            math delimiters
+        confidence: the confidence of the formula recognition
+        geometry: bounding box of the formula in format ((xmin, ymin), (xmax, ymax)) or a (4, 2) polygon, with
+            coordinates relative to the page's size
+        objectness_score: the score of the formula region predicted by the layout model, None if unknown
+    """
+
+    _exported_keys: list[str] = ["geometry", "value", "confidence", "objectness_score"]
+    _children_names: list[str] = []
+
+    def __init__(
+        self,
+        value: str,
+        confidence: float,
+        geometry: BoundingBox | np.ndarray,
+        objectness_score: float | None = None,
+    ) -> None:
+        super().__init__()
+        self.value = value
+        self.confidence = confidence
+        self.geometry = geometry
+        self.objectness_score = objectness_score
+
+    def render(self) -> str:
+        """Renders the LaTeX source of the formula"""
+        return self.value
+
+    def extra_repr(self) -> str:
+        return f"value='{self.value}', confidence={self.confidence:.2}"
+
+    @classmethod
+    def from_dict(cls, save_dict: dict[str, Any], **kwargs):
+        kwargs = {k: save_dict[k] for k in cls._exported_keys if k != "objectness_score"}
+        return cls(**kwargs, objectness_score=save_dict.get("objectness_score"))
 
 
 class Line(Element):
@@ -334,6 +427,8 @@ class Line(Element):
         geometry: BoundingBox | np.ndarray | None = None,
         objectness_score: float | None = None,
     ) -> None:
+        if geometry is None and not words:
+            raise ValueError("the geometry of a line without any word can not be resolved, please pass it")
         # Compute the objectness score of the line
         if objectness_score is None:
             objectness_score = float(np.mean([w.objectness_score for w in words]))
@@ -378,21 +473,29 @@ class Block(Element):
 
     def __init__(
         self,
-        lines: list[Line] = [],
-        artefacts: list[Artefact] = [],
+        lines: list[Line] | None = None,
+        artefacts: list[Artefact] | None = None,
         geometry: BoundingBox | np.ndarray | None = None,
         objectness_score: float | None = None,
     ) -> None:
-        # Compute the objectness score of the line
+        if lines is None:
+            lines = []
+        if artefacts is None:
+            artefacts = []
+        if geometry is None and not lines and not artefacts:
+            raise ValueError("the geometry of a block without any line or artefact can not be resolved, please pass it")
+        # Compute the objectness score of the block
         if objectness_score is None:
-            objectness_score = float(np.mean([w.objectness_score for line in lines for w in line.words]))
+            # A block without any word (only artefacts) takes the confidence of its artefacts, instead of NaN
+            scores = [w.objectness_score for line in lines for w in line.words] or [a.confidence for a in artefacts]
+            objectness_score = float(np.mean(scores))
         # Resolve the geometry using the smallest enclosing bounding box
         if geometry is None:
             line_boxes = [word.geometry for line in lines for word in line.words]
             artefact_boxes = [artefact.geometry for artefact in artefacts]
-            box_resolution_fn = (
-                resolve_enclosing_rbbox if isinstance(lines[0].geometry, np.ndarray) else resolve_enclosing_bbox
-            )
+            # Check whether this is a rotated or straight box (geometries read back from an export are lists)
+            first_geometry = lines[0].geometry if lines else artefacts[0].geometry
+            box_resolution_fn = resolve_enclosing_rbbox if len(first_geometry) == 4 else resolve_enclosing_bbox
             geometry = box_resolution_fn(line_boxes + artefact_boxes)  # type: ignore
 
         super().__init__(lines=lines, artefacts=artefacts)
@@ -417,7 +520,7 @@ class Page(PageExportsMixin, Element):
     """Implements a page element as a collection of blocks
 
     Args:
-        page: image encoded as a numpy array in uint8
+        page: image encoded as a numpy array in uint8, or a callable returning it (decoded on access)
         blocks: list of block elements
         page_idx: the index of the page in the input raw document
         dimensions: the page size in pixels in format (height, width)
@@ -425,17 +528,21 @@ class Page(PageExportsMixin, Element):
         language: a dictionary with the language value and confidence of the prediction
         layout: optional list of layout regions detected on the page
         tables: optional list of tables recognized on the page. Words assigned to a table are removed from `blocks`.
+        formulas: optional list of formulas recognized on the page. Formula regions are not part of `blocks`.
     """
 
     _exported_keys: list[str] = ["page_idx", "dimensions", "orientation", "language"]
-    _children_names: list[str] = ["blocks", "layout", "tables"]
+    _children_names: list[str] = ["blocks", "layout", "tables", "formulas"]
     blocks: list[Block] = []
     layout: list[LayoutElement] = []
     tables: list[Table] = []
+    formulas: list[Formula] = []
+
+    page = _page_image_property
 
     def __init__(
         self,
-        page: np.ndarray,
+        page: PageImage,
         blocks: list[Block],
         page_idx: int,
         dimensions: tuple[int, int],
@@ -443,11 +550,13 @@ class Page(PageExportsMixin, Element):
         language: dict[str, Any] | None = None,
         layout: list[LayoutElement] | None = None,
         tables: list[Table] | None = None,
+        formulas: list[Formula] | None = None,
     ) -> None:
         super().__init__(
             blocks=blocks,
             layout=layout if layout is not None else [],
             tables=tables if tables is not None else [],
+            formulas=formulas if formulas is not None else [],
         )
         self.page = page
         self.page_idx = page_idx
@@ -499,6 +608,7 @@ class Page(PageExportsMixin, Element):
             "blocks": [Block.from_dict(block_dict) for block_dict in save_dict["blocks"]],
             "layout": [LayoutElement.from_dict(region_dict) for region_dict in save_dict.get("layout", [])],
             "tables": [Table.from_dict(table_dict) for table_dict in save_dict.get("tables", [])],
+            "formulas": [Formula.from_dict(formula_dict) for formula_dict in save_dict.get("formulas", [])],
         })
         # The page image is not part of the export: pass it back explicitly to restore a fully usable page
         return cls(page=_empty_page_image(page), **_kwargs)

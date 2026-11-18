@@ -26,7 +26,7 @@ def _orientation_predictor(
 ) -> OrientationPredictor:
     if disabled:
         # Case where the orientation predictor is disabled
-        return OrientationPredictor(None, None)
+        return OrientationPredictor(None, None, chunk_size=kwargs.get("chunk_size", 32))
 
     if isinstance(arch, str):
         if arch not in ORIENTATION_ARCHS:
@@ -41,10 +41,13 @@ def _orientation_predictor(
     kwargs["mean"] = kwargs.get("mean", _model.cfg["mean"])
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
     kwargs["batch_size"] = kwargs.get("batch_size", 512 if model_type == "crop" else 2)
+    # Crops are much smaller than pages: many more of them fit in memory at once
+    chunk_size = kwargs.pop("chunk_size", 1024 if model_type == "crop" else 32)
     input_shape = _model.cfg["input_shape"][1:]
     predictor = OrientationPredictor(
         PreProcessor(input_shape, preserve_aspect_ratio=True, symmetric_pad=True, **kwargs),
         _model,
+        chunk_size=chunk_size,
     )
     return predictor
 
@@ -69,6 +72,8 @@ def crop_orientation_predictor(
         batch_size: number of samples the model processes in parallel
         load_in_8_bit: load the 8-bit quantized version of the model
         engine_cfg: configuration of inference engine
+        chunk_size: maximum number of crops decoded and processed at once (1024 by default): longer inputs and
+            lazy page sources (cf. `DocumentFile.from_images(..., lazy=True)`) are processed chunk by chunk
         **kwargs: keyword arguments to be passed to the OrientationPredictor
 
     Returns:
@@ -105,6 +110,8 @@ def page_orientation_predictor(
         batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration for the inference engine
+        chunk_size: maximum number of pages decoded and processed at once (32 by default): longer inputs and
+            lazy page sources (cf. `DocumentFile.from_images(..., lazy=True)`) are processed chunk by chunk
         **kwargs: keyword arguments to be passed to the OrientationPredictor
 
     Returns:

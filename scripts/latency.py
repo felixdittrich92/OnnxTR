@@ -9,14 +9,15 @@ from typing import Any
 
 import numpy as np
 
-from onnxtr.models import classification, detection, layout, recognition, table_structure
+from onnxtr.models import classification, detection, formula, layout, recognition, table_structure
 from onnxtr.models.classification.zoo import ORIENTATION_ARCHS
 from onnxtr.models.detection.zoo import ARCHS as DETECTION_ARCHS
+from onnxtr.models.formula.zoo import ARCHS as FORMULA_ARCHS
 from onnxtr.models.layout.zoo import ARCHS as LAYOUT_ARCHS
 from onnxtr.models.recognition.zoo import ARCHS as RECOGNITION_ARCHS
 from onnxtr.models.table_structure.zoo import ARCHS as TABLE_ARCHS
 
-ALL_ARCHS = DETECTION_ARCHS + RECOGNITION_ARCHS + ORIENTATION_ARCHS + LAYOUT_ARCHS + TABLE_ARCHS
+ALL_ARCHS = DETECTION_ARCHS + RECOGNITION_ARCHS + ORIENTATION_ARCHS + LAYOUT_ARCHS + TABLE_ARCHS + FORMULA_ARCHS
 
 
 def _model_args(model: Any, img_tensor: np.ndarray) -> tuple[np.ndarray, ...]:
@@ -46,6 +47,8 @@ def main(args):
         model = layout.__dict__[args.arch](load_in_8_bit=args.load8bit)
     elif args.arch in TABLE_ARCHS:
         model = table_structure.__dict__[args.arch](load_in_8_bit=args.load8bit)
+    elif args.arch in FORMULA_ARCHS:
+        model = formula.__dict__[args.arch](load_in_8_bit=args.load8bit)
     else:
         raise ValueError(f"Unknown architecture {args.arch}")
 

@@ -23,8 +23,8 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/parseq-00b40714.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/parseq_dynamic_8_bit-5b04d9f7.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/parseq-06b6a44c.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/parseq_dynamic_8_bit-52b16de2.onnx",
     },
 }
 

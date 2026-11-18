@@ -5,8 +5,17 @@ import numpy as np
 import pytest
 import requests
 
-from onnxtr.io import reader
-from onnxtr.models._utils import aggregate_confidence, estimate_orientation, get_language, mask_boxes
+from onnxtr.io import read_img_as_numpy
+from onnxtr.models._utils import (
+    aggregate_confidence,
+    estimate_orientation,
+    get_language,
+    mask_boxes,
+    merge_columns,
+    merge_items,
+    predict_by_chunks,
+)
+from onnxtr.models.predictor.base import _OCRPredictor
 from onnxtr.utils import geometry
 
 
@@ -17,7 +26,7 @@ def mock_image(tmpdir_factory):
     tmp_path = str(tmpdir_factory.mktemp("data").join("mock_bitmap.jpg"))
     with open(tmp_path, "wb") as f:
         f.write(file.getbuffer())
-    image = reader.read_img_as_numpy(tmp_path)
+    image = read_img_as_numpy(tmp_path)
     return image
 
 
@@ -45,8 +54,10 @@ def test_estimate_orientation(mock_image, mock_bitmap, mock_tilted_payslip):
     angle_rotated = estimate_orientation(rotated)
     assert abs(angle_rotated) == 0
 
-    mock_tilted_payslip = reader.read_img_as_numpy(mock_tilted_payslip)
+    mock_tilted_payslip = read_img_as_numpy(mock_tilted_payslip)
     assert estimate_orientation(mock_tilted_payslip) == -30
+    # A float image (values in [0, 1]) gives the same angle as the same image in uint8
+    assert estimate_orientation(mock_tilted_payslip.astype(np.float32) / 255) == -30
 
     rotated = geometry.rotate_image(mock_tilted_payslip, -30, expand=True)
     angle_rotated = estimate_orientation(rotated)
@@ -167,3 +178,124 @@ def test_aggregate_confidence_edge_cases():
     for invalid in ["average", ["mean"], {"mean"}, None, 1]:
         with pytest.raises(ValueError, match="Unknown confidence aggregation"):
             aggregate_confidence([0.5], invalid)
+
+
+def test_detect_straightened():
+    # Only the pages changed by the straightening or the masking are detected again
+    calls = []
+
+    def det_predictor(pages, **kwargs):
+        calls.append(len(pages))
+        return [f"redetected_{idx}" for idx in range(len(pages))]
+
+    predictor = _OCRPredictor.__new__(_OCRPredictor)
+    predictor.det_predictor = det_predictor
+    orig = [np.zeros((4, 4, 3), dtype=np.uint8) for _ in range(4)]
+    straight = [orig[0].copy(), np.ones((4, 4, 3), dtype=np.uint8), np.zeros((4, 5, 3), dtype=np.uint8), orig[3].copy()]
+    masked = [straight[0], straight[1], straight[2], straight[3].copy()]  # the last page is masked (a copy)
+    out = predictor._detect_straightened(["first_0", "first_1", "first_2", "first_3"], orig, straight, masked)
+    assert out == ["first_0", "redetected_0", "redetected_1", "redetected_2"]
+    assert calls == [3]
+    # Nothing changed: no detection at all
+    calls.clear()
+    assert predictor._detect_straightened(["a"], orig[:1], straight[:1], straight[:1]) == ["a"]
+    assert calls == []
+
+
+def test_align_hook_output():
+    boxes = [
+        np.array([[0.1, 0.1, 0.2, 0.2], [0.5, 0.5, 0.6, 0.6], [0.8, 0.1, 0.9, 0.2]], dtype=np.float32),
+        np.zeros((0, 4), dtype=np.float32),
+    ]
+    scores = [np.array([0.9, 0.3, 0.6], dtype=np.float32), np.zeros((0,), dtype=np.float32)]
+
+    # Unchanged boxes keep their scores
+    out_boxes, out_scores = _OCRPredictor._align_hook_output(boxes, [b.copy() for b in boxes], scores)
+    assert all(np.array_equal(a, b) for a, b in zip(out_boxes, boxes))
+    assert out_scores[0] == pytest.approx([0.9, 0.3, 0.6])
+
+    # Moved, reordered and filtered boxes keep the score of their closest box; lists are converted to arrays,
+    # and a box added on a page without predictions gets a score of 1
+    hooked = [np.array([[0.81, 0.1, 0.91, 0.2], [0.11, 0.1, 0.21, 0.2]]), [[0.0, 0.0, 0.1, 0.1]]]
+    out_boxes, out_scores = _OCRPredictor._align_hook_output(boxes, hooked, scores)
+    assert out_boxes[0].dtype == np.float32 and out_boxes[0].shape == (2, 4)
+    assert out_boxes[1].shape == (1, 4)
+    assert out_scores[0] == pytest.approx([0.6, 0.9])
+    assert out_scores[1] == pytest.approx([1.0])
+
+    # All the boxes can be removed
+    out_boxes, out_scores = _OCRPredictor._align_hook_output(boxes, [[], []], scores)
+    assert [b.shape for b in out_boxes] == [(0, 4), (0, 4)]
+    assert [len(s) for s in out_scores] == [0, 0]
+
+    # Rotated boxes
+    polys = [
+        np.array([
+            [[0.1, 0.1], [0.2, 0.1], [0.2, 0.2], [0.1, 0.2]],
+            [[0.5, 0.5], [0.6, 0.5], [0.6, 0.6], [0.5, 0.6]],
+        ])
+    ]
+    out_boxes, out_scores = _OCRPredictor._align_hook_output(polys, [polys[0][1:]], [np.array([0.4, 0.7])])
+    assert out_boxes[0].shape == (1, 4, 2)
+    assert out_scores[0] == pytest.approx([0.7])
+
+    # Invalid outputs
+    with pytest.raises(ValueError, match="one array of boxes per page"):
+        _OCRPredictor._align_hook_output(boxes, boxes[:1], scores)
+    with pytest.raises(ValueError, match="one array of boxes per page"):
+        _OCRPredictor._align_hook_output(boxes, boxes[0], scores)
+    with pytest.raises(ValueError, match="format of the boxes"):
+        _OCRPredictor._align_hook_output(boxes, [boxes[0][:, :2], boxes[1]], scores)
+
+
+class _RecordingPredict:
+    """Fake prediction function: one item per input, recording the size of every call"""
+
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, inputs):
+        self.calls.append(len(inputs))
+        return [int(x[0, 0, 0]) for x in inputs]
+
+
+def _images(num):
+    return [np.full((2, 2, 3), idx, dtype=np.uint8) for idx in range(num)]
+
+
+def test_predict_by_chunks():
+    images = _images(10)
+
+    # short lists & tuples: a single call, as before
+    predict = _RecordingPredict()
+    assert predict_by_chunks(predict, images, chunk_size=10) == list(range(10))
+    assert predict_by_chunks(predict, tuple(images), chunk_size=10) == list(range(10))
+    assert predict.calls == [10, 10]
+
+    # longer inputs & iterators: chunk by chunk, the chunk size being rounded up to a multiple of the batch size
+    for inputs in (images, iter(images), (image for image in images)):
+        predict = _RecordingPredict()
+        assert predict_by_chunks(predict, inputs, chunk_size=3, batch_size=2) == list(range(10))
+        assert predict.calls == [4, 4, 2]
+
+    # an array is a batch already in memory: passed as is
+    predict = _RecordingPredict()
+    assert predict_by_chunks(predict, np.stack(images), chunk_size=2) == list(range(10))
+    assert predict.calls == [10]
+
+    # an empty input still reaches the predictor, which returns its own empty output
+    predict = _RecordingPredict()
+    assert predict_by_chunks(predict, iter([]), chunk_size=2) == []
+    assert predict.calls == [0]
+
+
+def test_merge_outputs():
+    assert merge_items([[1, 2], [3]]) == [1, 2, 3]
+    # orientation predictors: aligned lists
+    assert merge_columns([[[0], [90], [0.5]], [[1, 2], [180, 270], [0.6, 0.7]]]) == [
+        [0, 1, 2],
+        [90, 180, 270],
+        [0.5, 0.6, 0.7],
+    ]
+    # detection with `return_maps=True`: a tuple
+    assert merge_columns([(["a"], ["map_a"]), (["b"], ["map_b"])]) == (["a", "b"], ["map_a", "map_b"])

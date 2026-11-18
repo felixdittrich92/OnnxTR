@@ -64,7 +64,10 @@ def _predictor(
     kwargs["std"] = kwargs.get("std", _model.cfg["std"])
     kwargs["batch_size"] = kwargs.get("batch_size", 1024)
     input_shape = _model.cfg["input_shape"][1:]
-    predictor = RecognitionPredictor(PreProcessor(input_shape, preserve_aspect_ratio=True, **kwargs), _model)
+    chunk_size = kwargs.pop("chunk_size", 1024)
+    predictor = RecognitionPredictor(
+        PreProcessor(input_shape, preserve_aspect_ratio=True, **kwargs), _model, chunk_size=chunk_size
+    )
 
     return predictor
 
@@ -93,6 +96,8 @@ def recognition_predictor(
         batch_size: number of samples the model processes in parallel
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         engine_cfg: configuration of inference engine
+        chunk_size: maximum number of crops decoded and processed at once (1024 by default): longer inputs and
+            lazy page sources (cf. `DocumentFile.from_images(..., lazy=True)`) are processed chunk by chunk
         confidence_aggregation: aggregation method of the character probabilities into the word confidence:
             "mean", "min", "max", "median", "geometric_mean", "harmonic_mean" or a callable. If None, the one of
             the model is kept ("min" for CRNN, VIPTR, SAR and MASTER, "mean" for ViTSTR and PARSeq by default)
