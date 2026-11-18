@@ -1,12 +1,9 @@
 import gc
-import json
-import subprocess
-import sys
 
 import numpy as np
 import psutil
 import pytest
-from onnxruntime import SessionOptions
+from onnxruntime import RunOptions, SessionOptions
 
 from onnxtr import models
 from onnxtr.io import Document
