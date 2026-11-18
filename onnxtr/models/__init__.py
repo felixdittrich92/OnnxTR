@@ -4,6 +4,7 @@ from .detection import *
 from .layout import *
 from .table_structure import *
 from .recognition import *
+from .formula import *
 from .zoo import *
 from .factory import *
 from .reading_order import *

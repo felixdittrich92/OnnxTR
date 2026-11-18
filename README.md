@@ -7,8 +7,8 @@
 [![codecov](https://codecov.io/gh/felixdittrich92/OnnxTR/graph/badge.svg?token=WVFRCQBOLI)](https://codecov.io/gh/felixdittrich92/OnnxTR)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/4fff4d764bb14fb8b4f4afeb9587231b)](https://app.codacy.com/gh/felixdittrich92/OnnxTR/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr/badge)](https://www.codefactor.io/repository/github/felixdittrich92/onnxtr)
-[![Socket Badge](https://badge.socket.dev/pypi/package/onnxtr/0.9.0?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/onnxtr/0.9.0?artifact_id=tar-gz)
-[![Pypi](https://img.shields.io/badge/pypi-v0.9.0-blue.svg)](https://pypi.org/project/OnnxTR/)
+[![Socket Badge](https://badge.socket.dev/pypi/package/onnxtr/0.10.0?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/onnxtr/0.10.0?artifact_id=tar-gz)
+[![Pypi](https://img.shields.io/badge/pypi-v0.10.0-blue.svg)](https://pypi.org/project/OnnxTR/)
 [![Docker Images](https://img.shields.io/badge/Docker-4287f5?style=flat&logo=docker&logoColor=white)](https://github.com/felixdittrich92/OnnxTR/pkgs/container/onnxtr)
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/Felix92/OnnxTR-OCR)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/onnxtr)
@@ -90,6 +90,24 @@ single_img_doc = DocumentFile.from_images("path/to/your/img.jpg")
 webpage_doc = DocumentFile.from_url("https://www.yoursite.com")
 # Multiple page images
 multi_img_doc = DocumentFile.from_images(["path/to/page1.jpg", "path/to/page2.jpg"])
+# Every PDF and image of a folder
+folder_doc = DocumentFile.from_files("path/to/your/folder")
+```
+
+Long documents and large image collections can be opened lazily: the pages are only decoded when they are processed,
+chunk by chunk (`page_chunk_size` pages at a time), so that the memory footprint does not grow with the number of pages.
+
+```python
+from onnxtr.io import DocumentFile
+from onnxtr.models import ocr_predictor
+
+model = ocr_predictor(page_chunk_size=16)
+doc = DocumentFile.from_pdf("path/to/your/long_doc.pdf", lazy=True)
+# Predict on the whole document
+result = model(doc)
+# Or get the pages one by one, as soon as they are processed
+for page in model.stream(doc, on_error="skip"):  # skip the pages that cannot be read
+    print(page.page_idx, page.render())
 ```
 
 ### Putting it together
@@ -122,6 +140,7 @@ model = ocr_predictor(
     layout_arch="lw_detr_s",  # layout architecture to use (default: lw_detr_s)
     ignore_regions=None,  # optional list of layout classes to mask out before detection, e.g. ["Picture"] (default: None)
     detect_tables=False,  # set to `True` to recognize the structure of detected tables (default: False)
+    detect_formulas=False,  # set to `True` to read the detected formulas as LaTeX (default: False)
     # Orientation specific parameters in combination with `assume_straight_pages=False` and/or `straighten_pages=True`
     disable_crop_orientation=False,  # set to `True` if the crop orientation classification should be disabled (default: False)
     disable_page_orientation=False,  # set to `True` if the general page orientation classification should be disabled (default: False)
@@ -131,8 +150,11 @@ model = ocr_predictor(
     paragraph_break=0.035,  # relative length of the minimum space separating paragraphs (default: 0.035)
     keep_reading_order=False,  # whether the elements should be re-ordered by reading order (default: False)
     preserve_original_coords=False,  # with `straighten_pages=True`, map the boxes back onto the original page (default: False)
+    # Long documents
+    page_chunk_size=32,  # maximum number of pages of a lazy page source / iterator processed at once (default: 32)
     # OnnxTR specific parameters
-    # NOTE: 8-Bit quantized models are not available for FAST detection models and can in general lead to poorer accuracy
+    # NOTE: 8-Bit quantized models are not available for FAST, MASTER, VIPTR, LW-DETR, TableCenterNet and FormulaNet models
+    # (the full precision model is loaded instead) and can in general lead to poorer accuracy
     load_in_8_bit=False,  # set to `True` to load 8-bit quantized models instead of the full precision onces (default: False)
     # Advanced engine configuration options
     det_engine_cfg=EngineConfig(),  # detection model engine configuration (default: internal predefined configuration)
@@ -140,6 +162,7 @@ model = ocr_predictor(
     clf_engine_cfg=EngineConfig(),  # classification (orientation) model engine configuration (default: internal predefined configuration)
     layout_engine_cfg=EngineConfig(),  # layout model engine configuration (default: internal predefined configuration)
     table_engine_cfg=EngineConfig(),  # table structure model engine configuration (default: internal predefined configuration)
+    formula_engine_cfg=EngineConfig(),  # formula recognition model engine configuration (default: internal predefined configuration)
 )
 # PDF
 doc = DocumentFile.from_pdf("path/to/your/doc.pdf")
@@ -266,6 +289,30 @@ run, which is useful to skip figures or stamps:
 model = ocr_predictor(detect_layout=True, ignore_regions=["Picture", "Formula"])
 ```
 
+Two layout architectures are available: `lw_detr_s` (default) and the more accurate `lw_detr_m`
+(`ocr_predictor(detect_layout=True, layout_arch="lw_detr_m")`).
+
+### Formula recognition
+
+With `detect_formulas=True`, the formula regions found by the layout model are masked out of the text detection,
+cropped and read as LaTeX by a formula recognition model (FormulaNet). They are exported as display math
+(e.g. `$$...$$` in Markdown).
+
+```python
+from onnxtr.io import DocumentFile
+from onnxtr.models import formula_predictor, ocr_predictor
+
+model = ocr_predictor(detect_formulas=True)
+result = model(DocumentFile.from_pdf("path/to/your/doc.pdf"))
+for formula in result.pages[0].formulas:
+    print(formula.value, formula.confidence, formula.geometry)
+print(result.export_as_markdown())
+
+# Or read formula images directly
+predictor = formula_predictor("formulanet")
+latex, confidence = predictor(DocumentFile.from_images("path/to/formula.png"))[0]
+```
+
 ### Exporting the results
 
 Beyond `export()` and `render()`, a document can be exported to several document formats:
@@ -307,6 +354,12 @@ onnxtr-cli --input_path doc.pdf --output results.txt --device cuda --load_in_8_b
 
 # Several inputs (images, PDFs and URLs) concatenated into a single document
 onnxtr-cli --input_path a.png b.pdf https://example.com --output results.html
+
+# Formulas read as LaTeX (display math in the Markdown export)
+onnxtr-cli --input_path paper.pdf --output results.md --detect_formulas
+
+# A whole folder of PDFs and images, processed chunk by chunk, skipping the files that cannot be read
+onnxtr-cli --input_path path/to/folder --output results.json --page_chunk_size 16 --on_error skip
 ```
 
 `--device` accepts `auto` (the default, picking CUDA when available), `cpu`, `cuda`, or an
@@ -404,6 +457,10 @@ Credits where it's due: this repository provides ONNX models for the following a
 
 - TableCenterNet: [TableCenterNet: A one-stage network for table structure recognition](https://arxiv.org/abs/2504.17522).
 
+### Formula Recognition
+
+- FormulaNet: [PP-FormulaNet: Bridging Accuracy and Efficiency in Advanced Formula Recognition](https://arxiv.org/abs/2503.18382).
+
 ```python
 predictor = ocr_predictor()
 predictor.list_archs()
@@ -424,7 +481,7 @@ predictor.list_archs()
         "crnn_mobilenet_v3_small",
         "crnn_mobilenet_v3_large",
         "sar_resnet31",
-        "master",
+        "master",  # No 8-bit support
         "vitstr_small",
         "vitstr_base",
         "parseq",
@@ -432,9 +489,13 @@ predictor.list_archs()
     ],
     "layout_archs": [
         "lw_detr_s",  # No 8-bit support
+        "lw_detr_m",  # No 8-bit support
     ],
     "table_structure_archs": [
         "tablecenternet",  # No 8-bit support
+    ],
+    "formula_archs": [
+        "formulanet",  # No 8-bit support
     ],
 }
 ```

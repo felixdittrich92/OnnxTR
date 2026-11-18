@@ -54,6 +54,7 @@ RECO_ARCHS: list[str] = [
 
 LAYOUT_ARCHS: list[str] = [
     "lw_detr_s",
+    "lw_detr_m",
 ]
 
 CUSTOM_RECO_ARCHS: list[str] = [
@@ -78,6 +79,7 @@ def load_predictor(
     layout_arch: str = "lw_detr_s",
     ignore_regions: list[str] | None = None,
     detect_tables: bool = False,
+    detect_formulas: bool = False,
     keep_reading_order: bool = False,
     preserve_original_coords: bool = False,
 ) -> OCRPredictor:
@@ -101,6 +103,7 @@ def load_predictor(
         layout_arch: layout detection architecture
         ignore_regions: layout classes to mask out before detection & recognition
         detect_tables: whether to recognize the structure of detected tables
+        detect_formulas: whether to read the detected formulas as LaTeX
         keep_reading_order: whether the elements should be re-ordered by reading order
         preserve_original_coords: with straighten_pages, map the boxes back onto the original page
 
@@ -128,6 +131,7 @@ def load_predictor(
         layout_arch=layout_arch,
         ignore_regions=ignore_regions or None,
         detect_tables=detect_tables,
+        detect_formulas=detect_formulas,
         keep_reading_order=keep_reading_order,
         preserve_original_coords=preserve_original_coords,
         det_engine_cfg=engine_cfg,
@@ -135,6 +139,7 @@ def load_predictor(
         clf_engine_cfg=engine_cfg,
         layout_engine_cfg=engine_cfg,
         table_engine_cfg=engine_cfg,
+        formula_engine_cfg=engine_cfg,
     )
     predictor.det_predictor.model.postprocessor.bin_thresh = bin_thresh
     predictor.det_predictor.model.postprocessor.box_thresh = box_thresh
@@ -200,6 +205,7 @@ def analyze_page(
     layout_arch: str,
     ignore_regions: list[str],
     detect_tables: bool,
+    detect_formulas: bool,
     keep_reading_order: bool,
     preserve_original_coords: bool,
 ):
@@ -225,20 +231,23 @@ def analyze_page(
         layout_arch: layout detection architecture
         ignore_regions: layout classes to mask out before detection & recognition
         detect_tables: whether to recognize the structure of detected tables
+        detect_formulas: whether to read the detected formulas as LaTeX
         keep_reading_order: whether the elements should be re-ordered by reading order
         preserve_original_coords: with straighten_pages, map the boxes back onto the original page
 
     Returns:
     -------
-        input image, segmentation heatmap, output image, OCR output, synthesized page, markdown export
+        input image, segmentation heatmap, output image, OCR output, synthesized page, markdown export,
+        recognized formulas
     """
     if uploaded_file is None:
-        return None, "Please upload a document", None, None, None, None
+        return None, "Please upload a document", None, None, None, None, None
 
+    # Lazy sources: only the selected page is decoded
     if uploaded_file.name.endswith(".pdf"):
-        doc = DocumentFile.from_pdf(uploaded_file)
+        doc = DocumentFile.from_pdf(uploaded_file, lazy=True)
     else:
-        doc = DocumentFile.from_images(uploaded_file)
+        doc = DocumentFile.from_images(uploaded_file, lazy=True)
     try:
         page = doc[page_idx - 1]
     except IndexError:
@@ -263,6 +272,7 @@ def analyze_page(
         layout_arch=layout_arch,
         ignore_regions=ignore_regions,
         detect_tables=detect_tables,
+        detect_formulas=detect_formulas,
         keep_reading_order=keep_reading_order,
         preserve_original_coords=preserve_original_coords,
     )
@@ -286,7 +296,19 @@ def analyze_page(
 
     markdown_export = out.pages[0].export_as_markdown()
 
-    return img, seg_heatmap, out_img, page_export, synthesized_page, markdown_export
+    # Recognized formulas (if any): rendered, and their LaTeX source
+    formulas = out.pages[0].formulas
+    formulas_export = (
+        "\n\n".join(
+            f"**Formula {idx + 1}** (confidence {formula.confidence:.2f})\n\n$$\n{formula.value}\n$$\n\n"
+            f"```latex\n{formula.value}\n```"
+            for idx, formula in enumerate(formulas)
+        )
+        if formulas
+        else ""
+    )
+
+    return img, seg_heatmap, out_img, page_export, synthesized_page, markdown_export, formulas_export
 
 
 with gr.Blocks(fill_height=True) as demo:
@@ -311,7 +333,7 @@ with gr.Blocks(fill_height=True) as demo:
         <h2>To use this interactive demo for OnnxTR:</h2>
         <h3> 1. Upload a document (PDF, JPG, or PNG)</h3>
         <h3> 2. Select the model architectures for text detection and recognition you want to use</h3>
-        <h3> 3. Optionally enable layout detection and table structure recognition</h3>
+        <h3> 3. Optionally enable layout detection, table structure and formula recognition</h3>
         <h3> 4. Press the "Analyze page" button to process the uploaded document</h3>
         """
     )
@@ -335,10 +357,13 @@ with gr.Blocks(fill_height=True) as demo:
                 minimum=0.1, maximum=0.9, value=0.3, step=0.1, label="Binarization threshold"
             )
             box_threshold = gr.Slider(minimum=0.1, maximum=0.9, value=0.1, step=0.1, label="Box threshold")
-            with gr.Accordion("Layout & tables", open=False):
+            with gr.Accordion("Layout, tables & formulas", open=False):
                 detect_layout = gr.Checkbox(value=False, label="Detect layout regions")
                 layout_model = gr.Dropdown(choices=LAYOUT_ARCHS, value=LAYOUT_ARCHS[0], label="Layout detection model")
                 detect_tables = gr.Checkbox(value=False, label="Recognize table structure (enables the layout model)")
+                detect_formulas = gr.Checkbox(
+                    value=False, label="Recognize formulas as LaTeX (enables the layout model)"
+                )
                 ignore_regions = gr.Dropdown(
                     choices=LAYOUT_CLASSES,
                     value=[],
@@ -362,6 +387,8 @@ with gr.Blocks(fill_height=True) as demo:
                     synthesized_page = gr.Image(label="Synthesized page", width=700, height=500)
             with gr.Row():
                 markdown_output = gr.Markdown(label="Markdown export", height=400)
+            with gr.Row():
+                formulas_output = gr.Markdown(label="Recognized formulas", height=400)
 
     analyze_button.click(
         analyze_page,
@@ -384,6 +411,7 @@ with gr.Blocks(fill_height=True) as demo:
             layout_model,
             ignore_regions,
             detect_tables,
+            detect_formulas,
             keep_reading_order,
             preserve_original_coords,
         ],
@@ -394,6 +422,7 @@ with gr.Blocks(fill_height=True) as demo:
             ocr_output,
             synthesized_page,
             markdown_output,
+            formulas_output,
         ],
     )
 

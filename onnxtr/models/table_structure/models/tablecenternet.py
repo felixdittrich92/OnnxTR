@@ -29,7 +29,7 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "input_shape": (3, 1024, 1024),
         "mean": (0.798, 0.785, 0.772),
         "std": (0.264, 0.2749, 0.287),
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.8.1/tablecenternet-2c8de407.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/tablecenternet-2812bb95.onnx",
         "url_8_bit": None,
     },
 }
@@ -97,6 +97,7 @@ class TableCenterNet(Engine):
         center_k: maximum number of cell centers
         corner_k: maximum number of corners
         not_relocate: if True, skip the corner-relocation step
+        geometric_logic: if True, remove the duplicate cells (cf. `TableCenterNetPostProcessor`)
         assume_straight_pages: if True, fit straight boxes to the detected cells
         cfg: the configuration dict of the model
         **kwargs: additional arguments to be passed to `Engine`
@@ -108,9 +109,10 @@ class TableCenterNet(Engine):
         engine_cfg: EngineConfig | None = None,
         center_thresh: float = 0.3,
         corner_thresh: float = 0.3,
-        center_k: int = 3000,
-        corner_k: int = 5000,
+        center_k: int = 10000,
+        corner_k: int = 12000,
         not_relocate: bool = False,
+        geometric_logic: bool = True,
         assume_straight_pages: bool = True,
         cfg: dict[str, Any] | None = None,
         **kwargs: Any,
@@ -126,6 +128,7 @@ class TableCenterNet(Engine):
             center_thresh=center_thresh,
             corner_thresh=corner_thresh,
             not_relocate=not_relocate,
+            geometric_logic=geometric_logic,
             assume_straight_pages=assume_straight_pages,
         )
 

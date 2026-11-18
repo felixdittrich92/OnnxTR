@@ -8,6 +8,7 @@ from typing import Any
 from ._utils import ConfidenceAggregation, _resolve_confidence_aggregation
 from .detection.zoo import detection_predictor
 from .engine import EngineConfig
+from .formula.zoo import formula_predictor
 from .layout.zoo import layout_predictor
 from .predictor import OCRPredictor
 from .recognition.zoo import recognition_predictor
@@ -31,12 +32,14 @@ def _predictor(
     layout_arch: Any = "lw_detr_s",
     ignore_regions: list[str] | None = None,
     detect_tables: bool = False,
+    detect_formulas: bool = False,
     load_in_8_bit: bool = False,
     det_engine_cfg: EngineConfig | None = None,
     reco_engine_cfg: EngineConfig | None = None,
     clf_engine_cfg: EngineConfig | None = None,
     layout_engine_cfg: EngineConfig | None = None,
     table_engine_cfg: EngineConfig | None = None,
+    formula_engine_cfg: EngineConfig | None = None,
     confidence_aggregation: ConfidenceAggregation | None = None,
     **kwargs,
 ) -> OCRPredictor:
@@ -64,7 +67,7 @@ def _predictor(
         confidence_aggregation=confidence_aggregation,
     )
 
-    # Layout - required for table detection, so build it whenever layout or tables are requested
+    # Layout - required for table and formula recognition, so build it whenever one of them is requested
     layout_pred = (
         layout_predictor(
             layout_arch,
@@ -75,7 +78,7 @@ def _predictor(
             load_in_8_bit=load_in_8_bit,
             engine_cfg=layout_engine_cfg,
         )
-        if (detect_layout or detect_tables or ignore_regions)
+        if (detect_layout or detect_tables or detect_formulas or ignore_regions)
         else None
     )
 
@@ -94,6 +97,17 @@ def _predictor(
         else None
     )
 
+    # Formula recognition - optional, applied on the cropped formula regions found by the layout model
+    formula_pred = (
+        formula_predictor(
+            "formulanet",
+            load_in_8_bit=load_in_8_bit,
+            engine_cfg=formula_engine_cfg,
+        )
+        if detect_formulas
+        else None
+    )
+
     return OCRPredictor(
         det_predictor,
         reco_predictor,
@@ -105,6 +119,7 @@ def _predictor(
         detect_language=detect_language,
         layout_predictor=layout_pred,
         table_predictor=table_pred,
+        formula_predictor=formula_pred,
         ignore_regions=ignore_regions,
         clf_engine_cfg=clf_engine_cfg,
         **kwargs,
@@ -125,12 +140,14 @@ def ocr_predictor(
     layout_arch: Any = "lw_detr_s",
     ignore_regions: list[str] | None = None,
     detect_tables: bool = False,
+    detect_formulas: bool = False,
     load_in_8_bit: bool = False,
     det_engine_cfg: EngineConfig | None = None,
     reco_engine_cfg: EngineConfig | None = None,
     clf_engine_cfg: EngineConfig | None = None,
     layout_engine_cfg: EngineConfig | None = None,
     table_engine_cfg: EngineConfig | None = None,
+    formula_engine_cfg: EngineConfig | None = None,
     confidence_aggregation: ConfidenceAggregation | None = None,
     **kwargs: Any,
 ) -> OCRPredictor:
@@ -173,18 +190,24 @@ def ocr_predictor(
             structure model. Words falling inside a detected table are regrouped into a structured table
             (accessible via `page.tables`) and removed from the regular text output. This enables the layout
             model and slightly deteriorates the overall latency.
+        detect_formulas: if True, formula regions found by the layout model are masked out of the text detection,
+            cropped and read as LaTeX by a formula recognition model (accessible via `page.formulas`, and exported as
+            display math, e.g. `$$...$$` in Markdown). This enables the layout model and deteriorates the overall
+            latency.
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         det_engine_cfg: configuration of the detection engine
         reco_engine_cfg: configuration of the recognition engine
         clf_engine_cfg: configuration of the orientation classification engine
         layout_engine_cfg: configuration of the layout detection engine
         table_engine_cfg: configuration of the table structure recognition engine
+        formula_engine_cfg: configuration of the formula recognition engine
         confidence_aggregation: aggregation method of the character probabilities of the recognition model into the
             word confidence: "mean", "min", "max", "median", "geometric_mean", "harmonic_mean" or a Python callable
             taking the 1D array of probabilities and returning a float. If None (default), the method of the
             recognition model is kept ("min" for CRNN, VIPTR, SAR and MASTER, "mean" for ViTSTR and PARSeq).
             A recognition model instance passed as `reco_arch` is modified.
-        kwargs: keyword args of `OCRPredictor`
+        kwargs: keyword args of `OCRPredictor` (e.g. `page_chunk_size`, the maximum number of pages of a lazy
+            page source processed at once)
 
     Returns:
         OCR predictor
@@ -203,12 +226,14 @@ def ocr_predictor(
         layout_arch=layout_arch,
         ignore_regions=ignore_regions,
         detect_tables=detect_tables,
+        detect_formulas=detect_formulas,
         load_in_8_bit=load_in_8_bit,
         det_engine_cfg=det_engine_cfg,
         reco_engine_cfg=reco_engine_cfg,
         clf_engine_cfg=clf_engine_cfg,
         layout_engine_cfg=layout_engine_cfg,
         table_engine_cfg=table_engine_cfg,
+        formula_engine_cfg=formula_engine_cfg,
         confidence_aggregation=confidence_aggregation,
         **kwargs,
     )

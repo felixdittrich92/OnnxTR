@@ -38,9 +38,9 @@ def bbox_to_polygon(bbox: BoundingBox) -> Polygon4P:
         bbox: a bounding box
 
     Returns:
-        a polygon
+        a polygon with the top left, top right, bottom right and bottom left corners
     """
-    return bbox[0], (bbox[1][0], bbox[0][1]), (bbox[0][0], bbox[1][1]), bbox[1]
+    return bbox[0], (bbox[1][0], bbox[0][1]), bbox[1], (bbox[0][0], bbox[1][1])
 
 
 def polygon_to_bbox(polygon: Polygon4P) -> BoundingBox:
@@ -122,6 +122,8 @@ def detach_scores(boxes: list[np.ndarray]) -> tuple[list[np.ndarray], list[np.nd
             return boxes[:, :-1], boxes[:, -1]
         return boxes[:, :-1], boxes[:, -1, -1]
 
+    if len(boxes) == 0:
+        return [], []
     loc_preds, obj_scores = zip(*(_detach(box) for box in boxes))
     return list(loc_preds), list(obj_scores)
 
@@ -219,8 +221,10 @@ def rotate_abs_points(points: np.ndarray, angle: float = 0.0) -> np.ndarray:
         Rotated points
     """
     angle_rad = angle * np.pi / 180.0  # compute radian angle for np functions
+    # Integer points need a float matrix, otherwise its cosine and sine are truncated to 0 or 1
     rotation_mat = np.array(
-        [[np.cos(angle_rad), -np.sin(angle_rad)], [np.sin(angle_rad), np.cos(angle_rad)]], dtype=points.dtype
+        [[np.cos(angle_rad), -np.sin(angle_rad)], [np.sin(angle_rad), np.cos(angle_rad)]],
+        dtype=np.result_type(points.dtype, np.float32),
     )
     return np.matmul(points, rotation_mat.T)
 
@@ -306,7 +310,8 @@ def remap_boxes(loc_preds: np.ndarray, orig_shape: tuple[int, int], dest_shape: 
         raise ValueError(f"Image_shape length should be 2, was found at: {len(orig_shape)}")
     orig_height, orig_width = orig_shape
     dest_height, dest_width = dest_shape
-    mboxes = loc_preds.copy()
+    # The remapped coordinates are fractional, so integer boxes (e.g. a whole page) are remapped in floating point
+    mboxes = loc_preds.astype(np.result_type(loc_preds.dtype, np.float32))
     mboxes[:, :, 0] = ((loc_preds[:, :, 0] * orig_width) + (dest_width - orig_width) / 2) / dest_width
     mboxes[:, :, 1] = ((loc_preds[:, :, 1] * orig_height) + (dest_height - orig_height) / 2) / dest_height
 
@@ -335,8 +340,8 @@ def rotate_boxes(
     Returns:
         A batch of rotated boxes (N, 4, 2): or a batch of straight bounding boxes
     """
-    # Change format of the boxes to rotated boxes
-    _boxes = loc_preds.copy()
+    # Change format of the boxes to rotated boxes (in floating point, so that integer boxes can be rotated)
+    _boxes = loc_preds.astype(np.result_type(loc_preds.dtype, np.float32))
     if _boxes.ndim == 2:
         _boxes = np.stack(
             [
@@ -370,6 +375,11 @@ def rotate_boxes(
     return rotated_boxes
 
 
+def _pad_width(image: np.ndarray, h_pad: int, w_pad: int) -> tuple[tuple[int, int], ...]:
+    """Pad widths centering an image of shape (H, W) or (H, W, C) in a canvas larger by h_pad x w_pad"""
+    return ((h_pad // 2, h_pad - h_pad // 2), (w_pad // 2, w_pad - w_pad // 2)) + ((0, 0),) * (image.ndim - 2)
+
+
 def rotate_image(
     image: np.ndarray,
     angle: float,
@@ -379,7 +389,7 @@ def rotate_image(
     """Rotate an image counterclockwise by an given angle.
 
     Args:
-        image: numpy tensor to rotate
+        image: array of shape (H, W) or (H, W, C)
         angle: rotation angle in degrees, between -90 and +90
         expand: whether the image should be padded before the rotation
         preserve_origin_shape: if expand is set to True, resizes the final output to the original image size
@@ -395,7 +405,7 @@ def rotate_image(
             int(max(0, ceil(exp_shape[0] - image.shape[0]))),
             int(max(0, ceil(exp_shape[1] - image.shape[1]))),
         )
-        exp_img = np.pad(image, ((h_pad // 2, h_pad - h_pad // 2), (w_pad // 2, w_pad - w_pad // 2), (0, 0)))
+        exp_img = np.pad(image, _pad_width(image, h_pad, w_pad))
     else:
         exp_img = image
 
@@ -411,10 +421,13 @@ def rotate_image(
             # Pad height
             else:
                 h_pad, w_pad = int(rot_img.shape[1] * image.shape[0] / image.shape[1] - rot_img.shape[0]), 0
-            rot_img = np.pad(rot_img, ((h_pad // 2, h_pad - h_pad // 2), (w_pad // 2, w_pad - w_pad // 2), (0, 0)))
+            rot_img = np.pad(rot_img, _pad_width(rot_img, h_pad, w_pad))
         if preserve_origin_shape:
             # rescale
-            rot_img = cv2.resize(rot_img, image.shape[:-1][::-1], interpolation=cv2.INTER_LINEAR)
+            rot_img = cv2.resize(rot_img, image.shape[1::-1], interpolation=cv2.INTER_LINEAR)
+
+    if rot_img.ndim < image.ndim:  # cv2 drops a singleton channel axis
+        rot_img = rot_img[..., None]
 
     return rot_img
 
@@ -447,7 +460,7 @@ def straighten_page(
     and the inverse affine matrix that maps straightened-page coordinates back to the original page.
 
     Args:
-        page: the original page image (H, W, C)
+        page: the original page image (H, W) or (H, W, C)
         angle: rotation angle in degrees (between -90 and +90)
 
     Returns:
@@ -465,21 +478,25 @@ def straighten_page(
     pt, pb = h_pad // 2, h_pad - h_pad // 2
     pl, pr = w_pad // 2, w_pad - w_pad // 2
 
-    exp_img = np.pad(page, ((pt, pb), (pl, pr), (0, 0)))
+    # A grayscale page (H, W) has no channel axis to leave unpadded
+    channels = ((0, 0),) * (page.ndim - 2)
+    exp_img = np.pad(page, ((pt, pb), (pl, pr), *channels))
     ph_pad, pw_pad = exp_img.shape[:2]
 
     # Rotate around the padded image center
     rot_mat = cv2.getRotationMatrix2D((pw_pad / 2, ph_pad / 2), angle, 1.0)
     rotated = cv2.warpAffine(exp_img, rot_mat, (pw_pad, ph_pad))
+    if rotated.ndim < exp_img.ndim:  # cv2 drops a singleton channel axis
+        rotated = rotated[..., None]
 
     # Aspect-ratio padding (applied only on right/bottom so analytic crop stays simple)
     if h_pad > 0 or w_pad > 0:
         if (rotated.shape[0] / rotated.shape[1]) > (h / w):
             w_pad2 = int(rotated.shape[0] * w / h - rotated.shape[1])
-            rotated = np.pad(rotated, ((0, 0), (0, w_pad2), (0, 0)))
+            rotated = np.pad(rotated, ((0, 0), (0, w_pad2), *channels))
         else:
             h_pad2 = int(rotated.shape[1] * h / w - rotated.shape[0])
-            rotated = np.pad(rotated, ((0, h_pad2), (0, 0), (0, 0)))
+            rotated = np.pad(rotated, ((0, h_pad2), (0, 0), *channels))
 
     # Analytic crop: project the four content corners through the rotation matrix
     corners = np.array(
@@ -568,6 +585,8 @@ def extract_crops(img: np.ndarray, boxes: np.ndarray, channels_last: bool = True
         _boxes = _boxes.round().astype(int)
         # Add last index
         _boxes[:, 2:] += 1
+    # A box starting before the image would slice from its end: crop its visible part instead (empty if none)
+    _boxes = np.maximum(_boxes, 0)
     if channels_last:
         return deepcopy([img[box[1] : box[3], box[0] : box[2]] for box in _boxes])
 
@@ -614,6 +633,9 @@ def extract_rcrops(
             # Divide the points into left and right
             left_points = box[box[:, 0] < centroid[0]]
             right_points = box[box[:, 0] >= centroid[0]]
+            if len(left_points) == 0 or len(right_points) == 0:
+                crops.append(np.zeros((0, 0, *img.shape[2:]), dtype=img.dtype))
+                continue
 
             # Sort the left points according to the y-axis
             left_points = left_points[np.argsort(left_points[:, 1])]
@@ -637,6 +659,9 @@ def extract_rcrops(
             # Get the maximum width and height
             rect_width = max(int(width_upper), int(width_lower))
             rect_height = max(int(height_left), int(height_right))
+            if rect_width < 1 or rect_height < 1:
+                crops.append(np.zeros((0, 0, *img.shape[2:]), dtype=img.dtype))
+                continue
 
             dst_pts = np.array(
                 [
@@ -682,6 +707,8 @@ def extract_rcrops(
                 cv2.getAffineTransform(src_pts[idx], dst_pts[idx]),
                 (int(d1[idx]), int(d2[idx])),
             )
+            if int(d1[idx]) > 0 and int(d2[idx]) > 0
+            else np.zeros((0, 0, *img.shape[2:]), dtype=img.dtype)
             for idx in range(_boxes.shape[0])
         ]
 

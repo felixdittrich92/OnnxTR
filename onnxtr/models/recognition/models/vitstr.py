@@ -23,16 +23,16 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/vitstr_small-3ff9c500.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/vitstr_small_dynamic_8_bit-bec6c796.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/vitstr_small-b75ae317.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/vitstr_small_dynamic_8_bit-6d403485.onnx",
     },
     "vitstr_base": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.0.1/vitstr_base-ff62f5be.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.1.2/vitstr_base_dynamic_8_bit-976c7cd6.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/vitstr_base-c1359806.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/vitstr_base_dynamic_8_bit-8799b168.onnx",
     },
 }
 
