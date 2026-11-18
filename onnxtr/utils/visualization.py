@@ -43,7 +43,7 @@ def rect_patch(
     Returns:
         a rectangular Patch
     """
-    if len(geometry) != 2 or any(not isinstance(elt, tuple) or len(elt) != 2 for elt in geometry):
+    if len(geometry) != 2 or any(not isinstance(elt, (tuple, list)) or len(elt) != 2 for elt in geometry):
         raise ValueError("invalid geometry format")
 
     # Unpack
@@ -97,11 +97,13 @@ def polygon_patch(
 
     # Unpack
     height, width = page_dimensions
-    geometry[:, 0] = geometry[:, 0] * (max(width, height) if preserve_aspect_ratio else width)
-    geometry[:, 1] = geometry[:, 1] * (max(width, height) if preserve_aspect_ratio else height)
+    if preserve_aspect_ratio:
+        width = height = max(height, width)
+    # Scale a copy, so that the caller's geometry (e.g. the one of a word) stays relative
+    abs_geometry = geometry * (width, height)
 
     return patches.Polygon(
-        geometry,
+        abs_geometry,
         fill=fill,
         linewidth=linewidth,
         edgecolor=(*color, alpha),
@@ -125,7 +127,8 @@ def create_obj_patch(
     Returns:
         a matplotlib Patch
     """
-    if isinstance(geometry, tuple):
+    # A page export read back from a JSON file stores the geometries as lists instead of tuples
+    if isinstance(geometry, (tuple, list)):
         if len(geometry) == 2:  # straight word BB (2 pts)
             return rect_patch(geometry, page_dimensions, **kwargs)
         elif len(geometry) == 4:  # rotated word BB (4 pts)
@@ -145,8 +148,9 @@ def get_colors(num_colors: int) -> list[tuple[float, float, float]]:
         colors: list of generated colors
     """
     colors = []
-    for i in np.arange(0.0, 360.0, 360.0 / num_colors):
-        hue = i / 360.0
+    # Integer steps give exactly num_colors hues (a float step can add one more, close to 360°, i.e. red again)
+    for i in range(num_colors):
+        hue = i / num_colors
         lightness = (50 + np.random.rand() * 10) / 100.0
         saturation = (90 + np.random.rand() * 10) / 100.0
         colors.append(colorsys.hls_to_rgb(hue, lightness, saturation))

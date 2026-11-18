@@ -3,12 +3,14 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from collections.abc import Callable, Collection
-from typing import Any
+import logging
+from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
+from typing import Any, Literal, TypeAlias
 
 import numpy as np
 
-from onnxtr.io.elements import Document
+from onnxtr.io.elements import Document, Page
+from onnxtr.io.sources import PageSource, _UnreadablePage
 from onnxtr.models.builder import DocumentBuilder
 from onnxtr.models.engine import EngineConfig
 from onnxtr.utils.geometry import (
@@ -18,16 +20,30 @@ from onnxtr.utils.geometry import (
     rotate_image,
     straighten_page,
 )
+from onnxtr.utils.multithreading import prefetch_chunks
 
 from .._utils import estimate_orientation, mask_boxes, rectify_crops, rectify_loc_preds
 from ..classification import crop_orientation_predictor, page_orientation_predictor
 from ..classification.predictor import OrientationPredictor
+from ..detection.predictor import DetectionPredictor
 from ..detection.zoo import ARCHS as DETECTION_ARCHS
+from ..formula.zoo import ARCHS as FORMULA_ARCHS
 from ..layout.zoo import ARCHS as LAYOUT_ARCHS
 from ..recognition.zoo import ARCHS as RECOGNITION_ARCHS
 from ..table_structure.zoo import ARCHS as TABLE_ARCHS
 
 __all__ = ["_OCRPredictor"]
+
+logger = logging.getLogger(__name__)
+
+# What to do with a page of a lazy source that cannot be read (a corrupted file, or an input removed in the meantime):
+# raise the error, skip the page with a warning, or skip it and call a function with its index and the error
+OnPageError: TypeAlias = Literal["raise", "skip"] | Callable[[int, Exception], Any]
+
+
+def _check_on_error(on_error: Any) -> None:
+    if not (on_error in ("raise", "skip") or callable(on_error)):
+        raise ValueError(f"`on_error` must be 'raise', 'skip' or a callable, got {on_error!r}")
 
 
 class _OCRPredictor:
@@ -50,10 +66,15 @@ class _OCRPredictor:
             original page coordinates. Useful for redaction and annotation.
         load_in_8_bit: whether to load the the 8-bit quantized model, defaults to False
         clf_engine_cfg: configuration of the orientation classification engine
+        page_chunk_size: the maximum number of pages processed at once for lazy page sources
+            (cf. `DocumentFile.from_pdf(..., lazy=True)`), iterators and :meth:`stream`, so that the memory footprint
+            does not grow with the number of pages. Lists and tuples of pages are processed in a single pass.
         **kwargs: keyword args of `DocumentBuilder`
     """
 
     crop_orientation_predictor: OrientationPredictor | None
+    # Set by the framework-specific predictors
+    det_predictor: DetectionPredictor
     page_orientation_predictor: OrientationPredictor | None
 
     def __init__(
@@ -67,8 +88,12 @@ class _OCRPredictor:
         clf_engine_cfg: EngineConfig | None = None,
         ignore_regions: Collection[str] | None = None,
         preserve_original_coords: bool = False,
+        page_chunk_size: int = 32,
         **kwargs: Any,
     ) -> None:
+        if page_chunk_size < 1:
+            raise ValueError("`page_chunk_size` must be a positive integer")
+        self.page_chunk_size = page_chunk_size
         self.assume_straight_pages = assume_straight_pages
         self.straighten_pages = straighten_pages
         self.preserve_original_coords = preserve_original_coords
@@ -83,7 +108,7 @@ class _OCRPredictor:
         )
         self.page_orientation_predictor = (
             page_orientation_predictor(
-                load_in_8_bit=load_in_8_bit, engine_cfg=clf_engine_cfg, disabled=self._crop_orientation_disabled
+                load_in_8_bit=load_in_8_bit, engine_cfg=clf_engine_cfg, disabled=self._page_orientation_disabled
             )
             if detect_orientation or straighten_pages or not assume_straight_pages
             else None
@@ -95,6 +120,122 @@ class _OCRPredictor:
         self.ignore_regions = ignore_regions
 
         self.hooks: list[Callable] = []
+
+    # Type of the documents returned by the predictor
+    _document_cls: type[Document] = Document
+
+    def _predict_pages(self, pages: list[np.ndarray], **kwargs: Any) -> Document:
+        """Run the full pipeline on a list of pages held in memory"""
+        raise NotImplementedError
+
+    def _run(
+        self,
+        pages: Sequence[np.ndarray] | Iterable[np.ndarray],
+        on_error: OnPageError = "raise",
+        **kwargs: Any,
+    ) -> Document:
+        """Predict on any input: pages held in memory are processed in a single pass, exactly as before (hooks
+        receive all the pages at once), lazy page sources and iterators chunk by chunk"""
+        _check_on_error(on_error)
+        if isinstance(pages, (list, tuple, np.ndarray)):
+            # Nothing to decode, hence nothing to skip
+            return self._predict_pages(list(pages), **kwargs)
+        return self._document_cls(pages=list(self.stream(pages, on_error=on_error, **kwargs)))
+
+    @staticmethod
+    def _skip_page(on_error: OnPageError, page_idx: int, error: Exception) -> None:
+        """Report a page of the input that cannot be read, and is left out of the predictions"""
+        if callable(on_error):
+            on_error(page_idx, error)
+        else:
+            logger.warning(f"Skipping the page at index {page_idx} of the input, which cannot be read: {error}")
+
+    def stream(
+        self,
+        pages: Sequence[np.ndarray] | Iterable[np.ndarray],
+        page_chunk_size: int | None = None,
+        prefetch_pages: bool = True,
+        on_error: OnPageError = "raise",
+        **kwargs: Any,
+    ) -> Iterator[Page]:
+        """Predict on a document of any length, yielding the pages one by one as soon as they are processed
+
+        The pages are processed by chunks of `page_chunk_size`. For lazy page sources and iterators, the next chunk
+        is decoded in a background thread while the current one goes through the models, and only the pages of the
+        chunks in flight are held in memory, so that a 1000+ page PDF or a folder of 100k images can be processed
+        with a bounded memory footprint. In-memory inputs (lists, tuples, arrays) have nothing to decode: they are
+        chunked directly, without a background thread. Hooks are called once per chunk.
+
+        A page of a lazy source that cannot be read (e.g. an image with a valid header but corrupted content)
+        raises a :class:`~onnxtr.io.PageDecodeError` naming the file once the pages before it are yielded, which
+        ends the iteration. With `on_error="skip"`, the page is left out with a warning and the iteration goes on:
+        the `page_idx` of the other pages is unchanged, so the skipped ones show as gaps.
+
+        >>> from onnxtr.io import DocumentFile
+        >>> from onnxtr.models import ocr_predictor
+        >>> model = ocr_predictor()
+        >>> doc = DocumentFile.from_pdf("path/to/your/long_doc.pdf", lazy=True)
+        >>> for page in model.stream(doc):
+        ...     print(page.page_idx, page.render())
+        >>> # skip the pages that cannot be read, and keep track of them
+        >>> skipped = []
+        >>> for page in model.stream(doc, on_error=lambda page_idx, error: skipped.append(page_idx)):
+        ...     ...
+
+        Args:
+            pages: a list of pages, a lazy page source (cf. `DocumentFile.from_pdf(..., lazy=True)`) or any
+                iterable of pages (e.g. a generator)
+            page_chunk_size: the number of pages processed at once (defaults to the `page_chunk_size` of the predictor)
+            prefetch_pages: whether the next chunk of pages is decoded in a background thread (only applies to lazy
+                page sources and iterators: in-memory inputs are never prefetched)
+            on_error: what to do with a page of a lazy page source that cannot be read: "raise" (default) the error,
+                "skip" the page with a warning, or a callable to skip it and call with the index of the page and the
+                error. Errors raised by an iterator (e.g. a generator) end it: they are always raised.
+            **kwargs: keyword arguments forwarded to the sub-predictors (as for a regular call)
+
+        Returns:
+            an iterator over the predicted pages, in the input order. `page_idx` is the index of the page in the
+            whole input. For lazy page sources, the predicted pages hold a reference to their image instead of the
+            image itself: `page.page` decodes it again on access. Pages transformed by the pipeline (e.g. with
+            `straighten_pages=True`) cannot be read again from the source: they keep their transformed image, as
+            for in-memory inputs. Stopping the iteration early (e.g. with `break`) stops decoding ahead after the
+            page in progress.
+        """
+        _check_on_error(on_error)
+        chunk_size = self.page_chunk_size if page_chunk_size is None else page_chunk_size
+        source = pages if isinstance(pages, PageSource) else None
+        # Unreadable pages of a source are replaced by placeholders: the iteration goes on when they are skipped, and
+        # otherwise the error is raised at their position, once the readable pages before them are yielded
+        inputs: Iterable[Any] = pages if source is None else source._iter_indices(range(len(source)), skip_errors=True)
+        # In-memory pages are only sliced. Closing the generator (early exit, error) stops decoding ahead after the page
+        # in progress instead of completing a whole chunk that nobody will process
+        chunks = prefetch_chunks(inputs, chunk_size, enabled=prefetch_pages)
+        offset = 0
+        try:
+            for chunk in chunks:
+                images = [item for item in chunk if not isinstance(item, _UnreadablePage)]
+                predicted = iter(self._predict_pages(images, **kwargs).pages if images else [])
+                for local_idx, item in enumerate(chunk):
+                    page_idx = offset + local_idx
+                    if isinstance(item, _UnreadablePage):
+                        if on_error == "raise":
+                            raise item.error
+                        self._skip_page(on_error, page_idx, item.error)
+                        continue
+                    page = next(predicted)
+                    page.page_idx = page_idx
+                    # Unchanged pages are decoded again from their input on access (the pages of an in-memory part
+                    # of the source are kept as is). Transformed ones (e.g. straightened) keep their image, exactly
+                    # as for in-memory inputs
+                    if source is not None and page.page is item:
+                        ref = source._page_ref(page_idx)
+                        if ref is not None:
+                            page.page = ref
+                    yield page
+                offset += len(chunk)
+        finally:
+            # Stops decoding ahead after the page in progress, and releases the input
+            chunks.close()
 
     def _general_page_orientations(
         self,
@@ -119,13 +260,22 @@ class _OCRPredictor:
         ]
         return general_pages_orientations, origin_page_orientations
 
+    def _masked_classes(self) -> set[str]:
+        """The layout classes masked out before text detection: the ignored regions, and the formula regions when
+        they are read by a formula model"""
+        classes = set(self.ignore_regions or ())
+        if getattr(self, "formula_predictor", None) is not None:
+            classes.add(getattr(self, "formula_class_name", "Formula"))
+        return classes
+
     def _mask_regions(
         self,
         pages: list[np.ndarray],
         regions: list[dict[str, Any]] | None,
         fill_value: int = 0,
     ) -> list[np.ndarray]:
-        if regions is None or not self.ignore_regions:
+        masked_classes = self._masked_classes()
+        if regions is None or not masked_classes:
             return pages
 
         out_pages: list[np.ndarray] = []
@@ -134,7 +284,7 @@ class _OCRPredictor:
                 out_pages.append(page)
                 continue
             boxes = np.asarray(region["boxes"], dtype=np.float32)
-            keep = np.array([name in self.ignore_regions for name in region["class_names"]], dtype=bool)
+            keep = np.array([name in masked_classes for name in region["class_names"]], dtype=bool)
             out_pages.append(mask_boxes(page, boxes[keep], fill_value=fill_value) if keep.any() else page)
 
         return out_pages
@@ -171,6 +321,38 @@ class _OCRPredictor:
             m_invs.append(m_inv)
             out.append(straightened)
         return out, m_invs
+
+    def _detect_straightened(
+        self,
+        loc_preds: list[Any],
+        orig_pages: list[np.ndarray],
+        pages: list[np.ndarray],
+        det_pages: list[np.ndarray],
+        **kwargs: Any,
+    ) -> list[Any]:
+        """Detect the text again on the straightened pages, except on the ones left unchanged by the straightening
+        and the masking (e.g. straight pages): the detection made to estimate their orientation is reused
+
+        Args:
+            loc_preds: the detections on the original pages
+            orig_pages: the original pages
+            pages: the straightened pages
+            det_pages: the straightened pages passed to the detection model (masked layout regions)
+            **kwargs: keyword arguments of the detection predictor
+
+        Returns:
+            the detections on the straightened pages
+        """
+        out = list(loc_preds)
+        changed = [
+            idx
+            for idx, (orig, page, det_page) in enumerate(zip(orig_pages, pages, det_pages))
+            if det_page is not page or orig.shape != page.shape or not np.array_equal(orig, page)
+        ]
+        if changed:
+            for idx, pred in zip(changed, self.det_predictor([det_pages[idx] for idx in changed], **kwargs)):
+                out[idx] = pred
+        return out
 
     @staticmethod
     def _generate_crops(
@@ -314,6 +496,8 @@ class _OCRPredictor:
                 self._remap_geometry(table, m_inv, sw, sh, oh, ow)
                 for cell in table.cells:
                     self._remap_geometry(cell, m_inv, sw, sh, oh, ow)
+            for formula in page.formulas:
+                self._remap_geometry(formula, m_inv, sw, sh, oh, ow)
 
             if orig_pages is not None:
                 out.pages[pidx].page = orig_pages[pidx]
@@ -323,6 +507,16 @@ class _OCRPredictor:
 
     def add_hook(self, hook: Callable) -> None:
         """Add a hook to the predictor
+
+        Hooks run after text detection and before the word crops are extracted, in the order they were added.
+        Each hook receives the location predictions, one array of boxes per page in relative coordinates
+        (`(N, 4)` straight boxes or `(N, 4, 2)` polygons), and returns them in the same format. It can move,
+        resize, add or remove boxes: only the returned boxes are cropped and read by the recognition model.
+
+        Lazy page sources, iterators and :meth:`stream` are processed chunk by chunk (`page_chunk_size` pages at a
+        time): hooks are then called once per chunk, with the pages of that chunk only. A hook must therefore not rely
+        on the number of pages it receives, nor use a list position as the page index in the whole document. Lists
+        and tuples of pages are processed in a single pass: hooks receive all their pages at once.
 
         Args:
             hook: a callable that takes as input the `loc_preds` and returns the modified `loc_preds`
@@ -335,4 +529,85 @@ class _OCRPredictor:
             "recognition_archs": RECOGNITION_ARCHS,
             "layout_archs": LAYOUT_ARCHS,
             "table_structure_archs": TABLE_ARCHS,
+            "formula_archs": FORMULA_ARCHS,
         }
+
+    def _apply_hooks(
+        self, loc_preds: list[np.ndarray], objectness_scores: list[np.ndarray]
+    ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        """Run the hooks on the location predictions, before the word crops are extracted
+
+        Args:
+            loc_preds: one array of boxes per page, in relative coordinates
+            objectness_scores: one array of objectness scores per page
+
+        Returns:
+            the location predictions returned by the hooks, and the matching objectness scores
+        """
+        if not self.hooks:
+            return loc_preds, objectness_scores
+        # Pass a copy of the list, so that a hook replacing the arrays in place does not alter the reference
+        hooked_preds: Any = list(loc_preds)
+        for hook in self.hooks:
+            hooked_preds = hook(hooked_preds)
+        return self._align_hook_output(loc_preds, hooked_preds, objectness_scores)
+
+    @staticmethod
+    def _align_hook_output(
+        loc_preds: list[np.ndarray], hooked_preds: Any, objectness_scores: list[np.ndarray]
+    ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        """Check the location predictions returned by the hooks, and give each box an objectness score
+
+        A box keeps the score of the closest predicted box of its page, so that moved, resized, reordered or
+        filtered boxes keep their own score. A box added on a page without any prediction gets a score of 1.
+
+        Args:
+            loc_preds: the location predictions passed to the hooks, one array per page
+            hooked_preds: the location predictions returned by the hooks
+            objectness_scores: the objectness scores of `loc_preds`, one array per page
+
+        Returns:
+            the location predictions returned by the hooks as arrays, and their objectness scores
+        """
+        if not isinstance(hooked_preds, (list, tuple)) or len(hooked_preds) != len(loc_preds):
+            received = type(hooked_preds).__name__
+            if isinstance(hooked_preds, (list, tuple)):
+                received += f" of length {len(hooked_preds)}"
+            raise ValueError(
+                f"hooks must return one array of boxes per page: expected a list of {len(loc_preds)} arrays, "
+                f"got a {received}"
+            )
+
+        out_preds: list[np.ndarray] = []
+        out_scores: list[np.ndarray] = []
+        for page_idx, (boxes, new_boxes, scores) in enumerate(zip(loc_preds, hooked_preds, objectness_scores)):
+            new_boxes = np.asarray(new_boxes, dtype=boxes.dtype)
+            if new_boxes.size == 0:
+                new_boxes = new_boxes.reshape((0, *boxes.shape[1:]))
+            if new_boxes.shape[1:] != boxes.shape[1:]:
+                raise ValueError(
+                    "hooks must keep the format of the boxes: expected an array of shape "
+                    f"(N, {', '.join(map(str, boxes.shape[1:]))}) for page {page_idx}, got {new_boxes.shape}"
+                )
+
+            if new_boxes.shape == boxes.shape and np.array_equal(new_boxes, boxes):
+                new_scores = scores
+            elif len(new_boxes) == 0:
+                new_scores = scores[:0]
+            elif len(boxes) == 0:
+                new_scores = np.ones(len(new_boxes), dtype=scores.dtype)
+            else:
+                # Match each returned box with the closest predicted box (L1 distance between the corners),
+                # by chunks to bound the memory used on dense pages
+                ref = boxes.reshape(len(boxes), -1)
+                flat = new_boxes.reshape(len(new_boxes), -1)
+                idcs = np.concatenate([
+                    np.abs(flat[start : start + 256, None, :] - ref[None, :, :]).sum(-1).argmin(axis=1)
+                    for start in range(0, len(flat), 256)
+                ])
+                new_scores = scores[idcs]
+
+            out_preds.append(new_boxes)
+            out_scores.append(new_scores)
+
+        return out_preds, out_scores

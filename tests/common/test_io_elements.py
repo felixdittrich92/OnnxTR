@@ -1,4 +1,5 @@
 import json
+import pickle
 from xml.etree.ElementTree import ElementTree
 
 import numpy as np
@@ -184,6 +185,10 @@ def test_line():
     line = elements.Line.from_dict(state_dict)
     assert line.export() == state_dict
 
+    # Without any word, the geometry can not be resolved
+    with pytest.raises(ValueError, match="line without any word"):
+        elements.Line([])
+
 
 def test_artefact():
     artefact_type = "qr_code"
@@ -320,6 +325,20 @@ def test_table():
     )
     assert spanned.to_grid() == [["merged", ""], ["a", "b"]]
 
+    # Cells sharing a position: an empty cell never hides a value and the values are joined
+    colliding = elements.Table(
+        cells=[
+            elements.TableCell("Model", 0.9, ((0.0, 0.0), (0.5, 0.5)), 0, 0, 0, 0),
+            elements.TableCell("", 0.9, ((0.0, 0.0), (0.5, 0.5)), 0, 0, 0, 0),
+            elements.TableCell("x", 0.9, ((0.5, 0.0), (1.0, 0.5)), 0, 0, 1, 1),
+            elements.TableCell("y", 0.9, ((0.5, 0.0), (1.0, 0.5)), 0, 0, 1, 1),
+        ],
+        num_rows=1,
+        num_cols=2,
+        geometry=((0.0, 0.0), (1.0, 0.5)),
+    )
+    assert colliding.to_grid() == [["Model", "x y"]]
+
     # Export
     exported = table.export()
     assert set(exported.keys()) == {"geometry", "num_rows", "num_cols", "confidence", "cells"}
@@ -359,6 +378,41 @@ def test_block():
     }
 
 
+def test_block_artefacts_only():
+    artefacts = _mock_artefacts()
+    block = elements.Block(artefacts=artefacts)
+    assert block.lines == []
+    assert block.geometry == ((0, 0), (1, 1))
+    assert block.render() == ""
+
+    # Without any line or artefact, the geometry can not be resolved
+    for kwargs in ({}, {"lines": [], "artefacts": []}):
+        with pytest.raises(ValueError, match="block without any line or artefact"):
+            elements.Block(**kwargs)
+    # The objectness score is the confidence of the artefacts, which keeps the export valid JSON
+    assert block.objectness_score == 0.8
+    json.loads(json.dumps(block.export(), allow_nan=False))
+
+
+def test_block_rotated_lines_from_dict():
+    # Rotated geometries read back from an export are nested lists, not numpy arrays
+    polygon = [[0.1, 0.1], [0.4, 0.2], [0.35, 0.4], [0.05, 0.3]]
+    word = elements.Word("hello", 0.9, polygon, 0.9, {"value": 0, "confidence": None})
+    line = elements.Line.from_dict(elements.Line([word], geometry=polygon).export())
+    assert isinstance(line.geometry, list)
+
+    # The block geometry is resolved as a rotated box, not as a straight one
+    block = elements.Block([line])
+    assert np.asarray(block.geometry).shape == (4, 2)
+
+    # Exporting a page loaded from a dict keeps the rotated block geometry
+    page = elements.Page(np.zeros((10, 10, 3), dtype=np.uint8), [elements.Block([line])], 0, (10, 10))
+    exported = json.loads(json.dumps(page.export()))
+    reloaded = elements.Page.from_dict(exported).export()
+    assert np.asarray(reloaded["blocks"][0]["geometry"]).shape == (4, 2)
+    np.testing.assert_allclose(reloaded["blocks"][0]["geometry"], exported["blocks"][0]["geometry"], atol=1e-6)
+
+
 def test_page():
     page = np.zeros((300, 200, 3), dtype=np.uint8)
     page_idx = 0
@@ -392,6 +446,7 @@ def test_page():
         "language": language,
         "layout": [r.export() for r in layout],
         "tables": [],
+        "formulas": [],
     }
     assert json.dumps(page.export()) and json.dumps(page.export(reading_order=False))
 
@@ -427,6 +482,40 @@ def test_page_without_layout():
 
     assert page.layout == []
     assert page.export()["layout"] == []
+
+
+def _legacy_page(page_cls, image, children):
+    """Rebuild a page the way a previous release pickled it: its image stored as a plain `page` attribute"""
+    page = page_cls(image, children, 0, image.shape[:2], {"value": 0.0, "confidence": None}, None)
+    state = dict(page.__dict__)
+    state["page"] = state.pop("_page")
+    legacy = page_cls.__new__(page_cls)
+    legacy.__dict__.update(state)
+    return legacy
+
+
+@pytest.mark.parametrize("page_cls, children", [(elements.Page, [])])
+def test_page_legacy_pickle(page_cls, children):
+    image = np.random.randint(0, 255, (30, 20, 3), dtype=np.uint8)
+    legacy = _legacy_page(page_cls, image, children)
+    # what `pickle` stores for such a page: the `page` entry of its instance dict, no `_page`
+    assert "page" in legacy.__reduce_ex__(4)[2]
+    assert "_page" not in legacy.__reduce_ex__(4)[2]
+
+    restored = pickle.loads(pickle.dumps(legacy))
+    assert np.array_equal(restored.page, image)
+    assert restored.synthesize().shape == (*image.shape[:2], 3)
+
+    # setting the image afterwards replaces the legacy entry
+    new_image = np.zeros_like(image)
+    restored.page = new_image
+    assert "page" not in restored.__dict__
+    assert restored.page is new_image
+    assert np.array_equal(pickle.loads(pickle.dumps(restored)).page, new_image)
+
+    # a page without any image still behaves like a missing attribute
+    empty = page_cls.__new__(page_cls)
+    assert not hasattr(empty, "page")
 
 
 def test_document():
@@ -500,3 +589,25 @@ def test_page_from_dict_restores_the_image():
     restored = elements.Page.from_dict(exported, page=page.page)
     assert np.array_equal(restored.page, page.page)
     assert elements.Page.from_dict(json.loads(json.dumps(exported))).render() == restored.render()
+    # A page restored from a JSON file can still be displayed
+    elements.Page.from_dict(json.loads(json.dumps(exported)), page=page.page).show(block=False)
+
+
+def test_formula():
+    geometry = ((0.2, 0.3), (0.6, 0.4))
+    formula = elements.Formula(r"x ^ { 2 }", 0.75, geometry, objectness_score=0.9)
+    assert formula.value == r"x ^ { 2 }" and formula.confidence == 0.75 and formula.geometry == geometry
+    assert formula.render() == r"x ^ { 2 }"
+    assert repr(formula) == "Formula(value='x ^ { 2 }', confidence=0.75)"
+    exported = formula.export()
+    assert exported == {"geometry": geometry, "value": "x ^ { 2 }", "confidence": 0.75, "objectness_score": 0.9}
+    assert elements.Formula.from_dict(exported).export() == exported
+    # Exports without objectness score
+    reloaded = elements.Formula.from_dict({k: v for k, v in exported.items() if k != "objectness_score"})
+    assert reloaded.objectness_score is None
+
+    page = elements.Page(np.zeros((10, 10, 3), dtype=np.uint8), [], 0, (10, 10), formulas=[formula])
+    assert page.formulas == [formula]
+    assert elements.Page.from_dict(page.export()).formulas[0].export() == exported
+    # Exports of earlier versions have no formulas
+    assert elements.Page.from_dict({k: v for k, v in page.export().items() if k != "formulas"}).formulas == []

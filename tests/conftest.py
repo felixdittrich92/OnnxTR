@@ -5,7 +5,7 @@ import pytest
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-from onnxtr.io import reader
+from onnxtr.io import read_img_as_numpy
 from onnxtr.utils import geometry
 from onnxtr.utils.fonts import get_font
 
@@ -82,6 +82,30 @@ def mock_payslip(tmpdir_factory):
 
 
 @pytest.fixture(scope="session")
+def mock_table_image(tmpdir_factory):
+    url = "https://github.com/mindee/doctr/releases/download/v1.1.0/table_structure_example.png"
+    file = BytesIO(requests.get(url).content)
+    folder = tmpdir_factory.mktemp("data")
+    fn = str(folder.join("mock_table.png"))
+    with open(fn, "wb") as f:
+        f.write(file.getbuffer())
+    return fn
+
+
+@pytest.fixture(scope="session")
+def mock_formula_image(tmpdir_factory):
+    # A printed formula of UniMER-Test, with the white margins of a layout region:
+    # J ( u , y ) = \int _ { 0 } ^ { 1 } \frac { | u | ^ { 2 } } { 2 } \, d x + \Psi ( y )
+    url = "https://github.com/mindee/doctr/releases/download/v1.1.0/formula_recognition_example.png"
+    file = BytesIO(requests.get(url).content)
+    folder = tmpdir_factory.mktemp("data")
+    fn = str(folder.join("mock_formula.png"))
+    with open(fn, "wb") as f:
+        f.write(file.getbuffer())
+    return fn
+
+
+@pytest.fixture(scope="session")
 def mock_figure_page(mock_image_stream, tmpdir_factory):
     # A heading, two paragraphs and a captioned photograph in between
     page = Image.new("RGB", (1240, 1754), (255, 255, 255))
@@ -102,7 +126,7 @@ def mock_figure_page(mock_image_stream, tmpdir_factory):
 
 @pytest.fixture(scope="session")
 def mock_tilted_payslip(mock_payslip, tmpdir_factory):
-    image = reader.read_img_as_numpy(mock_payslip)
+    image = read_img_as_numpy(mock_payslip)
     image = geometry.rotate_image(image, 30, expand=True)
     tmp_path = str(tmpdir_factory.mktemp("data").join("mock_tilted_payslip.jpg"))
     cv2.imwrite(tmp_path, image)

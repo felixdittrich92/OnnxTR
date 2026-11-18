@@ -5,6 +5,7 @@
 
 try:
     from onnxconverter_common import auto_convert_mixed_precision
+    from onnxconverter_common.float16 import DEFAULT_OP_BLOCK_LIST, convert_float_to_float16
 except ImportError:
     raise ImportError("Failed to import onnxconverter_common. Please install `pip install onnxconverter-common`.")
 
@@ -25,14 +26,15 @@ from typing import Any
 import numpy as np
 import onnx
 
-from onnxtr.models import classification, detection, layout, recognition, table_structure
+from onnxtr.models import classification, detection, formula, layout, recognition, table_structure
 from onnxtr.models.classification.zoo import ORIENTATION_ARCHS
 from onnxtr.models.detection.zoo import ARCHS as DETECTION_ARCHS
+from onnxtr.models.formula.zoo import ARCHS as FORMULA_ARCHS
 from onnxtr.models.layout.zoo import ARCHS as LAYOUT_ARCHS
 from onnxtr.models.recognition.zoo import ARCHS as RECOGNITION_ARCHS
 from onnxtr.models.table_structure.zoo import ARCHS as TABLE_ARCHS
 
-ALL_ARCHS = DETECTION_ARCHS + RECOGNITION_ARCHS + ORIENTATION_ARCHS + LAYOUT_ARCHS + TABLE_ARCHS
+ALL_ARCHS = DETECTION_ARCHS + RECOGNITION_ARCHS + ORIENTATION_ARCHS + LAYOUT_ARCHS + TABLE_ARCHS + FORMULA_ARCHS
 
 
 def _load_model(arch: str, model_path: str | None = None) -> Any:
@@ -46,6 +48,8 @@ def _load_model(arch: str, model_path: str | None = None) -> Any:
         model = layout.__dict__[arch]() if model_path is None else layout.__dict__[arch](model_path)
     elif arch in TABLE_ARCHS:
         model = table_structure.__dict__[arch]() if model_path is None else table_structure.__dict__[arch](model_path)
+    elif arch in FORMULA_ARCHS:
+        model = formula.__dict__[arch]() if model_path is None else formula.__dict__[arch](model_path)
     else:
         raise ValueError(f"Unknown architecture {arch}")
     return model
@@ -108,6 +112,45 @@ def _validate(fp32_in: list[np.ndarray], fp16_in: list[np.ndarray]) -> bool:
     return True  # NOTE: Only warning, not error
 
 
+def _has_control_flow(model: onnx.ModelProto) -> bool:
+    """Whether the graph contains control flow operators (e.g. the decoding loop of FormulaNet)"""
+    return any(node.op_type in ("Loop", "If", "Scan") for node in model.graph.node)
+
+
+def _convert(model_float32: Any, input_feed: dict[str, np.ndarray]) -> onnx.ModelProto:
+    """Convert a model to float16
+
+    Args:
+        model_float32: the loaded OnnxTR model
+        input_feed: the feed for every graph input, used to validate the conversion
+
+    Returns:
+        the float16 model, with float32 inputs and outputs
+    """
+    model_proto = onnx.load(str(model_float32.model_path))
+    if not _has_control_flow(model_proto):
+        return auto_convert_mixed_precision(
+            # NOTE: keep_io_types=True is required to keep the input/output type as float32
+            model_proto,
+            input_feed,
+            validate_fn=_validate,
+            keep_io_types=True,
+        )
+    # The automatic mixed precision search fails on control flow subgraphs (the loop bodies keep their float32
+    # inputs): convert the whole graph, the shapes created for the loop states (ConstantOfShape) staying float32
+    print("Model with control flow operators: converting the whole graph to float16")
+    model_float16 = convert_float_to_float16(
+        model_proto, keep_io_types=True, op_block_list=DEFAULT_OP_BLOCK_LIST + ["ConstantOfShape"]
+    )
+    output_names = [output.name for output in model_float32.runtime.get_outputs()]
+    session_fp16 = onnxruntime.InferenceSession(model_float16.SerializeToString(), providers=model_float32.providers)
+    _validate(
+        model_float32.runtime.run(output_names, input_feed),
+        session_fp16.run(output_names, input_feed),
+    )
+    return model_float16
+
+
 def main(args):
     model_float32 = _load_model(args.arch, model_path=args.input_model if args.input_model else None)
     size = (1, *model_float32.cfg["input_shape"])
@@ -117,13 +160,7 @@ def main(args):
     with TemporaryDirectory() as temp_dir:
         model_fp16_path = f"{temp_dir}/model_fp16.onnx"
         input_feed = _build_input_feed(model_float32, img_tensor)
-        model_float16 = auto_convert_mixed_precision(
-            # NOTE: keep_io_types=True is required to keep the input/output type as float32
-            onnx.load(str(model_float32.model_path)),
-            input_feed,
-            validate_fn=_validate,
-            keep_io_types=True,
-        )
+        model_float16 = _convert(model_float32, input_feed)
         onnx.save(model_float16, model_fp16_path)
         model_fp16 = _load_model(args.arch, model_fp16_path)
 

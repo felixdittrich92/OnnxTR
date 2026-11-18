@@ -3,12 +3,12 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import Any
 
 import numpy as np
 
-from onnxtr.models._utils import ConfidenceAggregation, _resolve_confidence_aggregation
+from onnxtr.models._utils import ConfidenceAggregation, _resolve_confidence_aggregation, predict_by_chunks
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.utils.repr import NestedObject
 
@@ -24,6 +24,10 @@ class RecognitionPredictor(NestedObject):
         pre_processor: transform inputs for easier batched model inference
         model: core recognition architecture
         split_wide_crops: wether to use crop splitting for high aspect ratio crops
+        chunk_size: the maximum number of crops decoded and processed at once (1024 by default). Longer
+            inputs, lazy page sources (cf. `DocumentFile.from_images(..., lazy=True)`) and iterators are processed
+            chunk by chunk, with a memory footprint that does not grow with the number of crops. It is rounded
+            up to a multiple of the batch size, so that the predictions are the same as in a single pass.
     """
 
     def __init__(
@@ -31,10 +35,14 @@ class RecognitionPredictor(NestedObject):
         pre_processor: PreProcessor,
         model: Any,
         split_wide_crops: bool = True,
+        chunk_size: int = 1024,
     ) -> None:
         super().__init__()
         self.pre_processor = pre_processor
         self.model = model
+        if chunk_size < 1:
+            raise ValueError("`chunk_size` must be a positive integer")
+        self.chunk_size = chunk_size
         self.split_wide_crops = split_wide_crops
         self.critical_ar = 8  # Critical aspect ratio
         self.overlap_ratio = 0.5  # Ratio of overlap between neighboring crops
@@ -42,6 +50,25 @@ class RecognitionPredictor(NestedObject):
         self.split_confidence_aggregation: ConfidenceAggregation = "min"  # Confidence aggregation for split crops
 
     def __call__(
+        self,
+        crops: Sequence[np.ndarray] | Iterable[np.ndarray],
+        **kwargs: Any,
+    ) -> list[tuple[str, float]]:
+        """Read the character sequence of word crops
+
+        Args:
+            crops: a list of word crops (numpy arrays of shape H x W x C), a lazy page source
+                (cf. `DocumentFile.from_images(..., lazy=True)`) or any iterable of crops
+            **kwargs: keyword arguments forwarded to the model
+
+        Returns:
+            the text and confidence of each crop
+        """
+        return predict_by_chunks(
+            lambda chunk: self._predict(chunk, **kwargs), crops, self.chunk_size, self.pre_processor.batch_size
+        )
+
+    def _predict(
         self,
         crops: Sequence[np.ndarray],
         **kwargs: Any,
@@ -52,6 +79,10 @@ class RecognitionPredictor(NestedObject):
         # Dimension check
         if any(crop.ndim != 3 for crop in crops):
             raise ValueError("incorrect input shape: all crops are expected to be multi-channel 2D images.")
+        # An empty crop would otherwise fail with a ZeroDivisionError while splitting or resizing
+        empty = next((crop for crop in crops if not all(s > 0 for s in crop.shape)), None)
+        if empty is not None:
+            raise ValueError(f"incorrect input shape: crops are expected to be non-empty, got shape {empty.shape}.")
 
         # Split crops that are too wide
         remapped = False

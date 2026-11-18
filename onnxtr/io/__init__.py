@@ -5,3 +5,4 @@ from .image import *
 from .pdf import *
 from .reader import *
 from .exporters import *
+from .sources import *
