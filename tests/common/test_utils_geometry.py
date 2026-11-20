@@ -494,3 +494,15 @@ def test_straighten_page_grayscale(angle):
     assert gray_straightened.shape == (*straightened.shape[:2], 1)
     assert np.array_equal(gray_straightened, straightened[..., :1])
     assert np.array_equal(gray_m_inv, m_inv)
+
+
+def test_to_rgb():
+    rgb = np.random.randint(0, 255, (8, 12, 3), dtype=np.uint8)
+    assert geometry.to_rgb(rgb) is rgb
+    gray = rgb[..., :1]
+    assert np.array_equal(geometry.to_rgb(gray), np.repeat(gray, 3, axis=-1))
+    rgba = np.concatenate([rgb, np.full((8, 12, 1), 255, dtype=np.uint8)], axis=-1)
+    assert np.array_equal(geometry.to_rgb(rgba), rgb)
+    # Channels first RGB image of width 4
+    chw = np.zeros((3, 8, 4), dtype=np.uint8)
+    assert geometry.to_rgb(chw) is chw

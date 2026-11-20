@@ -10,7 +10,7 @@ import numpy as np
 
 from onnxtr.transforms import Normalize, Resize
 from onnxtr.utils.common_types import Sample
-from onnxtr.utils.geometry import shape_translate
+from onnxtr.utils.geometry import shape_translate, to_rgb
 from onnxtr.utils.multithreading import multithread_exec
 from onnxtr.utils.repr import NestedObject
 
@@ -83,7 +83,7 @@ class PreProcessor(NestedObject):
         if isinstance(x, np.ndarray):
             if x.dtype not in (np.uint8, np.float32):
                 raise TypeError("unsupported data type for numpy.ndarray")
-        return shape_translate(x, "HWC")
+        return shape_translate(to_rgb(x), "HWC")
 
     @staticmethod
     def _to_float(x: np.ndarray) -> np.ndarray:
