@@ -218,8 +218,28 @@ class Normalize:
         self,
         img: np.ndarray,
     ) -> np.ndarray:
+        mean = np.array(self.mean).astype(img.dtype)
+        std = np.array(self.std).astype(img.dtype)
+        if (
+            type(img) is np.ndarray
+            and img.flags.c_contiguous
+            and np.issubdtype(img.dtype, np.floating)
+            and img.ndim >= 2
+            and mean.shape == std.shape == img.shape[-1:]
+            and img.shape[-2] > 1
+            and img.shape[-1] > 1
+            and img.size > 0
+        ):
+            # Broadcast over a C-ordered (..., W, C) image, a per-channel mean and std keep numpy's inner loop
+            # C values long. Tiled along a row, the same subtraction and division run over W * C values at a
+            # time. Other layouts would need a copy to reshape, a single channel already broadcasts as a scalar,
+            # and one pixel per row leaves nothing to tile
+            width, channels = img.shape[-2:]
+            out = np.subtract(img.reshape(-1, width * channels), np.tile(mean, width))
+            np.divide(out, np.tile(std, width), out=out)
+            return out.reshape(img.shape)
         # Normalize image
-        return (img - np.array(self.mean).astype(img.dtype)) / np.array(self.std).astype(img.dtype)
+        return (img - mean) / std
 
     def __repr__(self) -> str:
         _repr = f"mean={self.mean}, std={self.std}"
