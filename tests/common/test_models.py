@@ -103,6 +103,12 @@ def test_get_lang():
     assert lang[1] == 0.0
 
 
+def test_get_lang_is_reproducible():
+    # langdetect samples at random: an ambiguous text got a different confidence (or language) at each call
+    sentence = "die Klasse und das Ergebnis"
+    assert len({get_language(sentence) for _ in range(10)}) == 1
+
+
 def test_mask_boxes():
     img = np.full((100, 200, 3), 100, dtype=np.uint8)
     boxes = np.array([[0.1, 0.2, 0.4, 0.6]], dtype=np.float32)
