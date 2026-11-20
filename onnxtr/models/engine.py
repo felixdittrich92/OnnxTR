@@ -179,6 +179,8 @@ class EngineConfig:
                     },
                 ),
             )
+        elif "OpenVINOExecutionProvider" in available_providers:  # pragma: no cover
+            providers.insert(0, ("OpenVINOExecutionProvider", {"device_type": "CPU", "precision": "FP32"}))
         elif "CoreMLExecutionProvider" in available_providers:  # pragma: no cover
             providers.insert(0, ("CoreMLExecutionProvider", {}))
         return providers

@@ -205,3 +205,14 @@ def test_release_gpu_memory_after_run_only_on_gpu():
     assert clf._arena_shrinkage is None
     with pytest.raises(RuntimeError, match="does not have configuration"):
         clf._run_options().get_run_config_entry("memory.enable_memory_arena_shrinkage")
+
+
+def test_engine_cfg_uses_openvino_when_available(monkeypatch):
+    from onnxtr.models import engine
+
+    monkeypatch.setattr(
+        engine, "get_available_providers", lambda: ["OpenVINOExecutionProvider", "CPUExecutionProvider"]
+    )
+    monkeypatch.setattr(engine, "get_device", lambda: "CPU")
+    providers = [p[0] for p in EngineConfig().providers]
+    assert providers == ["OpenVINOExecutionProvider", "CPUExecutionProvider"]
