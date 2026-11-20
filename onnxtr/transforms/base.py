@@ -211,12 +211,23 @@ class Normalize:
         if not isinstance(self.std, (float, tuple, list)):
             raise AssertionError("std should be either a tuple, a list or a float")
 
-    def __call__(
-        self,
-        img: np.ndarray,
-    ) -> np.ndarray:
-        # Normalize image
-        return (img - np.array(self.mean).astype(img.dtype)) / np.array(self.std).astype(img.dtype)
+    def __call__(self, img: np.ndarray, inplace: bool = False) -> np.ndarray:
+        """Normalize an image or a batch of images
+
+        Args:
+            img: the image(s) to normalize, of a float dtype
+            inplace: whether to normalize `img` in place (no copy), instead of returning a normalized copy
+
+        Returns:
+            the normalized image(s)
+        """
+        mean = np.array(self.mean).astype(img.dtype)
+        std = np.array(self.std).astype(img.dtype)
+        if inplace:
+            img -= mean
+            img /= std
+            return img
+        return (img - mean) / std
 
     def __repr__(self) -> str:
         _repr = f"mean={self.mean}, std={self.std}"

@@ -116,7 +116,10 @@ class EngineConfig:
                     "CUDAExecutionProvider",
                     {
                         "device_id": 0,
-                        "arena_extend_strategy": "kNextPowerOfTwo",
+                        # Grow the memory arena by the requested amount only: rounding each extension up to the next
+                        # power of two (kNextPowerOfTwo) roughly doubles the GPU memory footprint of each session,
+                        # which runs out of memory once several models (layout, table, formula, ...) are loaded
+                        "arena_extend_strategy": "kSameAsRequested",
                         # HEURISTIC picks much faster convolution kernels than DEFAULT (up to ~3x on the
                         # convolutional models) without the benchmarking pass of EXHAUSTIVE on each new input shape
                         "cudnn_conv_algo_search": "HEURISTIC",
