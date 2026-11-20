@@ -27,7 +27,7 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/master-33e2354b.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.9.0/master-f302f2ad.onnx",
         "url_8_bit": None,
     },
 }
