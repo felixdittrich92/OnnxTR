@@ -48,6 +48,8 @@ class MobileNetV3(Engine):
         **kwargs: additional arguments to be passed to `Engine`
     """
 
+    _release_gpu_memory_after_run = True
+
     def __init__(
         self,
         model_path: str,
@@ -74,7 +76,11 @@ def _mobilenet_v3(
     **kwargs: Any,
 ) -> MobileNetV3:
     # Patch the url
-    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
+    model_path = (
+        default_cfgs[arch]["url_8_bit"]
+        if load_in_8_bit and model_path.startswith(("http://", "https://"))
+        else model_path
+    )
     _cfg = deepcopy(default_cfgs[arch])
     return MobileNetV3(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)
 

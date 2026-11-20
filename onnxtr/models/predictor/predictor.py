@@ -16,7 +16,7 @@ from onnxtr.models.formula.predictor import FormulaPredictor
 from onnxtr.models.layout.predictor import LayoutPredictor
 from onnxtr.models.recognition.predictor import RecognitionPredictor
 from onnxtr.models.table_structure.predictor import TablePredictor
-from onnxtr.utils.geometry import detach_scores
+from onnxtr.utils.geometry import detach_scores, to_rgb
 from onnxtr.utils.repr import NestedObject
 
 from .base import _OCRPredictor
@@ -136,6 +136,7 @@ class OCRPredictor(NestedObject, _OCRPredictor):
         # Dimension check
         if any(page.ndim != 3 for page in pages):
             raise ValueError("incorrect input shape: all pages are expected to be multi-channel 2D images.")
+        pages = [to_rgb(page) for page in pages]
 
         origin_page_shapes = [page.shape[:2] for page in pages]
 

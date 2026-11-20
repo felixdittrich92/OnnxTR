@@ -121,7 +121,11 @@ def _sar(
 
     kwargs["vocab"] = _cfg["vocab"]
     # Patch the url
-    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
+    model_path = (
+        default_cfgs[arch]["url_8_bit"]
+        if load_in_8_bit and model_path.startswith(("http://", "https://"))
+        else model_path
+    )
 
     # Build the model
     return SAR(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)

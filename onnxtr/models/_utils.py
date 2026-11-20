@@ -11,10 +11,14 @@ from typing import Any, Literal, TypeAlias, TypeVar
 
 import cv2
 import numpy as np
-from langdetect import LangDetectException, detect_langs
+from langdetect import DetectorFactory, LangDetectException, detect_langs
 
 from onnxtr.utils.geometry import rotate_image
 from onnxtr.utils.multithreading import prefetch_chunks
+
+# langdetect samples at random: fix its seed, so that the detected languages (and their confidence) are
+# reproducible from one run to the other
+DetectorFactory.seed = 0
 
 __all__ = ["ConfidenceAggregation", "aggregate_confidence", "estimate_orientation", "get_language", "mask_boxes"]
 

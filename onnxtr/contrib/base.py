@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 import onnxruntime as ort
 
+from onnxtr.models.engine import _warn_on_provider_fallback
 from onnxtr.utils.data import download_from_url
 
 
@@ -44,7 +45,13 @@ class _BasePredictor:
         if not url and not model_path:
             raise ValueError("You must provide either a url or a model_path")
         onnx_model_path = model_path if model_path else str(download_from_url(url, cache_subdir="models", **kwargs))  # type: ignore[arg-type]
-        return ort.InferenceSession(onnx_model_path, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+        # Only request the providers of the installed onnxruntime build, so that a requested provider which is
+        # missing at runtime (e.g. CUDA libraries not found) can be reported instead of silently falling back
+        available = ort.get_available_providers()
+        providers = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in available]
+        session = ort.InferenceSession(onnx_model_path, providers=providers)
+        _warn_on_provider_fallback(providers, session.get_providers())
+        return session
 
     def preprocess(self, img: np.ndarray) -> np.ndarray:
         """
