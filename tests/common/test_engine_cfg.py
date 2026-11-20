@@ -132,3 +132,53 @@ def test_cpu_memory_arena_shrinkage_enabled():
     decreased_rss = _get_rss_mb()
 
     assert increased_rss >= decreased_rss
+
+
+class _FixedBatchRuntime:
+    """Stub inference session whose graph only accepts batches of exactly `batch_size`, echoing them back"""
+
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
+        self.calls = 0
+
+    def run(self, output_names, feed, run_options=None):
+        (batch,) = feed.values()
+        if batch.shape[0] != self.batch_size:
+            raise ValueError(f"invalid batch size {batch.shape[0]}, expected {self.batch_size}")
+        self.calls += 1
+        return [batch.transpose(0, 2, 3, 1)]
+
+
+@pytest.mark.parametrize("fixed_batch_size", [1, 2, 3])
+@pytest.mark.parametrize("num_samples", [1, 2, 5])
+def test_engine_fixed_batch_size(fixed_batch_size, num_samples):
+    model = recognition.crnn_mobilenet_v3_small(engine_cfg=EngineConfig(providers=["CPUExecutionProvider"]))
+    model.runtime = _FixedBatchRuntime(fixed_batch_size)
+    model.fixed_batch_size = fixed_batch_size
+    inputs = np.random.rand(num_samples, 3, 32, 128).astype(np.float32)
+
+    out = model.run(inputs)
+
+    # One output per input sample, in order, whatever the fixed batch size of the graph
+    assert out.shape == (num_samples, 32, 128, 3)
+    np.testing.assert_array_equal(out, inputs.transpose(0, 2, 3, 1))
+    assert model.runtime.calls == -(-num_samples // fixed_batch_size)
+
+
+def test_engine_warns_on_provider_fallback(caplog):
+    from onnxtr.models import engine
+
+    engine._REPORTED_FALLBACKS.clear()
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        missing = engine._warn_on_provider_fallback(
+            [("CUDAExecutionProvider", {}), "CPUExecutionProvider"], ["CPUExecutionProvider"]
+        )
+        # Several models of the same pipeline falling back only warn once
+        engine._warn_on_provider_fallback(["CUDAExecutionProvider", "CPUExecutionProvider"], ["CPUExecutionProvider"])
+    assert missing == ["CUDAExecutionProvider"]
+    assert len([r for r in caplog.records if "CUDAExecutionProvider" in r.getMessage()]) == 1
+
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        assert engine._warn_on_provider_fallback(["CPUExecutionProvider"], ["CPUExecutionProvider"]) == []
+    assert not caplog.records

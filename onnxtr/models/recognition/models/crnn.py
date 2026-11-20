@@ -179,7 +179,11 @@ def _crnn(
     _cfg["vocab"] = kwargs["vocab"]
     _cfg["input_shape"] = kwargs.get("input_shape", default_cfgs[arch]["input_shape"])
     # Patch the url
-    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
+    model_path = (
+        default_cfgs[arch]["url_8_bit"]
+        if load_in_8_bit and model_path.startswith(("http://", "https://"))
+        else model_path
+    )
 
     # Build the model
     return CRNN(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)

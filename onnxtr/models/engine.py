@@ -50,6 +50,43 @@ def _cast_to_ort_dtype(array: np.ndarray, ort_type: str) -> np.ndarray:
     return array if array.dtype == dtype else array.astype(dtype)
 
 
+# Provider fallbacks already reported, so that a pipeline loading several models warns only once
+_REPORTED_FALLBACKS: set[tuple[str, ...]] = set()
+
+
+def _warn_on_provider_fallback(requested: list[tuple[str, dict[str, Any]]] | list[str], active: list[str]) -> list[str]:
+    """Warn when onnxruntime could not enable some of the requested execution providers
+
+    onnxruntime silently falls back to the next provider (ultimately the CPU) when one cannot be loaded, e.g. when
+    the CUDA / cuDNN libraries matching the installed `onnxruntime-gpu` are missing. Since its own logs are muted
+    by default (cf. `ORT_LOG_SEVERITY_LEVEL`), this would otherwise go unnoticed: the inference just runs on the CPU.
+
+    Args:
+        requested: the providers passed to the inference session
+        active: the providers actually enabled by the inference session
+
+    Returns:
+        the names of the requested providers which are not enabled
+    """
+    requested_names = [p[0] if isinstance(p, (tuple, list)) else p for p in requested]
+    missing = [name for name in requested_names if name not in active]
+    key = tuple(missing)
+    if missing and key not in _REPORTED_FALLBACKS:
+        _REPORTED_FALLBACKS.add(key)
+        hint = ""
+        if any(name in ("CUDAExecutionProvider", "TensorrtExecutionProvider") for name in missing):
+            hint = (
+                " Make sure the CUDA and cuDNN versions required by your onnxruntime-gpu version are installed and "
+                'on the library path (e.g. `pip install "onnxruntime-gpu[cuda,cudnn]"`), cf. '
+                "https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements."
+            )
+        logger.warning(
+            f"onnxruntime could not enable the requested execution provider(s) {missing} and falls back to "
+            f"{active}.{hint} Set the environment variable ORT_LOG_SEVERITY_LEVEL=2 to see the onnxruntime logs."
+        )
+    return missing
+
+
 class EngineConfig:
     """Implements a configuration class for the engine of a model
 
@@ -80,7 +117,9 @@ class EngineConfig:
                     {
                         "device_id": 0,
                         "arena_extend_strategy": "kNextPowerOfTwo",
-                        "cudnn_conv_algo_search": "DEFAULT",
+                        # HEURISTIC picks much faster convolution kernels than DEFAULT (up to ~3x on the
+                        # convolutional models) without the benchmarking pass of EXHAUSTIVE on each new input shape
+                        "cudnn_conv_algo_search": "HEURISTIC",
                         "do_copy_in_default_stream": True,
                     },
                 ),
@@ -121,7 +160,9 @@ class Engine:
 
     def __init__(self, url: str, engine_cfg: EngineConfig | None = None, **kwargs: Any) -> None:
         engine_cfg = engine_cfg if isinstance(engine_cfg, EngineConfig) else EngineConfig()
-        archive_path = download_from_url(url, cache_subdir="models", **kwargs) if "http" in url else url
+        archive_path = (
+            download_from_url(url, cache_subdir="models", **kwargs) if url.startswith(("http://", "https://")) else url
+        )
         # NOTE: older onnxruntime versions require a string path for windows
         archive_path = rf"{archive_path}"
         # Store model path for each model
@@ -130,6 +171,7 @@ class Engine:
         self.providers = engine_cfg.providers
         self.run_options_provider = engine_cfg.run_options_provider
         self.runtime = InferenceSession(archive_path, providers=self.providers, sess_options=self.session_options)
+        _warn_on_provider_fallback(self.providers, self.runtime.get_providers())
         # NOTE: `runtime_inputs` is kept for single input models, `runtime_input_metas` covers
         # multi-input models (e.g. LW-DETR which additionally consumes a padding mask)
         self.runtime_input_metas = self.runtime.get_inputs()
@@ -171,23 +213,24 @@ class Engine:
         return dict(zip(self.output_name, outputs))
 
     def run(self, inputs: np.ndarray) -> np.ndarray:
-        run_options = RunOptions()
-        if self.run_options_provider is not None:
-            run_options = self.run_options_provider(run_options)
+        run_options = self._run_options()
         if self.tf_exported:
             inputs = shape_translate(inputs, format="BHWC")  # sanity check
         else:
             inputs = shape_translate(inputs, format="BCHW")
-        if isinstance(self.fixed_batch_size, int) and self.fixed_batch_size != 0:  # dynamic batch size is a string
-            inputs = np.broadcast_to(inputs, (self.fixed_batch_size, *inputs.shape))
-            # combine the results
-            logits = np.concatenate(
-                [
-                    self.runtime.run(self.output_name, {self.runtime_inputs.name: batch}, run_options=run_options)[0]
-                    for batch in inputs
-                ],
-                axis=0,
-            )
+        if isinstance(self.fixed_batch_size, int) and self.fixed_batch_size > 0:  # dynamic batch size is a string
+            # The graph only accepts batches of exactly `fixed_batch_size`: feed it chunk by chunk, padding the
+            # last chunk with zeros, and drop the outputs of the padding
+            fbs, num_samples = self.fixed_batch_size, inputs.shape[0]
+            outputs = []
+            for start in range(0, num_samples, fbs):
+                chunk = inputs[start : start + fbs]
+                if chunk.shape[0] < fbs:
+                    pad = np.zeros((fbs - chunk.shape[0], *chunk.shape[1:]), dtype=chunk.dtype)
+                    chunk = np.concatenate([chunk, pad], axis=0)
+                out = self.runtime.run(self.output_name, {self.runtime_inputs.name: chunk}, run_options=run_options)[0]
+                outputs.append(out[: min(fbs, num_samples - start)])
+            logits = np.concatenate(outputs, axis=0)
         else:
             logits = self.runtime.run(self.output_name, {self.runtime_inputs.name: inputs}, run_options=run_options)[0]
         return shape_translate(logits, format="BHWC")

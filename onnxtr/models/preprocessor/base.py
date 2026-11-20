@@ -88,7 +88,26 @@ class PreProcessor(NestedObject):
     @staticmethod
     def _to_float(x: np.ndarray) -> np.ndarray:
         # Data type & 255 division
-        return x.astype(np.float32) / 255.0 if x.dtype == np.uint8 else x
+        if x.dtype != np.uint8:
+            return x
+        # In place on the fresh float copy: a single allocation instead of two
+        out = x.astype(np.float32)
+        out /= 255.0
+        return out
+
+    # Below this average amount of work per sample (input + output pixels), the sample transforms run faster on the
+    # calling thread: e.g. for word crops resized to 32 x 128, threading is up to ~2.5x slower because the resize of
+    # such small images is too short to make up for the GIL hand-offs between the worker threads
+    _min_pixels_per_threaded_sample: int = 64 * 1024
+
+    def _sample_threads(self, samples: list[np.ndarray]) -> int | None:
+        """Number of worker threads for the sample transforms: 1 (no threading) for small samples, else the default"""
+        if not samples:
+            return 1
+        out_h, out_w = self.resize.output_size
+        # `size` counts the channels too: divide by 3 to approximate the number of pixels
+        mean_pixels = sum(sample.size for sample in samples) / (3 * len(samples))
+        return 1 if mean_pixels + out_h * out_w < self._min_pixels_per_threaded_sample else None
 
     def sample_transforms(self, x: np.ndarray) -> np.ndarray:
         return self._to_float(self.resize(Sample(image=self._check_sample(x))).image)
@@ -139,10 +158,11 @@ class PreProcessor(NestedObject):
             return list(multithread_exec(self.normalize, [x]))
 
         if isinstance(x, list) and all(isinstance(sample, np.ndarray) for sample in x):
+            threads = self._sample_threads(x)
             if return_mask:
                 # Sample transform (resize + mask), then batching
                 mask_samples: list[tuple[np.ndarray, np.ndarray]] = list(
-                    multithread_exec(self.sample_transforms_with_mask, x)
+                    multithread_exec(self.sample_transforms_with_mask, x, threads)
                 )
                 mask_batches = self.batch_inputs(mask_samples)
                 # Batch transforms (normalize)
@@ -150,7 +170,7 @@ class PreProcessor(NestedObject):
                 return [(img, mask) for img, (_, mask) in zip(img_batches, mask_batches)]
 
             # Sample transform (resize), batching, then batch transforms (normalize)
-            samples: list[np.ndarray] = list(multithread_exec(self.sample_transforms, x))
+            samples: list[np.ndarray] = list(multithread_exec(self.sample_transforms, x, threads))
             return list(multithread_exec(self.normalize, self.batch_inputs(samples)))
 
         raise TypeError(f"invalid input type: {type(x)}")

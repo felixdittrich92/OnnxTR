@@ -8,7 +8,7 @@ import math
 from collections.abc import Sequence
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 
 from onnxtr.utils.common_types import Sample
 
@@ -150,13 +150,10 @@ class Resize:
             pad_left, pad_top = 0, 0
             pad_right, pad_bottom = delta_w, delta_h
 
-        img = np.array(
-            ImageOps.expand(
-                img_resized_pil,
-                border=(pad_left, pad_top, pad_right, pad_bottom),
-                fill=0,
-            )
-        )
+        # Zero padding: paste the resized image into a zeroed canvas (much cheaper than `ImageOps.expand`)
+        img_resized = np.asarray(img_resized_pil)
+        img = np.zeros((sh, sw, *img_resized.shape[2:]), dtype=img_resized.dtype)
+        img[pad_top : pad_top + tmp_size[0], pad_left : pad_left + tmp_size[1]] = img_resized
 
         if resize_mask and mask is not None:
             mask = np.pad(mask, ((pad_top, pad_bottom), (pad_left, pad_right)))
