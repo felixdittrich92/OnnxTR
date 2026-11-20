@@ -13,8 +13,13 @@ from onnxruntime import (
     ExecutionMode,
     GraphOptimizationLevel,
     InferenceSession,
+    OrtAllocatorType,
+    OrtArenaCfg,
+    OrtMemoryInfo,
+    OrtMemType,
     RunOptions,
     SessionOptions,
+    create_and_register_allocator_v2,
     get_available_providers,
     get_device,
 )
@@ -87,12 +92,55 @@ def _warn_on_provider_fallback(requested: list[tuple[str, dict[str, Any]]] | lis
     return missing
 
 
+# CUDA devices on which a memory arena shared by all the inference sessions of the process is registered
+_SHARED_CUDA_ARENAS: set[int] = set()
+
+
+def _register_shared_cuda_arena(device_id: int) -> bool:
+    """Register (once per process) a CUDA memory arena shared by the sessions which opt in for it
+
+    By default, each inference session owns its memory arena, sized after its own peak usage and never released: the
+    GPU memory footprint of a pipeline is then the sum of the peaks of all its models (detection, recognition, layout,
+    table, formula, ...), although they run one after the other. With a shared arena, it is closer to the largest one.
+
+    Args:
+        device_id: the CUDA device
+
+    Returns:
+        whether the shared arena is available
+    """
+    if device_id in _SHARED_CUDA_ARENAS:
+        return True
+    try:
+        mem_info = OrtMemoryInfo("Cuda", OrtAllocatorType.ORT_ARENA_ALLOCATOR, device_id, OrtMemType.DEFAULT)
+        # arena_extend_strategy 1: kSameAsRequested
+        create_and_register_allocator_v2(
+            "CUDAExecutionProvider", mem_info, {"device_id": str(device_id)}, OrtArenaCfg({"arena_extend_strategy": 1})
+        )
+    except Exception as e:  # pragma: no cover
+        logger.info(f"Could not register a shared CUDA memory arena, each session keeps its own: {e}")
+        return False
+    _SHARED_CUDA_ARENAS.add(device_id)
+    return True
+
+
+def _cuda_device_id(providers: list[tuple[str, dict[str, Any]]] | list[str]) -> int | None:
+    """The CUDA device of the providers, if the CUDA execution provider is requested"""
+    for provider in providers:
+        if isinstance(provider, (tuple, list)) and provider[0] == "CUDAExecutionProvider":
+            return int(provider[1].get("device_id", 0))
+        if provider == "CUDAExecutionProvider":
+            return 0
+    return None
+
+
 class EngineConfig:
     """Implements a configuration class for the engine of a model
 
     Args:
         providers: list of providers to use for inference ref.: https://onnxruntime.ai/docs/execution-providers/
         session_options: configuration for the inference session ref.: https://onnxruntime.ai/docs/api/python/api_summary.html#sessionoptions
+        run_options_provider: function to customize the run options of each inference call
     """
 
     def __init__(
@@ -103,6 +151,10 @@ class EngineConfig:
     ):
         self._providers = providers or self._init_providers()
         self._session_options = session_options or self._init_sess_opts()
+        # The default sessions on a GPU share a single CUDA memory arena (user-provided session options are kept as is)
+        cuda_device = _cuda_device_id(self._providers)
+        if session_options is None and cuda_device is not None and _register_shared_cuda_arena(cuda_device):
+            self._session_options.add_session_config_entry("session.use_env_allocators", "1")
         self.run_options_provider = run_options_provider
 
     def _init_providers(self) -> list[tuple[str, dict[str, Any]]]:
@@ -161,6 +213,11 @@ class Engine:
         **kwargs: additional arguments to be passed to `download_from_url`
     """
 
+    # Whether the unused GPU memory of the arena is released after each inference call. Enabled for the models called
+    # once in a while with large inputs (classification, layout, table, formula): their peak memory would otherwise
+    # stay reserved, on top of the one of the detection & recognition models which are called the most
+    _release_gpu_memory_after_run: bool = False
+
     def __init__(self, url: str, engine_cfg: EngineConfig | None = None, **kwargs: Any) -> None:
         engine_cfg = engine_cfg if isinstance(engine_cfg, EngineConfig) else EngineConfig()
         archive_path = (
@@ -185,9 +242,19 @@ class Engine:
             0
         ]  # mostly possible with tensorflow exported models
         self.output_name = [output.name for output in self.runtime.get_outputs()]
+        cuda_device = _cuda_device_id(self.providers)
+        self._arena_shrinkage: str | None = (
+            f"gpu:{cuda_device}"
+            if self._release_gpu_memory_after_run
+            and cuda_device is not None
+            and "CUDAExecutionProvider" in self.runtime.get_providers()
+            else None
+        )
 
     def _run_options(self) -> RunOptions:
         run_options = RunOptions()
+        if self._arena_shrinkage is not None:
+            run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", self._arena_shrinkage)
         if self.run_options_provider is not None:
             run_options = self.run_options_provider(run_options)
         return run_options

@@ -66,6 +66,8 @@ class LWDETR(Engine):
         **kwargs: additional arguments to be passed to `Engine`
     """
 
+    _release_gpu_memory_after_run = True
+
     def __init__(
         self,
         model_path: str,

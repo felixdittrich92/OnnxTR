@@ -182,3 +182,26 @@ def test_engine_warns_on_provider_fallback(caplog):
     with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
         assert engine._warn_on_provider_fallback(["CPUExecutionProvider"], ["CPUExecutionProvider"]) == []
     assert not caplog.records
+
+
+def test_cuda_device_id():
+    from onnxtr.models.engine import _cuda_device_id
+
+    assert _cuda_device_id(["CPUExecutionProvider"]) is None
+    assert _cuda_device_id([("CPUExecutionProvider", {})]) is None
+    assert _cuda_device_id(["CUDAExecutionProvider", "CPUExecutionProvider"]) == 0
+    assert _cuda_device_id([("CUDAExecutionProvider", {"device_id": 1}), "CPUExecutionProvider"]) == 1
+
+
+def test_release_gpu_memory_after_run_only_on_gpu():
+    from onnxtr.models import classification
+
+    cpu_cfg = EngineConfig(providers=["CPUExecutionProvider"])
+    # The occasionally called models opt in for releasing the GPU memory after each run, the main ones do not
+    clf = classification.mobilenet_v3_small_crop_orientation(engine_cfg=cpu_cfg)
+    reco = recognition.crnn_mobilenet_v3_small(engine_cfg=cpu_cfg)
+    assert clf._release_gpu_memory_after_run and not reco._release_gpu_memory_after_run
+    # ... which is a no-op on the CPU
+    assert clf._arena_shrinkage is None
+    with pytest.raises(RuntimeError, match="does not have configuration"):
+        clf._run_options().get_run_config_entry("memory.enable_memory_arena_shrinkage")
