@@ -196,6 +196,9 @@ class EngineConfig:
         session_options.graph_optimization_level = GraphOptimizationLevel.ORT_ENABLE_ALL
         session_options.intra_op_num_threads = -1
         session_options.inter_op_num_threads = -1
+        # The idle threads of a session otherwise keep spinning after each run, slowing down the other models of the
+        # pipeline which run in between (e.g. detection & recognition): up to 2x faster OCR on the CPU
+        session_options.add_session_config_entry("session.intra_op.allow_spinning", "0")
         return session_options
 
     @property

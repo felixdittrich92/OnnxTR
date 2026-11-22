@@ -4,6 +4,7 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 import heapq
+import os
 from collections.abc import Callable, Iterable, Sequence
 from math import ceil, floor, isnan
 from statistics import median_low
@@ -12,9 +13,10 @@ from typing import Any, Literal, TypeAlias, TypeVar
 import cv2
 import numpy as np
 from langdetect import DetectorFactory, LangDetectException, detect_langs
+from scipy.special import expit
 
 from onnxtr.utils.geometry import rotate_image
-from onnxtr.utils.multithreading import prefetch_chunks
+from onnxtr.utils.multithreading import multithread_exec, prefetch_chunks
 
 # langdetect samples at random: fix its seed, so that the detected languages (and their confidence) are
 # reproducible from one run to the other
@@ -277,6 +279,29 @@ def rectify_loc_preds(
         if len(orientations) > 0
         else None
     )
+
+
+def _expit(x: np.ndarray) -> np.ndarray:
+    """Sigmoid of a (B, H, W, C) map, computed by chunks of rows on several threads for large maps
+
+    Args:
+        x: the logits
+
+    Returns:
+        the probabilities, identical to `scipy.special.expit(x)`
+    """
+    threads = min(8, os.cpu_count() or 1)
+    if x.ndim != 4 or x.size < 1 << 19 or threads < 2 or x.shape[1] < threads:
+        return expit(x)
+    out = np.empty(x.shape, dtype=x.dtype)
+    bounds = np.linspace(0, x.shape[1], threads + 1).astype(int)
+
+    def _rows(idx: int) -> None:
+        rows = slice(bounds[idx], bounds[idx + 1])
+        expit(x[:, rows], out=out[:, rows])
+
+    list(multithread_exec(_rows, range(threads), threads))
+    return out
 
 
 def get_language(text: str) -> tuple[str, float]:
