@@ -112,9 +112,10 @@ def _validate(fp32_in: list[np.ndarray], fp16_in: list[np.ndarray]) -> bool:
     return True  # NOTE: Only warning, not error
 
 
-def _has_control_flow(model: onnx.ModelProto) -> bool:
-    """Whether the graph contains control flow operators (e.g. the decoding loop of FormulaNet)"""
-    return any(node.op_type in ("Loop", "If", "Scan") for node in model.graph.node)
+def _needs_full_conversion(model: onnx.ModelProto) -> bool:
+    """Whether the graph contains control flow (e.g. the decoding loop of FormulaNet) or recurrent (e.g. the LSTM of
+    CRNN) operators, on which the automatic mixed precision search fails"""
+    return any(node.op_type in ("Loop", "If", "Scan", "LSTM", "GRU", "RNN") for node in model.graph.node)
 
 
 def _convert(model_float32: Any, input_feed: dict[str, np.ndarray]) -> onnx.ModelProto:
@@ -128,7 +129,7 @@ def _convert(model_float32: Any, input_feed: dict[str, np.ndarray]) -> onnx.Mode
         the float16 model, with float32 inputs and outputs
     """
     model_proto = onnx.load(str(model_float32.model_path))
-    if not _has_control_flow(model_proto):
+    if not _needs_full_conversion(model_proto):
         return auto_convert_mixed_precision(
             # NOTE: keep_io_types=True is required to keep the input/output type as float32
             model_proto,
@@ -137,8 +138,9 @@ def _convert(model_float32: Any, input_feed: dict[str, np.ndarray]) -> onnx.Mode
             keep_io_types=True,
         )
     # The automatic mixed precision search fails on control flow subgraphs (the loop bodies keep their float32
-    # inputs): convert the whole graph, the shapes created for the loop states (ConstantOfShape) staying float32
-    print("Model with control flow operators: converting the whole graph to float16")
+    # inputs) and crashes onnxruntime on recurrent ones: convert the whole graph, the shapes created for the loop
+    # states (ConstantOfShape) staying float32
+    print("Model with control flow or recurrent operators: converting the whole graph to float16")
     model_float16 = convert_float_to_float16(
         model_proto, keep_io_types=True, op_block_list=DEFAULT_OP_BLOCK_LIST + ["ConstantOfShape"]
     )
