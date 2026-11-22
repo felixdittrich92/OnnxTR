@@ -55,6 +55,10 @@ def _cast_to_ort_dtype(array: np.ndarray, ort_type: str) -> np.ndarray:
     return array if array.dtype == dtype else array.astype(dtype)
 
 
+def _provider_name(provider: tuple[str, dict[str, Any]] | str) -> str:
+    return provider[0] if isinstance(provider, (tuple, list)) else provider
+
+
 # Provider fallbacks already reported, so that a pipeline loading several models warns only once
 _REPORTED_FALLBACKS: set[tuple[str, ...]] = set()
 
@@ -73,7 +77,7 @@ def _warn_on_provider_fallback(requested: list[tuple[str, dict[str, Any]]] | lis
     Returns:
         the names of the requested providers which are not enabled
     """
-    requested_names = [p[0] if isinstance(p, (tuple, list)) else p for p in requested]
+    requested_names = [_provider_name(p) for p in requested]
     missing = [name for name in requested_names if name not in active]
     key = tuple(missing)
     if missing and key not in _REPORTED_FALLBACKS:
@@ -232,7 +236,7 @@ class Engine:
         self.session_options = engine_cfg.session_options
         self.providers = engine_cfg.providers
         self.run_options_provider = engine_cfg.run_options_provider
-        self.runtime = InferenceSession(archive_path, providers=self.providers, sess_options=self.session_options)
+        self.runtime = self._create_session(archive_path)
         _warn_on_provider_fallback(self.providers, self.runtime.get_providers())
         # NOTE: `runtime_inputs` is kept for single input models, `runtime_input_metas` covers
         # multi-input models (e.g. LW-DETR which additionally consumes a padding mask)
@@ -252,6 +256,23 @@ class Engine:
             and "CUDAExecutionProvider" in self.runtime.get_providers()
             else None
         )
+
+    def _create_session(self, model_path: str) -> InferenceSession:
+        try:
+            return InferenceSession(model_path, providers=self.providers, sess_options=self.session_options)
+        except Exception as e:
+            # Some graphs cannot be compiled by OpenVINO (e.g. unsupported operators): run them on the other providers
+            fallback: Any = [p for p in self.providers if _provider_name(p) != "OpenVINOExecutionProvider"]
+            if not fallback or len(fallback) == len(self.providers):
+                raise
+            lines = [line.strip() for line in str(e).splitlines() if line.strip()] or [type(e).__name__]
+            reason = next((line for line in lines if line.startswith("While validating ONNX node")), lines[0])[:200]
+            logger.warning(
+                f"The OpenVINO execution provider cannot run the model {os.path.basename(model_path)}, falling back "
+                f"to {[_provider_name(p) for p in fallback]}: {reason}"
+            )
+            self.providers = fallback
+            return InferenceSession(model_path, providers=self.providers, sess_options=self.session_options)
 
     def _run_options(self) -> RunOptions:
         run_options = RunOptions()

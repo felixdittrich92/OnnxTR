@@ -216,3 +216,24 @@ def test_engine_cfg_uses_openvino_when_available(monkeypatch):
     monkeypatch.setattr(engine, "get_device", lambda: "CPU")
     providers = [p[0] for p in EngineConfig().providers]
     assert providers == ["OpenVINOExecutionProvider", "CPUExecutionProvider"]
+
+
+def test_engine_falls_back_from_openvino(monkeypatch, caplog):
+    from onnxtr.models import engine
+
+    real_session = engine.InferenceSession
+
+    def session(path, providers, sess_options):
+        if any(engine._provider_name(p) == "OpenVINOExecutionProvider" for p in providers):
+            raise RuntimeError("FrontEnd API failed\nWhile validating ONNX node '<Node(GridSample): /GridSample>'")
+        return real_session(path, providers=["CPUExecutionProvider"], sess_options=sess_options)
+
+    monkeypatch.setattr(engine, "InferenceSession", session)
+    cfg = EngineConfig(providers=[("OpenVINOExecutionProvider", {}), "CPUExecutionProvider"])
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        model = recognition.crnn_mobilenet_v3_small(engine_cfg=cfg)
+    assert model.providers == ["CPUExecutionProvider"]
+    assert "cannot run the model" in caplog.text and "GridSample" in caplog.text
+    # Without another provider to fall back to, the error is raised
+    with pytest.raises(RuntimeError, match="FrontEnd API failed"):
+        recognition.crnn_mobilenet_v3_small(engine_cfg=EngineConfig(providers=["OpenVINOExecutionProvider"]))
