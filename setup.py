@@ -10,7 +10,7 @@ from setuptools import setup
 
 PKG_NAME = "onnxtr"
 # Release tags are named vX.Y.Z
-VERSION = os.getenv("BUILD_VERSION", "0.10.0a0").removeprefix("v")
+VERSION = os.getenv("BUILD_VERSION", "0.10.1a0").removeprefix("v")
 
 
 if __name__ == "__main__":
