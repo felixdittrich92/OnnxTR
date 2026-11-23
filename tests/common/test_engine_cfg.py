@@ -131,7 +131,8 @@ def test_cpu_memory_arena_shrinkage_enabled():
     predictor([sample])
     decreased_rss = _get_rss_mb()
 
-    assert increased_rss >= decreased_rss
+    # Tolerance for the RSS noise (e.g. the stacks of the short-lived preprocessing threads), far below the arena sizes
+    assert decreased_rss <= increased_rss + 1.0
 
 
 class _FixedBatchRuntime:
