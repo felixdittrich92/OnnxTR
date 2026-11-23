@@ -167,6 +167,23 @@ def shape_translate(data: np.ndarray, format: str) -> np.ndarray:
         return data
 
 
+def to_rgb(img: np.ndarray) -> np.ndarray:
+    """Convert a grayscale (H, W, 1) or RGBA (H, W, 4) image to RGB (H, W, 3), other images are returned as is
+
+    Args:
+        img: the image
+
+    Returns:
+        the RGB image
+    """
+    if img.ndim == 3 and img.shape[-1] == 1:
+        return np.repeat(img, 3, axis=-1)
+    # (3, H, 4) is a channels-first RGB image
+    if img.ndim == 3 and img.shape[-1] == 4 and img.shape[0] != 3:
+        return img[..., :3]
+    return img
+
+
 def resolve_enclosing_bbox(bboxes: list[BoundingBox] | np.ndarray) -> BoundingBox | np.ndarray:
     """Compute enclosing bbox either from:
 

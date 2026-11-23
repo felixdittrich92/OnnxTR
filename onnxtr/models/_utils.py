@@ -4,6 +4,7 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 import heapq
+import os
 from collections.abc import Callable, Iterable, Sequence
 from math import ceil, floor, isnan
 from statistics import median_low
@@ -11,10 +12,11 @@ from typing import Any, Literal, TypeAlias, TypeVar
 
 import cv2
 import numpy as np
-from langdetect import LangDetectException, detect_langs
+from langdetect import DetectorFactory, LangDetectException, detect_langs
+from scipy.special import expit
 
 from onnxtr.utils.geometry import rotate_image
-from onnxtr.utils.multithreading import prefetch_chunks
+from onnxtr.utils.multithreading import multithread_exec, prefetch_chunks
 
 __all__ = ["ConfidenceAggregation", "aggregate_confidence", "estimate_orientation", "get_language", "mask_boxes"]
 
@@ -275,6 +277,29 @@ def rectify_loc_preds(
     )
 
 
+def _expit(x: np.ndarray) -> np.ndarray:
+    """Sigmoid of a (B, H, W, C) map, computed by chunks of rows on several threads for large maps
+
+    Args:
+        x: the logits
+
+    Returns:
+        the probabilities, identical to `scipy.special.expit(x)`
+    """
+    threads = min(8, os.cpu_count() or 1)
+    if x.ndim != 4 or x.size < 1 << 19 or threads < 2 or x.shape[1] < threads:
+        return expit(x)
+    out = np.empty(x.shape, dtype=x.dtype)
+    bounds = np.linspace(0, x.shape[1], threads + 1).astype(int)
+
+    def _rows(idx: int) -> None:
+        rows = slice(bounds[idx], bounds[idx + 1])
+        expit(x[:, rows], out=out[:, rows])
+
+    list(multithread_exec(_rows, range(threads), threads))
+    return out
+
+
 def get_language(text: str) -> tuple[str, float]:
     """Get languages of a text using langdetect model.
     Get the language with the highest probability or no language if only a few words or a low probability
@@ -285,10 +310,15 @@ def get_language(text: str) -> tuple[str, float]:
     Returns:
         The detected language in ISO 639 code and confidence score
     """
+    # langdetect samples at random: a fixed seed makes the result reproducible, the seed of the caller is restored
+    seed = DetectorFactory.seed
+    DetectorFactory.seed = 0
     try:
         lang = detect_langs(text.lower())[0]
     except LangDetectException:
         return "unknown", 0.0
+    finally:
+        DetectorFactory.seed = seed
     if len(text) <= 1 or (len(text) <= 5 and lang.prob <= 0.2):
         return "unknown", 0.0
     return lang.lang, lang.prob

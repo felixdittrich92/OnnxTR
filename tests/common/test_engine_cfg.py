@@ -131,4 +131,135 @@ def test_cpu_memory_arena_shrinkage_enabled():
     predictor([sample])
     decreased_rss = _get_rss_mb()
 
-    assert increased_rss >= decreased_rss
+    # Tolerance for the RSS noise (e.g. the stacks of the short-lived preprocessing threads), far below the arena sizes
+    assert decreased_rss <= increased_rss + 1.0
+
+
+class _FixedBatchRuntime:
+    """Stub inference session whose graph only accepts batches of exactly `batch_size`, echoing them back"""
+
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
+        self.calls = 0
+
+    def run(self, output_names, feed, run_options=None):
+        (batch,) = feed.values()
+        if batch.shape[0] != self.batch_size:
+            raise ValueError(f"invalid batch size {batch.shape[0]}, expected {self.batch_size}")
+        self.calls += 1
+        return [batch.transpose(0, 2, 3, 1)]
+
+
+@pytest.mark.parametrize("fixed_batch_size", [1, 2, 3])
+@pytest.mark.parametrize("num_samples", [1, 2, 5])
+def test_engine_fixed_batch_size(fixed_batch_size, num_samples):
+    model = recognition.crnn_mobilenet_v3_small(engine_cfg=EngineConfig(providers=["CPUExecutionProvider"]))
+    model.runtime = _FixedBatchRuntime(fixed_batch_size)
+    model.fixed_batch_size = fixed_batch_size
+    inputs = np.random.rand(num_samples, 3, 32, 128).astype(np.float32)
+
+    out = model.run(inputs)
+
+    # One output per input sample, in order, whatever the fixed batch size of the graph
+    assert out.shape == (num_samples, 32, 128, 3)
+    np.testing.assert_array_equal(out, inputs.transpose(0, 2, 3, 1))
+    assert model.runtime.calls == -(-num_samples // fixed_batch_size)
+
+
+def test_engine_warns_on_provider_fallback(caplog):
+    from onnxtr.models import engine
+
+    engine._REPORTED_FALLBACKS.clear()
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        missing = engine._warn_on_provider_fallback(
+            [("CUDAExecutionProvider", {}), "CPUExecutionProvider"], ["CPUExecutionProvider"]
+        )
+        # Several models of the same pipeline falling back only warn once
+        engine._warn_on_provider_fallback(["CUDAExecutionProvider", "CPUExecutionProvider"], ["CPUExecutionProvider"])
+    assert missing == ["CUDAExecutionProvider"]
+    assert len([r for r in caplog.records if "CUDAExecutionProvider" in r.getMessage()]) == 1
+
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        assert engine._warn_on_provider_fallback(["CPUExecutionProvider"], ["CPUExecutionProvider"]) == []
+    assert not caplog.records
+
+
+def test_cuda_device_id():
+    from onnxtr.models.engine import _cuda_device_id
+
+    assert _cuda_device_id(["CPUExecutionProvider"]) is None
+    assert _cuda_device_id([("CPUExecutionProvider", {})]) is None
+    assert _cuda_device_id(["CUDAExecutionProvider", "CPUExecutionProvider"]) == 0
+    assert _cuda_device_id([("CUDAExecutionProvider", {"device_id": 1}), "CPUExecutionProvider"]) == 1
+
+
+def test_release_gpu_memory_after_run_only_on_gpu():
+    from onnxtr.models import classification
+
+    cpu_cfg = EngineConfig(providers=["CPUExecutionProvider"])
+    # The occasionally called models opt in for releasing the GPU memory after each run, the main ones do not
+    clf = classification.mobilenet_v3_small_crop_orientation(engine_cfg=cpu_cfg)
+    reco = recognition.crnn_mobilenet_v3_small(engine_cfg=cpu_cfg)
+    assert clf._release_gpu_memory_after_run and not reco._release_gpu_memory_after_run
+    # ... which is a no-op on the CPU
+    assert clf._arena_shrinkage is None
+    with pytest.raises(RuntimeError, match="does not have configuration"):
+        clf._run_options().get_run_config_entry("memory.enable_memory_arena_shrinkage")
+
+
+def test_engine_cfg_uses_openvino_when_available(monkeypatch):
+    from onnxtr.models import engine
+
+    monkeypatch.setattr(
+        engine, "get_available_providers", lambda: ["OpenVINOExecutionProvider", "CPUExecutionProvider"]
+    )
+    monkeypatch.setattr(engine, "get_device", lambda: "CPU")
+    providers = [p[0] for p in EngineConfig().providers]
+    assert providers == ["OpenVINOExecutionProvider", "CPUExecutionProvider"]
+
+
+def test_engine_falls_back_from_openvino(monkeypatch, caplog):
+    from onnxtr.models import engine
+
+    real_session = engine.InferenceSession
+
+    def session(path, providers, sess_options):
+        if any(engine._provider_name(p) == "OpenVINOExecutionProvider" for p in providers):
+            raise RuntimeError(
+                "Exception during initialization: onnxruntime/core/providers/openvino/backends/basic_backend.cc\n"
+                "While validating ONNX node '<Node(GridSample): /GridSample>'"
+            )
+        return real_session(path, providers=["CPUExecutionProvider"], sess_options=sess_options)
+
+    monkeypatch.setattr(engine, "InferenceSession", session)
+    cfg = EngineConfig(providers=[("OpenVINOExecutionProvider", {}), "CPUExecutionProvider"])
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        model = recognition.crnn_mobilenet_v3_small(engine_cfg=cfg)
+    assert model.providers == ["CPUExecutionProvider"]
+    assert "cannot run the model" in caplog.text and "GridSample" in caplog.text
+    # Without another provider to fall back to, the error is raised
+    with pytest.raises(RuntimeError, match="openvino"):
+        recognition.crnn_mobilenet_v3_small(engine_cfg=EngineConfig(providers=["OpenVINOExecutionProvider"]))
+    # Errors without "openvino" in the message (e.g. "the graph is not acyclic") fall back too
+    caplog.clear()
+    monkeypatch.setattr(
+        engine,
+        "InferenceSession",
+        lambda path, providers, sess_options: (
+            (_ for _ in ()).throw(RuntimeError("the graph is not acyclic"))
+            if any(engine._provider_name(p) == "OpenVINOExecutionProvider" for p in providers)
+            else real_session(path, providers=["CPUExecutionProvider"], sess_options=sess_options)
+        ),
+    )
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        model = recognition.crnn_mobilenet_v3_small(engine_cfg=cfg)
+    assert model.providers == ["CPUExecutionProvider"] and "not acyclic" in caplog.text
+
+
+def test_engine_does_not_fall_back_on_other_errors(caplog):
+    cfg = EngineConfig(providers=[("OpenVINOExecutionProvider", {}), "CPUExecutionProvider"])
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        with pytest.raises(Exception, match="NO_SUCHFILE|No such file"):
+            recognition.crnn_mobilenet_v3_small("/does/not/exist.onnx", engine_cfg=cfg)
+    assert "cannot run the model" not in caplog.text

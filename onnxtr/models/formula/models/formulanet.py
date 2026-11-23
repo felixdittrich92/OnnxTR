@@ -54,6 +54,8 @@ class FormulaNet(Engine):
         **kwargs: additional arguments to be passed to `Engine`
     """
 
+    _release_gpu_memory_after_run = True
+
     def __init__(
         self,
         model_path: str,
@@ -153,7 +155,7 @@ def _formulanet(
     if load_in_8_bit:
         if default_cfgs[arch]["url_8_bit"] is None:
             logger.warning(f"No 8-bit quantized export available for '{arch}'. Loading full precision model...")
-        elif "http" in model_path:
+        elif model_path.startswith(("http://", "https://")):
             model_path = default_cfgs[arch]["url_8_bit"]
 
     return FormulaNet(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)

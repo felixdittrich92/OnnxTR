@@ -96,10 +96,13 @@ class PARSeqPostProcessor(RecognitionPostProcessor):
         word_values = [
             "".join(self._embedding[idx] for idx in encoded_seq).split("<eos>")[0] for encoded_seq in out_idxs
         ]
-        # aggregate the character probabilities of each word up to the EOS token
+        # aggregate the character probabilities of each word up to the EOS token: the number of predicted tokens is
+        # used since the <sos> and <pad> tokens are decoded as several characters
+        is_eos = out_idxs == len(self.vocab)
+        seq_lens = np.where(is_eos.any(axis=-1), is_eos.argmax(axis=-1), out_idxs.shape[-1])
         probs = [
-            aggregate_confidence(preds_prob[i, : len(word)], self.confidence_aggregation)
-            for i, word in enumerate(word_values)
+            aggregate_confidence(preds_prob[i, :seq_len], self.confidence_aggregation)
+            for i, seq_len in enumerate(seq_lens)
         ]
 
         return list(zip(word_values, probs))
@@ -119,7 +122,11 @@ def _parseq(
 
     kwargs["vocab"] = _cfg["vocab"]
     # Patch the url
-    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
+    model_path = (
+        default_cfgs[arch]["url_8_bit"]
+        if load_in_8_bit and model_path.startswith(("http://", "https://"))
+        else model_path
+    )
 
     # Build the model
     return PARSeq(model_path, cfg=_cfg, engine_cfg=engine_cfg, **kwargs)

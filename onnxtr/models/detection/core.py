@@ -4,6 +4,8 @@
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
 
+import math
+
 import cv2
 import numpy as np
 
@@ -45,10 +47,12 @@ class DetectionPostProcessor(NestedObject):
         h, w = pred.shape[:2]
 
         if assume_straight_pages:
-            xmin = np.clip(np.floor(points[:, 0].min()).astype(np.int32), 0, w - 1)
-            xmax = np.clip(np.ceil(points[:, 0].max()).astype(np.int32), 0, w - 1)
-            ymin = np.clip(np.floor(points[:, 1].min()).astype(np.int32), 0, h - 1)
-            ymax = np.clip(np.ceil(points[:, 1].max()).astype(np.int32), 0, h - 1)
+            # Called once per candidate box: plain Python scalars are much cheaper than NumPy ones here
+            (x_lo, y_lo), (x_hi, y_hi) = points.min(axis=0).tolist(), points.max(axis=0).tolist()
+            xmin = min(max(math.floor(x_lo), 0), w - 1)
+            xmax = min(max(math.ceil(x_hi), 0), w - 1)
+            ymin = min(max(math.floor(y_lo), 0), h - 1)
+            ymax = min(max(math.ceil(y_hi), 0), h - 1)
             return pred[ymin : ymax + 1, xmin : xmax + 1].mean()
 
         else:

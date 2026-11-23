@@ -6,8 +6,8 @@
 from typing import Any
 
 import numpy as np
-from scipy.special import expit
 
+from ..._utils import _expit
 from ...engine import Engine, EngineConfig
 from ..postprocessor.base import GeneralDetectionPostProcessor
 
@@ -81,7 +81,7 @@ class LinkNet(Engine):
 
         out: dict[str, Any] = {}
 
-        prob_map = expit(logits)
+        prob_map = _expit(logits)
         if return_model_output:
             out["out_map"] = prob_map
 
@@ -98,7 +98,11 @@ def _linknet(
     **kwargs: Any,
 ) -> LinkNet:
     # Patch the url
-    model_path = default_cfgs[arch]["url_8_bit"] if load_in_8_bit and "http" in model_path else model_path
+    model_path = (
+        default_cfgs[arch]["url_8_bit"]
+        if load_in_8_bit and model_path.startswith(("http://", "https://"))
+        else model_path
+    )
     # Build the model
     return LinkNet(model_path, cfg=default_cfgs[arch], engine_cfg=engine_cfg, **kwargs)
 

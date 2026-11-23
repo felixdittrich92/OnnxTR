@@ -241,6 +241,19 @@ def test_zoo_models(det_arch, reco_arch, quantized):
         models.ocr_predictor(reco_arch=det_model)
 
 
+@pytest.mark.parametrize("assume_straight_pages", [True, False])
+def test_ocrpredictor_grayscale_and_rgba_pages(mock_payslip, assume_straight_pages):
+    rgb = DocumentFile.from_images(mock_payslip)[0]
+    gray = rgb[..., :1]
+    rgba = np.concatenate([rgb, np.full((*rgb.shape[:2], 1), 255, dtype=np.uint8)], axis=-1)
+    predictor = models.ocr_predictor(
+        "fast_tiny", "crnn_mobilenet_v3_small", assume_straight_pages=assume_straight_pages
+    )
+
+    assert predictor([gray]).export() == predictor([np.repeat(gray, 3, axis=-1)]).export()
+    assert predictor([rgba]).export() == predictor([rgb]).export()
+
+
 def test_ocrpredictor_keeps_objectness_scores_aligned():
     # The middle box lies on the right border of the page: its crop is empty, so it is dropped before recognition
     boxes = np.array(

@@ -100,6 +100,22 @@ def test_reco_postprocessors_confidence_aggregation(
             post_processor("abc", confidence_aggregation=invalid)
 
 
+@pytest.mark.parametrize(
+    "post_processor, num_classes",
+    [[ViTSTRPostProcessor, 5], [MASTERPostProcessor, 6], [PARSeqPostProcessor, 6]],
+)
+def test_reco_postprocessors_confidence_special_tokens(post_processor, num_classes):
+    # "a <sos> <eos> a": <sos> is decoded as 5 characters, but only the 2 tokens before <eos> are aggregated
+    probs = [
+        [0.9, 0.0, 0.0, 0.05, 0.05],
+        [0.1, 0.1, 0.0, 0.2, 0.6],
+        [0.1, 0.1, 0.0, 0.7, 0.1],
+        [0.4, 0.2, 0.2, 0.2, 0.0],
+    ]
+    word, conf = post_processor("abc", confidence_aggregation="min")(_logits(probs, num_classes))[0]
+    assert (word, conf) == ("a<sos>", pytest.approx(0.6, abs=1e-5))
+
+
 class _MockRecoModel:
     """Recognition model returning a predefined confidence for each crop it receives"""
 

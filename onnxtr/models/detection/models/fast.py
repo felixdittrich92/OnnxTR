@@ -7,8 +7,8 @@ import logging
 from typing import Any
 
 import numpy as np
-from scipy.special import expit
 
+from ..._utils import _expit
 from ...engine import Engine, EngineConfig
 from ..postprocessor.base import GeneralDetectionPostProcessor
 
@@ -81,7 +81,7 @@ class FAST(Engine):
 
         out: dict[str, Any] = {}
 
-        prob_map = expit(logits)
+        prob_map = _expit(logits)
         if return_model_output:
             out["out_map"] = prob_map
 
