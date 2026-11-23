@@ -96,8 +96,9 @@ def _warn_on_provider_fallback(requested: list[tuple[str, dict[str, Any]]] | lis
     return missing
 
 
-# CUDA devices on which a memory arena shared by all the inference sessions of the process is registered
-_SHARED_CUDA_ARENAS: set[int] = set()
+# CUDA devices on which a memory arena shared by all the inference sessions of the process is registered (True), or
+# could not be registered (False)
+_SHARED_CUDA_ARENAS: dict[int, bool] = {}
 
 
 def _register_shared_cuda_arena(device_id: int) -> bool:
@@ -114,7 +115,7 @@ def _register_shared_cuda_arena(device_id: int) -> bool:
         whether the shared arena is available
     """
     if device_id in _SHARED_CUDA_ARENAS:
-        return True
+        return _SHARED_CUDA_ARENAS[device_id]
     try:
         mem_info = OrtMemoryInfo("Cuda", OrtAllocatorType.ORT_ARENA_ALLOCATOR, device_id, OrtMemType.DEFAULT)
         # arena_extend_strategy 1: kSameAsRequested
@@ -123,8 +124,9 @@ def _register_shared_cuda_arena(device_id: int) -> bool:
         )
     except Exception as e:  # pragma: no cover
         logger.info(f"Could not register a shared CUDA memory arena, each session keeps its own: {e}")
+        _SHARED_CUDA_ARENAS[device_id] = False
         return False
-    _SHARED_CUDA_ARENAS.add(device_id)
+    _SHARED_CUDA_ARENAS[device_id] = True
     return True
 
 
@@ -155,9 +157,15 @@ class EngineConfig:
     ):
         self._providers = providers or self._init_providers()
         self._session_options = session_options or self._init_sess_opts()
-        # The default sessions on a GPU share a single CUDA memory arena (user-provided session options are kept as is)
+        # The default sessions on a GPU share a single CUDA memory arena: user-provided providers (e.g. with a
+        # `gpu_mem_limit`) and session options are kept as is
         cuda_device = _cuda_device_id(self._providers)
-        if session_options is None and cuda_device is not None and _register_shared_cuda_arena(cuda_device):
+        if (
+            providers is None
+            and session_options is None
+            and cuda_device is not None
+            and _register_shared_cuda_arena(cuda_device)
+        ):
             self._session_options.add_session_config_entry("session.use_env_allocators", "1")
         self.run_options_provider = run_options_provider
 
@@ -268,6 +276,11 @@ class Engine:
             fallback: Any = [p for p in self.providers if _provider_name(p) != "OpenVINOExecutionProvider"]
             if not fallback or len(fallback) == len(self.providers):
                 raise
+            try:
+                session = InferenceSession(model_path, providers=fallback, sess_options=self.session_options)
+            except Exception:
+                # Not an OpenVINO issue (e.g. a missing or invalid model file): report the original error
+                raise e from None
             lines = [line.strip() for line in str(e).splitlines() if line.strip()] or [type(e).__name__]
             reason = next((line for line in lines if line.startswith("While validating ONNX node")), lines[0])[:200]
             logger.warning(
@@ -275,7 +288,7 @@ class Engine:
                 f"to {[_provider_name(p) for p in fallback]}: {reason}"
             )
             self.providers = fallback
-            return InferenceSession(model_path, providers=self.providers, sess_options=self.session_options)
+            return session
 
     def _run_options(self) -> RunOptions:
         run_options = RunOptions()

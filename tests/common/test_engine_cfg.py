@@ -226,7 +226,10 @@ def test_engine_falls_back_from_openvino(monkeypatch, caplog):
 
     def session(path, providers, sess_options):
         if any(engine._provider_name(p) == "OpenVINOExecutionProvider" for p in providers):
-            raise RuntimeError("FrontEnd API failed\nWhile validating ONNX node '<Node(GridSample): /GridSample>'")
+            raise RuntimeError(
+                "Exception during initialization: onnxruntime/core/providers/openvino/backends/basic_backend.cc\n"
+                "While validating ONNX node '<Node(GridSample): /GridSample>'"
+            )
         return real_session(path, providers=["CPUExecutionProvider"], sess_options=sess_options)
 
     monkeypatch.setattr(engine, "InferenceSession", session)
@@ -236,5 +239,27 @@ def test_engine_falls_back_from_openvino(monkeypatch, caplog):
     assert model.providers == ["CPUExecutionProvider"]
     assert "cannot run the model" in caplog.text and "GridSample" in caplog.text
     # Without another provider to fall back to, the error is raised
-    with pytest.raises(RuntimeError, match="FrontEnd API failed"):
+    with pytest.raises(RuntimeError, match="openvino"):
         recognition.crnn_mobilenet_v3_small(engine_cfg=EngineConfig(providers=["OpenVINOExecutionProvider"]))
+    # Errors without "openvino" in the message (e.g. "the graph is not acyclic") fall back too
+    caplog.clear()
+    monkeypatch.setattr(
+        engine,
+        "InferenceSession",
+        lambda path, providers, sess_options: (
+            (_ for _ in ()).throw(RuntimeError("the graph is not acyclic"))
+            if any(engine._provider_name(p) == "OpenVINOExecutionProvider" for p in providers)
+            else real_session(path, providers=["CPUExecutionProvider"], sess_options=sess_options)
+        ),
+    )
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        model = recognition.crnn_mobilenet_v3_small(engine_cfg=cfg)
+    assert model.providers == ["CPUExecutionProvider"] and "not acyclic" in caplog.text
+
+
+def test_engine_does_not_fall_back_on_other_errors(caplog):
+    cfg = EngineConfig(providers=[("OpenVINOExecutionProvider", {}), "CPUExecutionProvider"])
+    with caplog.at_level("WARNING", logger="onnxtr.models.engine"):
+        with pytest.raises(Exception, match="NO_SUCHFILE|No such file"):
+            recognition.crnn_mobilenet_v3_small("/does/not/exist.onnx", engine_cfg=cfg)
+    assert "cannot run the model" not in caplog.text

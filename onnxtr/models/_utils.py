@@ -18,10 +18,6 @@ from scipy.special import expit
 from onnxtr.utils.geometry import rotate_image
 from onnxtr.utils.multithreading import multithread_exec, prefetch_chunks
 
-# langdetect samples at random: fix its seed, so that the detected languages (and their confidence) are
-# reproducible from one run to the other
-DetectorFactory.seed = 0
-
 __all__ = ["ConfidenceAggregation", "aggregate_confidence", "estimate_orientation", "get_language", "mask_boxes"]
 
 ConfidenceAggregation: TypeAlias = (
@@ -314,10 +310,15 @@ def get_language(text: str) -> tuple[str, float]:
     Returns:
         The detected language in ISO 639 code and confidence score
     """
+    # langdetect samples at random: a fixed seed makes the result reproducible, the seed of the caller is restored
+    seed = DetectorFactory.seed
+    DetectorFactory.seed = 0
     try:
         lang = detect_langs(text.lower())[0]
     except LangDetectException:
         return "unknown", 0.0
+    finally:
+        DetectorFactory.seed = seed
     if len(text) <= 1 or (len(text) <= 5 and lang.prob <= 0.2):
         return "unknown", 0.0
     return lang.lang, lang.prob

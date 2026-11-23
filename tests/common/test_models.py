@@ -107,6 +107,13 @@ def test_get_lang_is_reproducible():
     # langdetect samples at random: an ambiguous text got a different confidence (or language) at each call
     sentence = "die Klasse und das Ergebnis"
     assert len({get_language(sentence) for _ in range(10)}) == 1
+    # The seed of the application is left untouched
+    from langdetect import DetectorFactory
+
+    DetectorFactory.seed = 42
+    get_language(sentence)
+    assert DetectorFactory.seed == 42
+    DetectorFactory.seed = None
 
 
 def test_mask_boxes():
