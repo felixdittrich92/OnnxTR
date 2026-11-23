@@ -548,9 +548,9 @@ The smallest combination in OnnxTR of `db_mobilenet_v3_large` and `crnn_mobilene
 
 \* measured on an evenly spread subset of 50 pages of each dataset
 
-\*\* with oneDNN disabled (`enable_mkldnn=False`): PaddlePaddle 3.3.1 crashes with oneDNN on the default PP-OCRv5 models
+\*\* with oneDNN disabled (`enable_mkldnn=False`): PaddlePaddle 3.3.1 crashes with oneDNN on the default PP-OCRv6 models
 
-OnnxTR runs with onnxruntime(-gpu) 1.23.2 and onnxruntime-openvino 1.24.1, docTR and EasyOCR with PyTorch 2.15, PaddleOCR with PaddlePaddle 3.3.1. Surya 0.17.1 is the last release running the text recognition with PyTorch (newer releases rely on a vLLM / llama.cpp inference server).
+OnnxTR runs with onnxruntime(-gpu) 1.23.2 and onnxruntime-openvino 1.24.1, docTR and EasyOCR with PyTorch 2.15, PaddleOCR with PaddlePaddle 3.3.1 and its default text detection / recognition models (`PP-OCRv6_medium_det` + `PP-OCRv6_medium_rec`, not the PaddleOCR-VL pipeline). Surya 0.17.1 is the last release running the text recognition with PyTorch (newer releases rely on a vLLM / llama.cpp inference server).
 
 ## Citation
 
