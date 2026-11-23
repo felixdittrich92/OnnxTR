@@ -513,40 +513,44 @@ NOTE:
 
 ### Benchmarks
 
-The CPU benchmarks was measured on a `i7-14700K Intel CPU`.
+The CPU benchmarks were measured on an `i7-14700K Intel CPU` and the GPU benchmarks on an `RTX 4080 Nvidia GPU`.
 
-The GPU benchmarks was measured on a `RTX 4080 Nvidia GPU`.
+Benchmarking performed on the FUNSD dataset and CORD dataset: mean time of the end-to-end OCR (text detection & recognition) of a page, on the original images, after a warm-up and with the default settings of each library.
 
-Benchmarking performed on the FUNSD dataset and CORD dataset.
+docTR / OnnxTR models used for the benchmarks are `fast_base` (full precision) | `db_resnet50` (8-bit variant) for detection and `crnn_vgg16_bn` for recognition. The float16 models of OnnxTR are converted with `scripts/convert_to_float16.py`.
 
-docTR / OnnxTR models used for the benchmarks are `fast_base` (full precision) | `db_resnet50` (8-bit variant) for detection and `crnn_vgg16_bn` for recognition.
-
-The smallest combination in OnnxTR (docTR) of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.17s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset in **full precision** on CPU.
+The smallest combination in OnnxTR of `db_mobilenet_v3_large` and `crnn_mobilenet_v3_small` takes as comparison `~0.15s / Page` on the FUNSD dataset and `~0.12s / Page` on the CORD dataset in **full precision** on CPU.
 
 - CPU benchmarks:
 
-|Library                             |FUNSD (199 pages)              |CORD  (900 pages)              |
-|------------------------------------|-------------------------------|-------------------------------|
-|docTR (CPU) - v0.8.1                | ~1.29s / Page                 | ~0.60s / Page                 |
-|**OnnxTR (CPU)** - v0.6.0           | ~0.57s / Page                 | **~0.25s / Page**             |
-|**OnnxTR (CPU) 8-bit** - v0.6.0     | **~0.38s / Page**             | **~0.14s / Page**             |
-|**OnnxTR (CPU-OpenVINO)** - v0.6.0  | **~0.15s / Page**             | **~0.14s / Page**             |
-|EasyOCR (CPU) - v1.7.1              | ~1.96s / Page                 | ~1.75s / Page                 |
-|**PyTesseract (CPU)** - v0.3.10     | **~0.50s / Page**             | ~0.52s / Page                 |
-|Surya (line) (CPU) - v0.4.4         | ~48.76s / Page                | ~35.49s / Page                |
-|PaddleOCR (CPU) - no cls - v2.7.3   | ~1.27s / Page                 | ~0.38s / Page                 |
+|Library                                       |FUNSD (199 pages)              |CORD  (900 pages)              |
+|----------------------------------------------|-------------------------------|-------------------------------|
+|docTR (CPU) - v1.1.0                          |~1.01s / Page                  |~0.45s / Page                  |
+|**OnnxTR (CPU)** - v0.10.0                    |~0.60s / Page                  |~0.27s / Page                  |
+|**OnnxTR (CPU) 8-bit** - v0.10.0              |**~0.28s / Page**              |**~0.15s / Page**              |
+|**OnnxTR (CPU-OpenVINO)** - v0.10.0           |~0.68s / Page                  |~0.30s / Page                  |
+|EasyOCR (CPU) - v1.7.2                        |~1.83s / Page                  |~1.80s / Page                  |
+|PyTesseract (CPU) - v0.3.13 (Tesseract 5.5.0) |~0.38s / Page                  |~0.44s / Page                  |
+|Surya (CPU) - v0.17.1 \*                      |~27.00s / Page                 |~12.93s / Page                 |
+|PaddleOCR (CPU) - no cls - v3.7.0 \* \*\*     |~10.53s / Page                 |~8.39s / Page                  |
 
 - GPU benchmarks:
 
-|Library                              |FUNSD (199 pages)              |CORD  (900 pages)              |
-|-------------------------------------|-------------------------------|-------------------------------|
-|docTR (GPU) - v0.8.1                 | ~0.07s / Page                 | ~0.05s / Page                 |
-|**docTR (GPU) float16** - v0.8.1     | **~0.06s / Page**             | **~0.03s / Page**             |
-|OnnxTR (GPU) - v0.6.0                | **~0.06s / Page**             | ~0.04s / Page                 |
-|**OnnxTR (GPU) float16 - v0.6.0**    | **~0.05s / Page**             | **~0.03s / Page**             |
-|EasyOCR (GPU) - v1.7.1               | ~0.31s / Page                 | ~0.19s / Page                 |
-|Surya (GPU) float16 - v0.4.4         | ~3.70s / Page                 | ~2.81s / Page                 |
-|**PaddleOCR (GPU) - no cls - v2.7.3**| ~0.08s / Page                 | **~0.03s / Page**             |
+|Library                            |FUNSD (199 pages)              |CORD  (900 pages)              |
+|-----------------------------------|-------------------------------|-------------------------------|
+|docTR (GPU) - v1.1.0               |~0.068s / Page                 |~0.030s / Page                 |
+|docTR (GPU) float16 - v1.1.0       |**~0.057s / Page**             |**~0.027s / Page**             |
+|**OnnxTR (GPU)** - v0.10.0         |**~0.057s / Page**             |~0.039s / Page                 |
+|**OnnxTR (GPU) float16** - v0.10.0 |~0.059s / Page                 |~0.048s / Page                 |
+|EasyOCR (GPU) - v1.7.2             |~0.34s / Page                  |~0.14s / Page                  |
+|Surya (GPU) - v0.17.1              |~1.23s / Page                  |~0.53s / Page                  |
+|PaddleOCR (GPU) - no cls - v3.7.0  |~0.15s / Page                  |~0.090s / Page                 |
+
+\* measured on an evenly spread subset of 50 pages of each dataset
+
+\*\* with oneDNN disabled (`enable_mkldnn=False`): PaddlePaddle 3.3.1 crashes with oneDNN on the default PP-OCRv5 models
+
+OnnxTR runs with onnxruntime(-gpu) 1.23.2 and onnxruntime-openvino 1.24.1, docTR and EasyOCR with PyTorch 2.15, PaddleOCR with PaddlePaddle 3.3.1. Surya 0.17.1 is the last release running the text recognition with PyTorch (newer releases rely on a vLLM / llama.cpp inference server).
 
 ## Citation
 
