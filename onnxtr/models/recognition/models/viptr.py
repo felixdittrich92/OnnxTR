@@ -118,6 +118,9 @@ class VIPTR(Engine):
         **kwargs: additional arguments to be passed to `Engine`
     """
 
+    # Sequence length of the model, as in docTR: words of up to max_length chars
+    max_length: int = 32
+
     _children_names: list[str] = ["postprocessor"]
 
     def __init__(

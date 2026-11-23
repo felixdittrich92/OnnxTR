@@ -14,7 +14,12 @@ from onnxtr.models.recognition.models.sar import SARPostProcessor
 from onnxtr.models.recognition.models.viptr import VIPTRPostProcessor
 from onnxtr.models.recognition.models.vitstr import ViTSTRPostProcessor
 from onnxtr.models.recognition.predictor import RecognitionPredictor
-from onnxtr.models.recognition.predictor._utils import remap_preds, split_crops
+from onnxtr.models.recognition.predictor._utils import (
+    ambiguous_overlaps,
+    remap_preds,
+    resolve_overlap,
+    split_crops,
+)
 from onnxtr.utils.vocabs import VOCABS
 
 
@@ -417,3 +422,115 @@ def test_master_8_bit_falls_back_to_full_precision(caplog):
         model = recognition.master(load_in_8_bit=True)
     assert "No 8-bit quantized export available for 'master'" in caplog.text
     assert model.model_path.endswith(recognition.master.__defaults__[0].split("/")[-1])
+
+
+def test_remap_preds_overlaps():
+    preds = [("WARMUP", 0.9), ("MUP-0000", 0.8), ("-0000001", 0.7)] * 2
+    assert remap_preds(preds, [(0, 3, 0.519), (3, 6, 0.519)], 0.5, overlaps={(0, 1): 3}) == [
+        ("WARMUP-0000001", 0.7),
+        ("WARMUP-00000001", 0.7),
+    ]
+
+
+@pytest.mark.parametrize("channels_last", [True, False])
+def test_ambiguous_overlaps(channels_last):
+    crops = [np.zeros((32, 128, 3), dtype=np.uint8), np.arange(10 * 200 * 3, dtype=np.int64).reshape(10, 200, 3)]
+    if not channels_last:
+        crops = [crop.transpose(2, 0, 1) for crop in crops]
+    # The second crop is split into 6 parts of 60 columns starting at 0, 30, 60, 90, 120 and 140
+    _, crop_map, _ = split_crops(crops, 8, 6, 0.5, channels_last)
+    texts = ["single", "XY-0000", "-000000", "00001AB", "1ABCDEF", "GH00000", "0000000"]
+
+    pairs = ambiguous_overlaps([(text, 0.9) for text in texts], crop_map, crops, 6, 0.5, channels_last)
+
+    assert [(key, a, b, ratio, offset) for key, _, a, b, ratio, offset in pairs] == [
+        ((1, 0), "XY-0000", "-000000", 0.5, 0.5),
+        ((1, 1), "-000000", "00001AB", 0.5, 0.5),
+        ((1, 4), "GH00000", "0000000", pytest.approx(40 / 60), pytest.approx(20 / 60)),
+    ]
+    for (_, region, *_), (start, end) in zip(pairs, [(0, 90), (30, 120), (120, 200)]):
+        np.testing.assert_array_equal(region, crops[1][..., start:end] if not channels_last else crops[1][:, start:end])
+    # merge_strings picks no exact overlap / the parts do not match the split
+    first = crops[1][:, :90] if channels_last else crops[1][..., :90]
+    assert ambiguous_overlaps([("aaab", 0.9), ("baabbbbb", 0.9)], [(0, 2, 0.2)], [first], 6, 0.5, channels_last) == []
+    assert ambiguous_overlaps([(text, 0.9) for text in texts[:3]], [0, (1, 3, 0.5)], crops, 6, 0.5, channels_last) == []
+
+
+@pytest.mark.parametrize(
+    "a, b, overlap_ratio, offset, region_text, kwargs, length",
+    [
+        # The region reading and the char positions agree on 4, merge_strings picks 3 (score gap 1.28)
+        ("MUP-00000", "-0000001", 2 / 3, 1 / 3, "MUP-0000001", {}, 4),
+        ("MUP-00000", "-0000001", 2 / 3, 1 / 3, "MUP-0000001", {"margin": 1.3}, None),
+        ("MUP-00000", "-0000001", 2 / 3, 1 / 3, "MUP-00000001", {}, None),
+        # Its merge 2 edits from the region reading, then 3
+        ("MUP-00000", "-0000001", 2 / 3, 1 / 3, "MXY-0000001", {}, 4),
+        ("MUP-00000", "-0000001", 2 / 3, 1 / 3, "MXY-00Z0001", {}, None),
+        # The region reading points at 5, the char positions at merge_strings' 4: a tie keeps it
+        ("U-000000000", "00000008911", 78 / 144, 66 / 144, "U-0000000008911", {"margin": 0}, None),
+        ("hellowo", "loworld", 0.5, 0.5, "helloworld", {}, None),
+        ("aaab", "baabbbbb", 0.2, 0.5, "aaabbbbb", {}, None),
+    ],
+)
+def test_resolve_overlap(a, b, overlap_ratio, offset, region_text, kwargs, length):
+    assert resolve_overlap(a, b, overlap_ratio, offset, region_text, **kwargs) == length
+
+
+class _ScriptedRecoModel:
+    """Reads the crops as the next `readings`: the parts with a confidence of 0.9, the regions of 0.1"""
+
+    def __init__(self, readings: list[str], max_length: int | None) -> None:
+        self.readings = iter(readings)
+        self.batch_sizes: list[int] = []
+        if max_length is not None:
+            self.max_length = max_length
+
+    def __call__(self, x: np.ndarray, **kwargs):
+        self.batch_sizes.append(x.shape[0])
+        conf = 0.9 if len(self.batch_sizes) == 1 else 0.1
+        return {"preds": [(next(self.readings), conf) for _ in range(x.shape[0])]}
+
+
+# The parts of a 154 x 14 crop of "WARMUP-0000001": merge_strings adds a zero to the run
+_PARTS = ["WARMUP-0", "MUP-00000", "-0000001"]
+
+
+@pytest.mark.parametrize(
+    "width, readings, resolve, max_length, text, batch_sizes",
+    [
+        (154, [*_PARTS, "MUP-0000001"], True, 32, "WARMUP-0000001", [3, 1]),
+        (154, [*_PARTS, "MUP-0000001"], True, None, "WARMUP-0000001", [3, 1]),
+        # A region reading of `max_length - 2` chars or more may be cut short
+        (154, [*_PARTS, "MUP-0000001"], True, 13, "WARMUP-00000001", [3, 1]),
+        (154, [*_PARTS, "MUP-0000001"], True, 14, "WARMUP-0000001", [3, 1]),
+        (154, [*_PARTS, "MUP-00000001"], True, 32, "WARMUP-00000001", [3, 1]),
+        (154, _PARTS, False, 32, "WARMUP-00000001", [3]),
+        (154, ["WARMUP-1", "MUP-1234", "-1234567"], True, 32, "WARMUP-1234567", [3]),
+        (98, ["WARMUP-0000001"], True, 32, "WARMUP-0000001", [1]),
+    ],
+)
+def test_recognition_predictor_resolve_ambiguous_overlaps(width, readings, resolve, max_length, text, batch_sizes):
+    model = _ScriptedRecoModel(readings, max_length)
+    predictor = RecognitionPredictor(
+        PreProcessor(output_size=(32, 128), batch_size=32, preserve_aspect_ratio=True),
+        model,
+        resolve_ambiguous_overlaps=resolve,
+    )
+    assert predictor([np.zeros((14, width, 3), dtype=np.uint8)]) == [(text, 0.9)]
+    assert model.batch_sizes == batch_sizes
+
+
+@pytest.mark.parametrize(
+    "arch, max_length",
+    [
+        ("crnn_vgg16_bn", 32),
+        ("sar_resnet31", 31),
+        ("master", 50),
+        ("vitstr_small", 34),
+        ("parseq", 32),
+        ("viptr_tiny", 32),
+    ],
+)
+def test_recognition_models_max_length(arch, max_length):
+    # Same sequence lengths as the docTR models they are exported from
+    assert recognition.__dict__[arch]().max_length == max_length

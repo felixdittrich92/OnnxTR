@@ -41,6 +41,9 @@ class SAR(Engine):
         **kwargs: additional arguments to be passed to `Engine`
     """
 
+    # Sequence length of the model, as in docTR: words of up to max_length - 1 chars + EOS
+    max_length: int = 31
+
     def __init__(
         self,
         model_path: str,

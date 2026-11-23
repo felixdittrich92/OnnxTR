@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://opensource.org/licenses/Apache-2.0> for full license details.
 
+import math
 from collections.abc import Iterable, Sequence
 from typing import Any
 
@@ -12,7 +13,7 @@ from onnxtr.models._utils import ConfidenceAggregation, _resolve_confidence_aggr
 from onnxtr.models.preprocessor import PreProcessor
 from onnxtr.utils.repr import NestedObject
 
-from ._utils import remap_preds, split_crops
+from ._utils import ambiguous_overlaps, remap_preds, resolve_overlap, split_crops
 
 __all__ = ["RecognitionPredictor"]
 
@@ -24,6 +25,9 @@ class RecognitionPredictor(NestedObject):
         pre_processor: transform inputs for easier batched model inference
         model: core recognition architecture
         split_wide_crops: wether to use crop splitting for high aspect ratio crops
+        resolve_ambiguous_overlaps: whether to read the region two parts of a split crop cover once more when their
+            readings overlap exactly at several lengths (across a repeated stretch such as "0000"), to choose the
+            overlap length (cf. `resolve_overlap`)
         chunk_size: the maximum number of crops decoded and processed at once (1024 by default). Longer
             inputs, lazy page sources (cf. `DocumentFile.from_images(..., lazy=True)`) and iterators are processed
             chunk by chunk, with a memory footprint that does not grow with the number of crops. It is rounded
@@ -35,6 +39,7 @@ class RecognitionPredictor(NestedObject):
         pre_processor: PreProcessor,
         model: Any,
         split_wide_crops: bool = True,
+        resolve_ambiguous_overlaps: bool = True,
         chunk_size: int = 1024,
     ) -> None:
         super().__init__()
@@ -44,6 +49,7 @@ class RecognitionPredictor(NestedObject):
             raise ValueError("`chunk_size` must be a positive integer")
         self.chunk_size = chunk_size
         self.split_wide_crops = split_wide_crops
+        self.resolve_ambiguous_overlaps = resolve_ambiguous_overlaps
         self.critical_ar = 8  # Critical aspect ratio
         self.overlap_ratio = 0.5  # Ratio of overlap between neighboring crops
         self.target_ar = 6  # Target aspect ratio
@@ -94,9 +100,30 @@ class RecognitionPredictor(NestedObject):
                 self.overlap_ratio,
                 True,
             )
-            if remapped:
-                crops = new_crops
 
+        out = self._read(new_crops if remapped else crops, **kwargs)
+
+        # Remap crops
+        if self.split_wide_crops and remapped:
+            overlaps: dict[tuple[int, int], int] = {}
+            if self.resolve_ambiguous_overlaps:
+                pairs = ambiguous_overlaps(out, crop_map, list(crops), self.target_ar, self.overlap_ratio)
+                if pairs:
+                    region_reads = self._read([region for _, region, *_ in pairs], **kwargs)
+                    # A reading this long may have been cut short by the model: the models are trained on words of
+                    # up to `max_length - 2` (PARSeq, MASTER, ViTSTR), `max_length - 1` (SAR) or `max_length` chars
+                    # (CRNN, VIPTR)
+                    max_length = getattr(self.model, "max_length", math.inf) - 2
+                    for (key, _, a, b, ratio, offset), (region_text, _) in zip(pairs, region_reads, strict=True):
+                        length = resolve_overlap(a, b, ratio, offset, region_text)
+                        if length is not None and len(region_text) < max_length:
+                            overlaps[key] = length
+            out = remap_preds(out, crop_map, self.overlap_ratio, self.split_confidence_aggregation, overlaps)
+
+        return out
+
+    def _read(self, crops: Sequence[np.ndarray], **kwargs: Any) -> list[tuple[str, float]]:
+        """Read the character sequence of each crop, as is"""
         # Resize & batch them
         processed_batches = self.pre_processor(crops)  # type: ignore[arg-type]
 
@@ -104,10 +131,4 @@ class RecognitionPredictor(NestedObject):
         raw = [self.model(batch, **kwargs)["preds"] for batch in processed_batches]
 
         # Process outputs
-        out = [charseq for batch in raw for charseq in batch]
-
-        # Remap crops
-        if self.split_wide_crops and remapped:
-            out = remap_preds(out, crop_map, self.overlap_ratio, self.split_confidence_aggregation)
-
-        return out
+        return [charseq for batch in raw for charseq in batch]
