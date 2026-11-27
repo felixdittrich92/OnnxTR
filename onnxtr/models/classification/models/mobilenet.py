@@ -32,8 +32,8 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 512, 512),
         "classes": [0, -90, 180, 90],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.0/mobilenet_v3_small_page_orientation-60606ce4.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.0/mobilenet_v3_small_page_orientation_static_8_bit-13b5b014.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.10.0/mobilenet_v3_small_page_orientation-0d83aa30.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.10.0/mobilenet_v3_small_page_orientation_static_8_bit-66ef8a98.onnx",
     },
 }
 
