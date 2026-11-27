@@ -24,8 +24,8 @@ default_cfgs: dict[str, dict[str, Any]] = {
         "std": (0.299, 0.296, 0.301),
         "input_shape": (3, 256, 256),
         "classes": [0, -90, 180, 90],
-        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.0/mobilenet_v3_small_crop_orientation-4fde60a1.onnx",
-        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.6.0/mobilenet_v3_small_crop_orientation_static_8_bit-c32c7721.onnx",
+        "url": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.10.0/mobilenet_v3_small_crop_orientation-4d1e6636.onnx",
+        "url_8_bit": "https://github.com/felixdittrich92/OnnxTR/releases/download/v0.10.0/mobilenet_v3_small_crop_orientation_static_8_bit-032d24f8.onnx",
     },
     "mobilenet_v3_small_page_orientation": {
         "mean": (0.694, 0.695, 0.693),
